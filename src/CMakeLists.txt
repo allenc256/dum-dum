@@ -1,1 +1,1 @@
-add_executable(dad Main.cpp Card.h Card.cpp Panic.h)
+add_executable(dumdum Main.cpp Card.h Card.cpp Panic.h)
