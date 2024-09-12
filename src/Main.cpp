@@ -1,3 +1,9 @@
 #include <iostream>
 
-void main(int argc, char **argv) { std::cout << "hello, world!" << std::endl; }
+#include "Card.h"
+
+int main(int argc, char **argv) {
+  Card c = Card("2H");
+  std::cout << c << std::endl;
+  return 0;
+}

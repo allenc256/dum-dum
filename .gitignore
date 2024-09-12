@@ -32,3 +32,5 @@
 *.app
 
 CMakeFiles/
+build/
+.vscode/
