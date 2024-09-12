@@ -4,99 +4,118 @@
 
 #include "Panic.h"
 
-Card::Rank ParseRank(char ch) {
+Rank ParseRank(char ch) {
   if (ch >= '2' && ch <= '9') {
-    return static_cast<Card::Rank>(ch - '2');
+    return static_cast<Rank>(ch - '2');
   }
   switch (ch) {
     case 'T':
-      return Card::Rank::T;
+      return Rank::T;
     case 'J':
-      return Card::Rank::J;
+      return Rank::J;
     case 'Q':
-      return Card::Rank::Q;
+      return Rank::Q;
     case 'K':
-      return Card::Rank::K;
+      return Rank::K;
     case 'A':
-      return Card::Rank::A;
+      return Rank::A;
     default:
-      panic("bad rank");
-      exit(1);
+      PANIC("bad rank");
   }
 }
 
-Card::Suit ParseSuit(std::string_view utf8_str) {
+Suit ParseSuit(std::string_view utf8_str) {
   if (utf8_str == "C" || utf8_str == "♣") {
-    return Card::Suit::C;
+    return Suit::C;
   } else if (utf8_str == "D" || utf8_str == "♦") {
-    return Card::Suit::D;
+    return Suit::D;
   } else if (utf8_str == "H" || utf8_str == "♥") {
-    return Card::Suit::H;
+    return Suit::H;
   } else if (utf8_str == "S" || utf8_str == "♠") {
-    return Card::Suit::S;
+    return Suit::S;
   } else {
-    panic("bad suit");
-    exit(1);
+    PANIC("bad suit");
   }
 }
 
 Card::Card(std::string_view utf8_str) {
   if (utf8_str.length() < 2) {
-    panic("bad card");
+    PANIC("bad card");
   }
-  Rank r = ParseRank(utf8_str[0]);
-  Suit s = ParseSuit(utf8_str.substr(1));
-  _card = ((uint64_t)1) << (r + s * 13);
+  rank_ = ParseRank(utf8_str[0]);
+  suit_ = ParseSuit(utf8_str.substr(1));
 }
 
-std::ostream& operator<<(std::ostream& os, const Card::Suit& s) {
+std::ostream& operator<<(std::ostream& os, const Suit& s) {
   switch (s) {
-    case Card::C:
+    case Suit::C:
       os << "♣";
       break;
-    case Card::D:
+    case Suit::D:
       os << "♦";
       break;
-    case Card::H:
+    case Suit::H:
       os << "♥";
       break;
-    case Card::S:
+    case Suit::S:
       os << "♠";
       break;
     default:
-      panic("bad suit");
+      PANIC("bad suit");
   }
   return os;
 }
 
-std::ostream& operator<<(std::ostream& os, const Card::Rank& r) {
+std::ostream& operator<<(std::ostream& os, const Rank& r) {
   if (r >= 0 && r < 8) {
     os << static_cast<int>(r + 2);
   } else {
     switch (r) {
-      case Card::T:
+      case Rank::T:
         os << "T";
         break;
-      case Card::J:
+      case Rank::J:
         os << "J";
         break;
-      case Card::Q:
+      case Rank::Q:
         os << "Q";
         break;
-      case Card::K:
+      case Rank::K:
         os << "K";
         break;
-      case Card::A:
+      case Rank::A:
         os << "A";
         break;
       default:
-        panic("bad rank");
+        PANIC("bad rank");
     }
   }
   return os;
 }
 
 std::ostream& operator<<(std::ostream& os, const Card& c) {
-  os << c.GetRank() << c.GetSuit();
+  os << c.rank() << c.suit();
+  return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const Cards& c) {
+  for (int s = 0; s < 4; s++) {
+    Cards cs = c.of_suit((Suit)s);
+
+    if (s > 0) {
+      os << " ";
+    }
+    os << (Suit)s << " ";
+
+    int count = 0;
+    for (Cards::Iter i = cs.first(); i.valid(); i = cs.next(i)) {
+      os << i.card().rank();
+      count++;
+    }
+
+    if (count <= 0) {
+      os << "-";
+    }
+  }
   return os;
 }

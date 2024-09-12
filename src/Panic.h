@@ -1,5 +1,9 @@
 #pragma once
 
-#include <string>
+#include <iostream>
 
-void panic(std::string_view msg);
+#define PANIC(msg)                   \
+  {                                  \
+    std::cerr << (msg) << std::endl; \
+    exit(1);                         \
+  }
