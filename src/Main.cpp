@@ -2,11 +2,11 @@
 #include <iostream>
 #include <random>
 
-#include "Card.h"
+#include "State.h"
 
-int main(int argc, char **argv) {
+int main() {
   for (int i = 0; i < 1; i++) {
-    GameState s = GameState::random();
+    State s = State::random();
     std::cout << s << std::endl;
   }
   return 0;

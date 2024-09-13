@@ -3,13 +3,13 @@
 #include <bit>
 #include <cassert>
 #include <cstdint>
-#include <ostream>
+#include <iostream>
 
-enum Seat : uint8_t {
-  WEST,
-  NORTH,
-  EAST,
-  SOUTH,
+#include <stdexcept>
+
+class ParseFailure : public std::runtime_error {
+public:
+  using std::runtime_error::runtime_error;
 };
 
 enum Suit : uint8_t {
@@ -18,6 +18,9 @@ enum Suit : uint8_t {
   HEARTS,
   SPADES,
 };
+
+std::istream &operator>>(std::istream &is, Suit &s);
+std::ostream &operator<<(std::ostream &os, Suit s);
 
 enum Rank : uint8_t {
   RANK_2,
@@ -35,30 +38,41 @@ enum Rank : uint8_t {
   ACE
 };
 
+std::istream &operator>>(std::istream &is, Rank &r);
+std::ostream &operator<<(std::ostream &os, Rank r);
+
 class Card {
- public:
+public:
+  Card() : rank_(RANK_2), suit_(CLUBS) {}
   Card(Rank r, Suit s) : rank_(r), suit_(s) {}
-  Card(std::string_view utf8_str);
+  Card(std::string s);
 
   Rank rank() const { return rank_; }
   Suit suit() const { return suit_; }
 
- private:
+  std::string to_string() const;
+
+private:
   Rank rank_;
   Suit suit_;
 
-  friend class Cards;
+  friend std::istream &operator>>(std::istream &is, Card &c);
+  friend std::ostream &operator<<(std::ostream &os, Card c);
 };
 
+inline bool operator==(const Card &lhs, const Card &rhs) {
+  return lhs.rank() == rhs.rank() && lhs.suit() == rhs.suit();
+}
+
 class Cards {
- public:
+public:
   class Iter {
-   public:
+  public:
     bool valid() const { return card_index_ >= 0; }
     Card card() const { return from_card_index(card_index_); }
     int card_index() const { return card_index_; }
 
-   private:
+  private:
     Iter(int card_index) : card_index_(card_index) {
       assert(card_index >= 0 && card_index < 52);
     }
@@ -73,8 +87,11 @@ class Cards {
   Cards() : bits_(0) {}
 
   void add(Card c) { bits_ |= to_card_bit(c); }
+  void remove(Card c) { bits_ &= ~to_card_bit(c); }
   void add(int card_index) { bits_ |= to_card_bit(card_index); }
-  Cards with_card(Card c) const { return Cards(bits_ | to_card_bit(c)); }
+  void remove(int card_index) { bits_ &= ~to_card_bit(card_index); }
+  bool contains(Card c) { return bits_ & to_card_bit(c); }
+  void clear() { bits_ = 0; }
 
   Iter first() const {
     int k = std::countl_zero(bits_ << 12);
@@ -105,7 +122,7 @@ class Cards {
 
   uint64_t bits_;
 
- private:
+private:
   Cards(uint64_t bits) : bits_(bits) { assert(!(bits & INVALID_MASK)); }
 
   static int to_card_index(Card c) { return c.rank() + c.suit() * 13; }
@@ -118,35 +135,10 @@ class Cards {
     return Card((Rank)(card_index % 13), (Suit)(card_index / 13));
   }
 
-  static const uint64_t SUIT_MASK = 0b1111111111111;
+  static const uint64_t SUIT_MASK = 0b1111111111111UL;
   static const uint64_t INVALID_MASK =
-      ~0b1111111111111111111111111111111111111111111111111111;
+      ~0b1111111111111111111111111111111111111111111111111111UL;
 };
 
-class GameState {
- public:
-  GameState(Seat lead, Cards w, Cards n, Cards e, Cards s)
-      : lead_(lead), w_(w), n_(n), e_(e), s_(s) {
-    assert(w.disjoint(n) && w.disjoint(e) && w.disjoint(s));
-    assert(n.disjoint(e) & n.disjoint(s));
-    assert(e.disjoint(s));
-  }
-
-  Cards west() const { return w_; }
-  Cards north() const { return n_; }
-  Cards east() const { return e_; }
-  Cards south() const { return s_; }
-
-  static GameState random();
-
- private:
-  Cards w_, n_, e_, s_;
-  Seat lead_;
-};
-
-std::ostream& operator<<(std::ostream& os, Suit s);
-std::ostream& operator<<(std::ostream& os, Rank r);
-std::ostream& operator<<(std::ostream& os, Card c);
-std::ostream& operator<<(std::ostream& os, Cards c);
-std::ostream& operator<<(std::ostream& os, Seat s);
-std::ostream& operator<<(std::ostream& os, const GameState& s);
+std::istream &operator>>(std::istream &is, Cards &c);
+std::ostream &operator<<(std::ostream &os, Cards c);
