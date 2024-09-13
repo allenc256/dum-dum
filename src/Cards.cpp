@@ -172,6 +172,7 @@ bool is_rank_char(int ch) {
 
 static void parse_cards_ranks(std::istream &is, Suit s, Cards &cs) {
   Rank r;
+  Rank last_rank;
   int ch;
   int count = 0;
 
@@ -189,11 +190,11 @@ static void parse_cards_ranks(std::istream &is, Suit s, Cards &cs) {
     }
     if (is_rank_char(ch)) {
       is >> r;
-      Card c(r, s);
-      if (cs.contains(c)) {
-        throw ParseFailure("duplicate card");
+      if (count > 0 && r >= last_rank) {
+        throw ParseFailure("order");
       }
-      cs.add(c);
+      cs.add(Card(r, s));
+      last_rank = r;
       count++;
     } else if (ch == '-') {
       is.get();

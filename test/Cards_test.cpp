@@ -51,9 +51,21 @@ TEST(Card, istream) {
 
 TEST(Card, ostream) { EXPECT_EQ(test_write(Card(RANK_5, DIAMONDS)), "5♦"); }
 
+void test_read_write_cards(std::string s) {
+  EXPECT_EQ(test_write(test_read<Cards>(s)), s);
+}
+
 TEST(Cards, iostream) {
-  EXPECT_EQ(test_write(test_read<Cards>("♠ T ♥ - ♦ 234 ♣ JQK")),
-            "♠ T ♥ - ♦ 432 ♣ KQJ");
+  std::array<const char *, 3> test_cases = {
+      "♠ T ♥ - ♦ 432 ♣ KQJ",
+      "♠ AKQJT98765432 ♥ AKQJT98765432 ♦ AKQJT98765432 ♣ AKQJT98765432",
+      "♠ - ♥ - ♦ - ♣ -"};
+
+  for (const char *s : test_cases) {
+    SCOPED_TRACE(s);
+    test_read_write_cards(s);
+  }
+
   EXPECT_EQ(test_write(test_read<Cards>("♠ - ♥ - ♦ - ♣ -")), "♠ - ♥ - ♦ - ♣ -");
   EXPECT_THROW(test_read<Cards>("♠ TT ♥ - ♦ - ♣ -"), ParseFailure);
   EXPECT_THROW(test_read<Cards>("♠ T ♥ - ♦ 234"), ParseFailure);
