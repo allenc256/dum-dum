@@ -108,3 +108,11 @@ TEST(Cards, count) {
       52);
   EXPECT_THAT(from_string<Cards>("♠ - ♥ - ♦ - ♣ -").count(), 0);
 }
+
+TEST(Cards, disjoint) {
+  Cards c1 = from_string<Cards>("♠ T ♥ - ♦ 432 ♣ KQJ");
+  Cards c2 = from_string<Cards>("♠ T ♥ - ♦ - ♣ -");
+  Cards c3 = from_string<Cards>("♠ J ♥ - ♦ 65 ♣ A");
+  EXPECT_FALSE(c1.disjoint(c2));
+  EXPECT_TRUE(c1.disjoint(c3));
+}
