@@ -1,5 +1,7 @@
 #pragma once
 
+#include <random>
+
 #include "Cards.h"
 
 enum Seat : uint8_t {
@@ -10,25 +12,21 @@ enum Seat : uint8_t {
 };
 
 class State {
- public:
-  State(Seat lead, Cards w, Cards n, Cards e, Cards s)
-      : lead_(lead), w_(w), n_(n), e_(e), s_(s) {
-    assert(w.disjoint(n) && w.disjoint(e) && w.disjoint(s));
-    assert(n.disjoint(e) && n.disjoint(s));
-    assert(e.disjoint(s));
+public:
+  State(Seat lead, Cards cards[4]) : lead_(lead) {
+    for (int i = 0; i < 4; i++) {
+      cards_[i] = cards[i];
+    }
   }
 
-  Cards west() const { return w_; }
-  Cards north() const { return n_; }
-  Cards east() const { return e_; }
-  Cards south() const { return s_; }
+  Cards cards(Seat seat) const { return cards_[seat]; }
 
-  static State random();
+  static State random(std::default_random_engine &random);
 
- private:
-  Seat lead_;
-  Cards w_, n_, e_, s_;
+private:
+  __unused Seat lead_;
+  Cards cards_[4];
 };
 
-std::ostream& operator<<(std::ostream& os, Seat s);
-std::ostream& operator<<(std::ostream& os, const State& s);
+std::ostream &operator<<(std::ostream &os, Seat s);
+std::ostream &operator<<(std::ostream &os, const State &s);

@@ -98,3 +98,13 @@ TEST(Cards, iteration) {
                                                         Card(RANK_2, CLUBS),
                                                     }));
 }
+
+TEST(Cards, count) {
+  EXPECT_THAT(from_string<Cards>("♠ T ♥ - ♦ 432 ♣ KQJ").count(), 7);
+  EXPECT_THAT(
+      from_string<Cards>(
+          "♠ AKQJT98765432 ♥ AKQJT98765432 ♦ AKQJT98765432 ♣ AKQJT98765432")
+          .count(),
+      52);
+  EXPECT_THAT(from_string<Cards>("♠ - ♥ - ♦ - ♣ -").count(), 0);
+}

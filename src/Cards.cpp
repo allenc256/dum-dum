@@ -119,17 +119,11 @@ std::string Card::to_string() const {
   return os.str();
 }
 
-void print_spaces(std::ostream &os, int n) {
-  for (int i = 0; i < n; i++) {
-    os << " ";
-  }
-}
-
 int print_cards_in_suit(std::ostream &os, Cards c, Suit s) {
   c = c.intersect_suit(s);
   os << s << " ";
   int count = 0;
-  for (Cards::Iter i = c.first(); i.valid(); i = c.next(i)) {
+  for (auto i = c.first(); i.valid(); i = c.next(i)) {
     os << i.card().rank();
     count++;
   }

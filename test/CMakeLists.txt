@@ -12,9 +12,8 @@ FetchContent_MakeAvailable(googletest)
 enable_testing()
 
 add_executable(dumdum_test
-  Main.cpp
   Cards_test.cpp)
-target_link_libraries(dumdum_test dumdum_lib GTest::gmock)
+target_link_libraries(dumdum_test dumdum_lib GTest::gmock GTest::gtest_main)
 
 include(GoogleTest)
 gtest_discover_tests(dumdum_test)

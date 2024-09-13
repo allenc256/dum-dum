@@ -90,8 +90,10 @@ public:
   void remove(Card c) { bits_ &= ~to_card_bit(c); }
   void add(int card_index) { bits_ |= to_card_bit(card_index); }
   void remove(int card_index) { bits_ &= ~to_card_bit(card_index); }
-  bool contains(Card c) { return bits_ & to_card_bit(c); }
   void clear() { bits_ = 0; }
+
+  bool contains(Card c) const { return bits_ & to_card_bit(c); }
+  int count() const { return std::popcount(bits_); }
 
   Iter first() const {
     int k = std::countl_zero(bits_ << 12);
