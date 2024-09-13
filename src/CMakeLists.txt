@@ -1,1 +1,4 @@
-add_executable(dumdum Main.cpp Card.h Card.cpp Panic.h)
+add_executable(dumdum
+    Main.cpp
+    Card.cpp Card.h
+    Panic.h)

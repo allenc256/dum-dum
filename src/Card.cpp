@@ -1,6 +1,8 @@
 #include "Card.h"
 
+#include <algorithm>
 #include <iostream>
+#include <random>
 
 #include "Panic.h"
 
@@ -98,24 +100,33 @@ std::ostream& operator<<(std::ostream& os, Card c) {
   return os;
 }
 
+void print_spaces(std::ostream& os, int n) {
+  for (int i = 0; i < n; i++) {
+    os << " ";
+  }
+}
+
+int print_cards_in_suit(std::ostream& os, Cards c, Suit s) {
+  c = c.intersect_suit(s);
+  os << s << " ";
+  int count = 0;
+  for (Cards::Iter i = c.first(); i.valid(); i = c.next(i)) {
+    os << i.card().rank();
+    count++;
+  }
+  if (count <= 0) {
+    os << "-";
+    count++;
+  }
+  return count + 2;
+}
+
 std::ostream& operator<<(std::ostream& os, Cards c) {
   for (int s = 0; s < 4; s++) {
-    Cards cs = c.intersect_suit((Suit)s);
-
     if (s > 0) {
       os << " ";
     }
-    os << (Suit)s << " ";
-
-    int count = 0;
-    for (Cards::Iter i = cs.first(); i.valid(); i = cs.next(i)) {
-      os << i.card().rank();
-      count++;
-    }
-
-    if (count <= 0) {
-      os << "-";
-    }
+    print_cards_in_suit(os, c, (Suit)s);
   }
   return os;
 }
@@ -138,4 +149,51 @@ std::ostream& operator<<(std::ostream& os, Seat s) {
       PANIC("bad seat");
   }
   return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const GameState& s) {
+  constexpr int spacing = 15;
+
+  for (int i = 0; i < 4; i++) {
+    print_spaces(os, spacing);
+    print_cards_in_suit(os, s.north(), (Suit)i);
+    os << std::endl;
+  }
+
+  for (int i = 0; i < 4; i++) {
+    int count = print_cards_in_suit(os, s.west(), (Suit)i);
+    print_spaces(os, 2 * spacing - count);
+    print_cards_in_suit(os, s.east(), (Suit)i);
+    os << std::endl;
+  }
+
+  for (int i = 0; i < 4; i++) {
+    print_spaces(os, spacing);
+    print_cards_in_suit(os, s.south(), (Suit)i);
+    os << std::endl;
+  }
+
+  return os;
+}
+
+static std::default_random_engine RANDOM;
+
+GameState GameState::random() {
+  int indexes[52];
+  for (int i = 0; i < 52; i++) {
+    indexes[i] = i;
+  }
+  std::shuffle(indexes, indexes + 52, RANDOM);
+
+  Cards c[4];
+  for (int i = 0; i < 13; i++) {
+    for (int j = 0; j < 4; j++) {
+      c[j].add(indexes[i + 13 * j]);
+    }
+  }
+
+  std::uniform_int_distribution<int> uniform_dist(0, 3);
+  Seat lead = (Seat)uniform_dist(RANDOM);
+
+  return GameState(lead, c[0], c[1], c[2], c[3]);
 }
