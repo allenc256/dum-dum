@@ -1,4 +1,4 @@
-set(SOURCES Cards.cpp Cards.h State.cpp State.h Panic.h)
+set(SOURCES Cards.cpp Cards.h Game.cpp Game.h Panic.h)
 
 add_executable(dumdum Main.cpp ${SOURCES})
 add_library(dumdum_lib STATIC ${SOURCES})

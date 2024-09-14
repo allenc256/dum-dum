@@ -21,6 +21,11 @@ static Suit parse_suit(std::istream &is) {
     return Suit::HEARTS;
   case 'S':
     return Suit::SPADES;
+  case 'N':
+    if (!is.get(ch) || ch != 'T') {
+      throw ParseFailure("bad suit");
+    }
+    return Suit::NO_TRUMP;
   case 0xE2:
     if (!is.get(ch) || (uint8_t)ch != 0x99) {
       throw ParseFailure("bad suit (utf8 sequence)");
@@ -45,10 +50,10 @@ std::istream &operator>>(std::istream &is, Suit &s) {
   return is;
 }
 
-static const char *SUIT_STRS[] = {"♣", "♦", "♥", "♠"};
+static const char *SUIT_STRS[] = {"♣", "♦", "♥", "♠", "NT"};
 
 std::ostream &operator<<(std::ostream &os, Suit s) {
-  if (s < 0 || s >= 4) {
+  if (s < 0 || s >= 5) {
     throw std::runtime_error("bad suit");
   }
   os << SUIT_STRS[s];
@@ -98,6 +103,9 @@ std::ostream &operator<<(std::ostream &os, Rank r) {
 std::istream &operator>>(std::istream &is, Card &c) {
   Rank r = parse_rank(is);
   Suit s = parse_suit(is);
+  if (s == NO_TRUMP) {
+    throw ParseFailure("bad suit");
+  }
   c.rank_ = r;
   c.suit_ = s;
   return is;
@@ -120,6 +128,7 @@ std::string Card::to_string() const {
 }
 
 int print_cards_in_suit(std::ostream &os, Cards c, Suit s) {
+  assert(s != NO_TRUMP);
   c = c.intersect_suit(s);
   os << s << " ";
   int count = 0;

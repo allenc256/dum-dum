@@ -17,6 +17,7 @@ enum Suit : uint8_t {
   DIAMONDS,
   HEARTS,
   SPADES,
+  NO_TRUMP,
 };
 
 std::istream &operator>>(std::istream &is, Suit &s);
@@ -44,7 +45,7 @@ std::ostream &operator<<(std::ostream &os, Rank r);
 class Card {
 public:
   Card() : rank_(RANK_2), suit_(CLUBS) {}
-  Card(Rank r, Suit s) : rank_(r), suit_(s) {}
+  Card(Rank r, Suit s) : rank_(r), suit_(s) { assert(s != NO_TRUMP); }
   Card(std::string s);
 
   Rank rank() const { return rank_; }
