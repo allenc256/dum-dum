@@ -1,9 +1,7 @@
-#include "Game.h"
-
+#include "game_model.h"
+#include <vector>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-
-#include <vector>
 
 template <class T> std::string to_string(T x) {
   std::ostringstream os;

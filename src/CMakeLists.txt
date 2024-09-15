@@ -1,4 +1,4 @@
-set(SOURCES Cards.cpp Cards.h Game.cpp Game.h Panic.h)
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "*.cpp" *h)
 
 add_executable(dumdum Main.cpp ${SOURCES})
 add_library(dumdum_lib STATIC ${SOURCES})

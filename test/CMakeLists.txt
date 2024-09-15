@@ -13,7 +13,9 @@ enable_testing()
 
 include(GoogleTest)
 
-add_executable(dumdum_test Cards_test.cpp Game_test.cpp)
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "*.cpp" "*.h")
+
+add_executable(dumdum_test ${SOURCES})
 target_link_libraries(dumdum_test dumdum_lib GTest::gmock GTest::gtest_main)
 
 gtest_discover_tests(dumdum_test)

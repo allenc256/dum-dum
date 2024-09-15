@@ -4,7 +4,6 @@
 #include <cassert>
 #include <cstdint>
 #include <iostream>
-
 #include <stdexcept>
 
 class ParseFailure : public std::runtime_error {

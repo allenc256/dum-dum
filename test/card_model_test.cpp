@@ -1,10 +1,8 @@
-#include "Cards.h"
-
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
-
+#include "card_model.h"
 #include <iostream>
 #include <vector>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 using ::testing::ElementsAreArray;
 using ::testing::IsEmpty;

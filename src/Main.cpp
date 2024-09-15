@@ -1,8 +1,7 @@
 #include <bitset>
 #include <iostream>
 #include <random>
-
-#include "Game.h"
+#include "game_model.h"
 
 int main() {
   std::default_random_engine random(123);

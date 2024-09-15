@@ -1,10 +1,8 @@
-#include "Cards.h"
+#include "card_model.h"
 
 #include <algorithm>
 #include <iostream>
 #include <sstream>
-
-#include "Panic.h"
 
 static Suit parse_suit(std::istream &is) {
   char ch;

@@ -2,7 +2,7 @@
 
 #include <random>
 
-#include "Cards.h"
+#include "card_model.h"
 
 enum Seat : uint8_t {
   WEST,

@@ -1,8 +1,5 @@
-#include "Game.h"
-
+#include "game_model.h"
 #include <random>
-
-#include "Panic.h"
 
 static void print_chars(std::ostream &os, int n, char ch) {
   for (int i = 0; i < n; i++) {
