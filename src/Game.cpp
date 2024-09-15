@@ -33,9 +33,9 @@ std::ostream &operator<<(std::ostream &os, const Trick &t) {
   } else {
     for (int i = 0; i < t.card_count(); i++) {
       if (i > 0) {
-        os << ", ";
+        os << " ";
       }
-      os << t.card(i) << " by " << t.seat(i);
+      os << t.seat(i) << ":" << t.card(i);
     }
   }
   return os;
@@ -46,38 +46,46 @@ std::ostream &operator<<(std::ostream &os, const Game &g) {
 
   for (int i = 3; i >= 0; i--) {
     print_chars(os, spacing, ' ');
-    print_cards_in_suit(os, g.cards_[NORTH], (Suit)i);
+    print_cards_in_suit(os, g.hands_[NORTH], (Suit)i);
     os << std::endl;
   }
 
   for (int i = 3; i >= 0; i--) {
-    int count = print_cards_in_suit(os, g.cards_[WEST], (Suit)i);
+    int count = print_cards_in_suit(os, g.hands_[WEST], (Suit)i);
     print_chars(os, 2 * spacing - count, ' ');
-    print_cards_in_suit(os, g.cards_[EAST], (Suit)i);
+    print_cards_in_suit(os, g.hands_[EAST], (Suit)i);
     os << std::endl;
   }
 
   for (int i = 3; i >= 0; i--) {
     print_chars(os, spacing, ' ');
-    print_cards_in_suit(os, g.cards_[SOUTH], (Suit)i);
+    print_cards_in_suit(os, g.hands_[SOUTH], (Suit)i);
     os << std::endl;
   }
 
   print_chars(os, spacing * 3, '-');
   os << std::endl;
   os << "contract:           " << g.contract_ << std::endl;
-  os << "trick:              " << g.current_trick() << std::endl;
+  os << "trick:              ";
+  if (g.current_trick().started()) {
+    os << g.current_trick() << std::endl;
+  } else if (g.trick_count_ > 0) {
+    os << g.tricks_[g.trick_count_ - 1] << std::endl;
+  } else {
+    os << "-" << std::endl;
+  }
   os << "next_player:        " << g.next_player_ << std::endl;
   os << "tricks_taken_by_ns: " << g.tricks_taken_by_ns_ << std::endl;
   os << "tricks_taken_by_ew: " << (g.trick_count_ - g.tricks_taken_by_ns_)
      << std::endl;
+  os << "tricks_max_count:   " << g.trick_max_count_ << std::endl;
   print_chars(os, spacing * 3, '-');
   os << std::endl;
 
   return os;
 }
 
-Game Game::random_deal(std::default_random_engine &random) {
+Game Game::random_deal(std::default_random_engine &random, int cards_per_hand) {
   int indexes[52];
   for (int i = 0; i < 52; i++) {
     indexes[i] = i;
@@ -85,7 +93,7 @@ Game Game::random_deal(std::default_random_engine &random) {
   std::shuffle(indexes, indexes + 52, random);
 
   Cards c[4];
-  for (int i = 0; i < 13; i++) {
+  for (int i = 0; i < cards_per_hand; i++) {
     for (int j = 0; j < 4; j++) {
       c[j].add(indexes[i + 13 * j]);
     }
@@ -94,18 +102,18 @@ Game Game::random_deal(std::default_random_engine &random) {
   return Game(Contract(3, NO_TRUMP, NORTH), c);
 }
 
-Game::Game(Contract contract, Cards cards[4])
+Game::Game(Contract contract, Cards hands[4])
     : contract_(contract), next_player_(left_seat(contract.declarer())),
       trick_count_(0), tricks_taken_by_ns_(0) {
-  trick_max_count_ = cards[0].count();
+  trick_max_count_ = hands[0].count();
   for (int i = 1; i < 4; i++) {
-    if (cards[i].count() != trick_max_count_) {
-      throw new std::runtime_error("mismatched hand sizes");
+    if (hands[i].count() != trick_max_count_) {
+      throw new std::runtime_error("hands must be same size");
     }
   }
 
   for (int i = 0; i < 4; i++) {
-    cards_[i] = cards[i];
+    hands_[i] = hands[i];
   }
 }
 
@@ -113,7 +121,7 @@ bool Game::valid_play(Card c) const {
   if (trick_count_ >= trick_max_count_) {
     return false;
   }
-  Cards cs = cards_[next_player_];
+  Cards cs = hands_[next_player_];
   const Trick &t = current_trick();
   if (!cs.contains(c)) {
     return false;
@@ -135,11 +143,15 @@ void Game::play(Card c) {
     t.play_start(next_player_, c);
   }
 
-  cards_[next_player_].remove(c);
+  hands_[next_player_].remove(c);
 
   if (t.finished()) {
+    declare_winner(t);
+    next_player_ = t.winner();
+    if (t.winner() == NORTH || t.winner() == SOUTH) {
+      tricks_taken_by_ns_++;
+    }
     trick_count_++;
-    next_player_ = winner(t);
   } else {
     next_player_ = right_seat(next_player_);
   }
@@ -163,7 +175,7 @@ inline bool better_card(Card c, Card winner, Suit lead_suit, Suit trump_suit) {
   }
 }
 
-Seat Game::winner(const Trick &t) const {
+void Game::declare_winner(Trick &t) const {
   assert(t.finished());
 
   Card winner_card = t.card(0);
@@ -176,7 +188,7 @@ Seat Game::winner(const Trick &t) const {
     }
   }
 
-  return winner_seat;
+  t.declare_winner(winner_seat);
 }
 
 void Game::unplay() {

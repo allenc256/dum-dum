@@ -24,23 +24,23 @@ TEST(Trick, ostream) {
   EXPECT_EQ(to_string(Trick()), "-");
   EXPECT_EQ(
       to_string(make_trick(WEST, {Card(RANK_2, CLUBS), Card(RANK_3, CLUBS)})),
-      "2♣ by W, 3♣ by N");
+      "W:2♣ N:3♣");
 }
 
-TEST(Game, random) {
+TEST(Game, random_deal) {
   std::default_random_engine random(123);
-  Game s = Game::random_deal(random);
+  Game s = Game::random_deal(random, 13);
 
   for (int n = 0; n < 100; n++) {
     for (int i = 0; i < 4; i++) {
       for (int j = i + 1; j < 4; j++) {
-        ASSERT_TRUE(s.cards((Seat)i).disjoint(s.cards((Seat)j)));
+        ASSERT_TRUE(s.hand((Seat)i).disjoint(s.hand((Seat)j)));
       }
     }
 
     int total = 0;
     for (int i = 0; i < 4; i++) {
-      total += s.cards((Seat)i).count();
+      total += s.hand((Seat)i).count();
     }
     ASSERT_EQ(total, 52);
   }
