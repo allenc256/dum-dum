@@ -91,7 +91,7 @@ std::ostream &operator<<(std::ostream &os, const Game &g) {
   } else {
     os << "-" << std::endl;
   }
-  os << "next_player:        " << g.next_player_ << std::endl;
+  os << "next_player:        " << g.next_seat_ << std::endl;
   os << "tricks_taken_by_ns: " << g.tricks_taken_by_ns_ << std::endl;
   os << "tricks_taken_by_ew: " << (g.trick_count_ - g.tricks_taken_by_ns_)
      << std::endl;
@@ -120,12 +120,20 @@ Game Game::random_deal(std::default_random_engine &random, int cards_per_hand) {
 }
 
 Game::Game(Contract contract, Cards hands[4])
-    : contract_(contract), next_player_(left_seat(contract.declarer())),
+    : contract_(contract), next_seat_(left_seat(contract.declarer())),
       trick_count_(0), tricks_taken_by_ns_(0) {
   trick_max_count_ = hands[0].count();
   for (int i = 1; i < 4; i++) {
     if (hands[i].count() != trick_max_count_) {
-      throw new std::runtime_error("hands must be same size");
+      throw std::runtime_error("hands must be same size");
+    }
+  }
+
+  for (int i = 0; i < 4; i++) {
+    for (int j = i + 1; j < 4; j++) {
+      if (!hands[i].disjoint(hands[j])) {
+        throw std::runtime_error("hands must be disjoint");
+      }
     }
   }
 
@@ -138,7 +146,7 @@ bool Game::valid_play(Card c) const {
   if (trick_count_ >= trick_max_count_) {
     return false;
   }
-  Cards cs = hands_[next_player_];
+  Cards cs = hands_[next_seat_];
   const Trick &t = current_trick();
   if (!cs.contains(c)) {
     return false;
@@ -155,23 +163,42 @@ void Game::play(Card c) {
   Trick &t = current_trick();
 
   if (t.started()) {
-    t.continue_trick(c);
+    t.play_continue(c);
   } else {
-    t.start_trick(contract_.suit(), next_player_, c);
+    t.play_start(contract_.suit(), next_seat_, c);
   }
 
-  hands_[next_player_].remove(c);
+  hands_[next_seat_].remove(c);
+
+  next_seat_ = t.next_seat();
 
   if (t.finished()) {
-    next_player_ = t.winning_seat();
-    if (t.winning_seat() == NORTH || t.winning_seat() == SOUTH) {
+    if (next_seat_ == NORTH || next_seat_ == SOUTH) {
       tricks_taken_by_ns_++;
     }
     trick_count_++;
-  } else {
-    next_player_ = right_seat(next_player_);
   }
 }
+
 void Game::unplay() {
-  // empty
+  Trick &t = current_trick();
+  if (t.started()) {
+    assert(!t.finished());
+    t.unplay();
+    next_seat_ = t.next_seat();
+  } else {
+    if (trick_count_ > 0) {
+      trick_count_--;
+      Trick &t = current_trick();
+      assert(t.finished());
+      Seat winner = t.next_seat();
+      if (winner == NORTH || winner == SOUTH) {
+        tricks_taken_by_ns_--;
+      }
+      t.unplay();
+      next_seat_ = t.next_seat();
+    } else {
+      throw std::runtime_error("no cards played");
+    }
+  }
 }

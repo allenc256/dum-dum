@@ -113,8 +113,8 @@ std::ostream &operator<<(std::ostream &os, Card c) {
   return os;
 }
 
-Card::Card(std::string s) {
-  std::istringstream is(s);
+Card::Card(std::string_view s) {
+  std::istringstream is(std::string(s), std::ios_base::in);
   is >> *this;
 }
 
@@ -216,4 +216,9 @@ std::istream &operator>>(std::istream &is, Cards &c) {
     parse_cards_ranks(is, s, c);
   }
   return is;
+}
+
+Cards::Cards(std::string_view s) {
+  std::istringstream is(std::string(s), std::ios_base::in);
+  is >> *this;
 }

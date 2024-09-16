@@ -60,12 +60,15 @@ public:
   bool started() const { return card_count_ > 0; }
   bool finished() const { return card_count_ >= 4; }
 
-  Seat winning_seat() const {
-    assert(finished());
-    return right_seat(lead_seat_, winner_);
+  Seat next_seat() const {
+    if (finished()) {
+      return right_seat(lead_seat_, winner_);
+    } else {
+      return right_seat(lead_seat_, card_count_);
+    }
   }
 
-  void start_trick(Suit trump_suit, Seat lead_seat, Card c) {
+  void play_start(Suit trump_suit, Seat lead_seat, Card c) {
     assert(card_count_ == 0);
     trump_suit_ = trump_suit;
     lead_seat_ = lead_seat;
@@ -75,7 +78,7 @@ public:
     winner_ = 0;
   }
 
-  void continue_trick(Card c) {
+  void play_continue(Card c) {
     assert(card_count_ > 0 && card_count_ < 4);
     cards_[card_count_++] = c;
     if (finished()) {
@@ -138,12 +141,14 @@ public:
 
   Contract contract() const { return contract_; }
   Cards hand(Seat seat) const { return hands_[seat]; }
-  Seat next_player() const { return next_player_; }
+  Seat next_player() const { return next_seat_; }
   Trick &current_trick() { return tricks_[trick_count_]; }
   const Trick &current_trick() const { return tricks_[trick_count_]; }
   int trick_count() const { return trick_count_; }
   int trick_max_count() const { return trick_max_count_; }
   int tricks_taken_by_ns() const { return tricks_taken_by_ns_; }
+  int tricks_taken_by_ew() const { return trick_count_ - tricks_taken_by_ns_; }
+  bool finished() const { return trick_count_ == trick_max_count_; }
 
   void play(Card card);
   void unplay();
@@ -153,7 +158,7 @@ private:
 
   Cards hands_[4];
   Contract contract_;
-  Seat next_player_;
+  Seat next_seat_;
   Trick tricks_[13];
   int trick_count_;
   int trick_max_count_;

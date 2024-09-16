@@ -12,8 +12,11 @@ else()
   target_compile_options(dumdum_test_lib PRIVATE --coverage)
 endif()
 
-# Required to avoid code coverage errors on linking.
-file(GLOB_RECURSE COVERAGE_FILES ${CMAKE_BINARY_DIR}/**/*.gcda)
-if(NOT "${COVERAGE_FILES}" STREQUAL "")
-  file(REMOVE_RECURSE ${COVERAGE_FILES})
-endif()
+file(GLOB_RECURSE COVERAGE_FILES ${CMAKE_BINARY_DIR}/**/*.gcno)
+list(TRANSFORM COVERAGE_FILES REPLACE "[.]gcno$" ".gcda")
+add_custom_target(clean_coverage_src
+  COMMAND ${CMAKE_COMMAND} -E remove -f "${COVERAGE_FILES}"
+  COMMAND_EXPAND_LISTS
+)
+add_dependencies(dumdum_test_lib clean_coverage_src)
+

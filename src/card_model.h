@@ -45,7 +45,7 @@ class Card {
 public:
   Card() : rank_(RANK_2), suit_(CLUBS) {}
   Card(Rank r, Suit s) : rank_(r), suit_(s) { assert(s != NO_TRUMP); }
-  Card(std::string s);
+  Card(std::string_view s);
 
   Rank rank() const { return rank_; }
   Suit suit() const { return suit_; }
@@ -85,6 +85,7 @@ public:
   };
 
   Cards() : bits_(0) {}
+  Cards(std::string_view s);
 
   void add(Card c) { bits_ |= to_card_bit(c); }
   void remove(Card c) { bits_ &= ~to_card_bit(c); }
