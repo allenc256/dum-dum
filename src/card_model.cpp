@@ -1,5 +1,4 @@
 #include "card_model.h"
-
 #include <algorithm>
 #include <iostream>
 #include <sstream>

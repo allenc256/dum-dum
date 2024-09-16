@@ -19,6 +19,26 @@ std::ostream &operator<<(std::ostream &os, Seat s) {
   return os;
 }
 
+std::istream &operator>>(std::istream &is, Seat &s) {
+  char ch;
+  is >> ch;
+  switch (ch) {
+  case 'W':
+    s = WEST;
+    break;
+  case 'N':
+    s = NORTH;
+    break;
+  case 'E':
+    s = EAST;
+    break;
+  case 'S':
+    s = SOUTH;
+    break;
+  }
+  throw ParseFailure("bad seat");
+}
+
 std::ostream &operator<<(std::ostream &os, Contract c) {
   os << (int)c.level() << c.suit() << " by " << c.declarer();
   return os;
@@ -135,17 +155,16 @@ void Game::play(Card c) {
   Trick &t = current_trick();
 
   if (t.started()) {
-    t.play_continue(c);
+    t.continue_trick(c);
   } else {
-    t.play_start(next_player_, c);
+    t.start_trick(contract_.suit(), next_player_, c);
   }
 
   hands_[next_player_].remove(c);
 
   if (t.finished()) {
-    declare_winner(t);
-    next_player_ = t.winner();
-    if (t.winner() == NORTH || t.winner() == SOUTH) {
+    next_player_ = t.winning_seat();
+    if (t.winning_seat() == NORTH || t.winning_seat() == SOUTH) {
       tricks_taken_by_ns_++;
     }
     trick_count_++;
@@ -153,41 +172,6 @@ void Game::play(Card c) {
     next_player_ = right_seat(next_player_);
   }
 }
-
-inline bool better_card(Card c, Card winner, Suit lead_suit, Suit trump_suit) {
-  if (trump_suit == NO_TRUMP) {
-    return c.suit() == lead_suit && c.rank() > winner.rank();
-  } else {
-    if (c.suit() == lead_suit) {
-      return c.rank() > winner.rank();
-    } else if (c.suit() == trump_suit) {
-      if (winner.suit() == trump_suit) {
-        return c.rank() > winner.rank();
-      } else {
-        return true;
-      }
-    } else {
-      return false;
-    }
-  }
-}
-
-void Game::declare_winner(Trick &t) const {
-  assert(t.finished());
-
-  Card winner_card = t.card(0);
-  Seat winner_seat = t.lead_seat();
-  for (int i = 1; i < 4; i++) {
-    Card c = t.card(i);
-    if (better_card(c, winner_card, t.lead_suit(), contract_.suit())) {
-      winner_card = c;
-      winner_seat = right_seat(t.lead_seat(), i);
-    }
-  }
-
-  t.declare_winner(winner_seat);
-}
-
 void Game::unplay() {
   // empty
 }

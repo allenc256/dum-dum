@@ -1,28 +1,57 @@
 #include "game_model.h"
-#include <vector>
+#include "test_util.h"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <vector>
 
-template <class T> std::string to_string(T x) {
-  std::ostringstream os;
-  os << x;
-  return os.str();
-}
-
-Trick make_trick(Seat lead, std::vector<Card> cards) {
+Trick make_trick(Suit trump_suit, Seat lead, std::vector<std::string> cards) {
   Trick t;
-  t.play_start(lead, cards[0]);
+  t.start_trick(trump_suit, lead, cards[0]);
   for (int i = 1; i < cards.size(); i++) {
-    t.play_continue(cards[i]);
+    t.continue_trick(cards[i]);
   }
   return t;
 }
 
+void test_trick(Suit trump_suit, Seat lead, std::vector<std::string> cards,
+                Seat expected_winner) {
+  Trick t = make_trick(trump_suit, lead, cards);
+  EXPECT_TRUE(t.started());
+  EXPECT_TRUE(t.finished());
+  EXPECT_EQ(t.winning_seat(), expected_winner);
+}
+
 TEST(Trick, ostream) {
   EXPECT_EQ(to_string(Trick()), "-");
-  EXPECT_EQ(
-      to_string(make_trick(WEST, {Card(RANK_2, CLUBS), Card(RANK_3, CLUBS)})),
-      "W:2♣ N:3♣");
+  EXPECT_EQ(to_string(make_trick(NO_TRUMP, WEST, {"2C", "3C"})), "W:2♣ N:3♣");
+}
+
+TEST(Trick, no_trump) {
+  test_trick(NO_TRUMP, WEST, {"2C", "3C", "TC", "8C"}, EAST);
+}
+
+TEST(Trick, no_trump_discard) {
+  test_trick(NO_TRUMP, WEST, {"JC", "3C", "TC", "AS"}, WEST);
+}
+
+TEST(Trick, trump_no_ruff) {
+  test_trick(HEARTS, WEST, {"2C", "AC", "TC", "8C"}, NORTH);
+}
+
+TEST(Trick, trump_ruff) {
+  test_trick(HEARTS, WEST, {"2C", "AC", "TC", "2H"}, SOUTH);
+}
+
+TEST(Trick, trump_overruff) {
+  test_trick(HEARTS, WEST, {"2C", "2H", "3H", "TC"}, EAST);
+}
+
+TEST(Trick, trump_discard) {
+  test_trick(HEARTS, WEST, {"2C", "2S", "3C", "TC"}, SOUTH);
+}
+
+TEST(Trick, trump_ruff_discard) {
+  test_trick(HEARTS, WEST, {"2C", "2H", "3C", "TC"}, NORTH);
 }
 
 TEST(Game, random_deal) {

@@ -25,6 +25,7 @@ inline Seat right_seat(Seat s, int i) {
 }
 
 std::ostream &operator<<(std::ostream &os, Seat s);
+std::istream &operator>>(std::istream &is, Seat &s);
 
 class Contract {
 public:
@@ -47,41 +48,83 @@ std::ostream &operator<<(std::ostream &os, Contract c);
 
 class Trick {
 public:
-  Trick() : card_count_(0), lead_seat_(WEST), winner_(WEST) {}
+  Trick()
+      : trump_suit_(NO_TRUMP), lead_seat_(WEST), lead_suit_(NO_TRUMP),
+        card_count_(0), winner_(0) {}
 
   int card_count() const { return card_count_; }
   Card card(int index) const { return cards_[index]; }
   Seat lead_seat() const { return lead_seat_; }
-  Suit lead_suit() const { return cards_[lead_seat_].suit(); }
+  Suit lead_suit() const { return lead_suit_; }
   Seat seat(int index) const { return right_seat(lead_seat_, index); }
   bool started() const { return card_count_ > 0; }
   bool finished() const { return card_count_ >= 4; }
-  Seat winner() const { return winner_; }
 
-  void declare_winner(Seat winner) { winner_ = winner; }
-
-  void play_start(Seat lead_seat, Card c) {
-    assert(card_count_ == 0);
-    card_count_ = 1;
-    cards_[0] = c;
-    lead_seat_ = lead_seat;
+  Seat winning_seat() const {
+    assert(finished());
+    return right_seat(lead_seat_, winner_);
   }
 
-  void play_continue(Card c) {
+  void start_trick(Suit trump_suit, Seat lead_seat, Card c) {
+    assert(card_count_ == 0);
+    trump_suit_ = trump_suit;
+    lead_seat_ = lead_seat;
+    lead_suit_ = c.suit();
+    cards_[0] = c;
+    card_count_ = 1;
+    winner_ = 0;
+  }
+
+  void continue_trick(Card c) {
     assert(card_count_ > 0 && card_count_ < 4);
     cards_[card_count_++] = c;
+    if (finished()) {
+      compute_winner();
+    }
   }
 
   Card unplay() {
     assert(card_count_ > 0);
+    winner_ = 0;
     return cards_[card_count_--];
   }
 
 private:
+  void compute_winner() {
+    assert(finished());
+    Card best = cards_[0];
+    int winner = 0;
+    for (int i = 1; i < 4; i++) {
+      if (better_card(cards_[i], best)) {
+        best = cards_[i];
+        winner = i;
+      }
+    }
+    winner_ = winner;
+  }
+
+  bool better_card(Card c, Card winner) {
+    if (trump_suit_ == NO_TRUMP) {
+      return c.suit() == lead_suit_ && c.rank() > winner.rank();
+    }
+    if (winner.suit() == trump_suit_) {
+      return c.suit() == trump_suit_ && c.rank() > winner.rank();
+    }
+    if (c.suit() == trump_suit_) {
+      return true;
+    }
+    if (c.suit() == lead_suit_) {
+      return c.rank() > winner.rank();
+    }
+    return false;
+  }
+
+  Suit trump_suit_;
+  Seat lead_seat_;
+  Suit lead_suit_;
   Card cards_[4];
   int card_count_;
-  Seat lead_seat_;
-  Seat winner_;
+  int winner_;
 };
 
 std::ostream &operator<<(std::ostream &os, const Trick &t);
@@ -107,8 +150,6 @@ public:
 
 private:
   bool valid_play(Card c) const;
-
-  void declare_winner(Trick &t) const;
 
   Cards hands_[4];
   Contract contract_;

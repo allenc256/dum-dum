@@ -1,24 +1,12 @@
 #include "card_model.h"
-#include <iostream>
-#include <vector>
+#include "test_util.h"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <iostream>
+#include <vector>
 
 using ::testing::ElementsAreArray;
 using ::testing::IsEmpty;
-
-template <class T> T from_string(std::string s) {
-  std::istringstream is(s);
-  T x;
-  is >> x;
-  return x;
-}
-
-template <class T> std::string to_string(T x) {
-  std::ostringstream os;
-  os << x;
-  return os.str();
-}
 
 TEST(Rank, istream) {
   EXPECT_EQ(from_string<Rank>("2"), RANK_2);
@@ -37,8 +25,15 @@ TEST(Suit, istream) {
   EXPECT_EQ(from_string<Suit>("S"), SPADES);
   EXPECT_EQ(from_string<Suit>("♣"), CLUBS);
   EXPECT_EQ(from_string<Suit>("♠"), SPADES);
+  EXPECT_EQ(from_string<Suit>("NT"), NO_TRUMP);
   EXPECT_THROW(from_string<Suit>(""), ParseFailure);
   EXPECT_THROW(from_string<Suit>("XXX"), ParseFailure);
+  EXPECT_THROW(from_string<Suit>("N"), ParseFailure);
+
+  char bad_str1[] = {(char)0xE2, 0x00};
+  char bad_str2[] = {(char)0xE2, (char)0x99, 0x00};
+  EXPECT_THROW(from_string<Suit>(bad_str1), ParseFailure);
+  EXPECT_THROW(from_string<Suit>(bad_str2), ParseFailure);
 }
 
 TEST(Suit, ostream) {
