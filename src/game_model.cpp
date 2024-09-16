@@ -91,7 +91,7 @@ std::ostream &operator<<(std::ostream &os, const Game &g) {
   } else {
     os << "-" << std::endl;
   }
-  os << "next_player:        " << g.next_seat_ << std::endl;
+  os << "next_seat:          " << g.next_seat_ << std::endl;
   os << "tricks_taken_by_ns: " << g.tricks_taken_by_ns_ << std::endl;
   os << "tricks_taken_by_ew: " << (g.trick_count_ - g.tricks_taken_by_ns_)
      << std::endl;
@@ -116,7 +116,14 @@ Game Game::random_deal(std::default_random_engine &random, int cards_per_hand) {
     }
   }
 
-  return Game(Contract(3, NO_TRUMP, NORTH), c);
+  std::uniform_int_distribution<> cd(1, 7);
+  std::uniform_int_distribution<> sd(0, 4);
+  std::uniform_int_distribution<> dd(0, 3);
+  int level = cd(random);
+  Suit suit = (Suit)sd(random);
+  Seat declarer = (Seat)dd(random);
+
+  return Game(Contract(level, suit, declarer), c);
 }
 
 Game::Game(Contract contract, Cards hands[4])
@@ -184,8 +191,9 @@ void Game::unplay() {
   Trick &t = current_trick();
   if (t.started()) {
     assert(!t.finished());
-    t.unplay();
+    Card c = t.unplay();
     next_seat_ = t.next_seat();
+    hands_[next_seat_].add(c);
   } else {
     if (trick_count_ > 0) {
       trick_count_--;
@@ -195,10 +203,27 @@ void Game::unplay() {
       if (winner == NORTH || winner == SOUTH) {
         tricks_taken_by_ns_--;
       }
-      t.unplay();
+      Card c = t.unplay();
       next_seat_ = t.next_seat();
+      hands_[next_seat_].add(c);
     } else {
       throw std::runtime_error("no cards played");
     }
   }
+}
+
+Cards Game::valid_plays() const {
+  if (finished()) {
+    return Cards();
+  }
+
+  Cards c = hands_[next_seat_];
+  const Trick &t = current_trick();
+  if (t.started()) {
+    Cards cs = c.intersect_suit(t.lead_suit());
+    if (!cs.empty()) {
+      return cs;
+    }
+  }
+  return c;
 }

@@ -141,7 +141,11 @@ private:
   static const uint64_t SUIT_MASK = 0b1111111111111UL;
   static const uint64_t INVALID_MASK =
       ~0b1111111111111111111111111111111111111111111111111111UL;
+
+  friend bool operator==(Cards c1, Cards c2);
 };
 
 std::istream &operator>>(std::istream &is, Cards &c);
 std::ostream &operator<<(std::ostream &os, Cards c);
+
+inline bool operator==(Cards c1, Cards c2) { return c1.bits_ == c2.bits_; }

@@ -89,7 +89,8 @@ public:
   Card unplay() {
     assert(card_count_ > 0);
     winner_ = 0;
-    return cards_[card_count_--];
+    card_count_--;
+    return cards_[card_count_];
   }
 
 private:
@@ -141,7 +142,7 @@ public:
 
   Contract contract() const { return contract_; }
   Cards hand(Seat seat) const { return hands_[seat]; }
-  Seat next_player() const { return next_seat_; }
+  Seat next_seat() const { return next_seat_; }
   Trick &current_trick() { return tricks_[trick_count_]; }
   const Trick &current_trick() const { return tricks_[trick_count_]; }
   int trick_count() const { return trick_count_; }
@@ -153,9 +154,10 @@ public:
   void play(Card card);
   void unplay();
 
-private:
   bool valid_play(Card c) const;
+  Cards valid_plays() const;
 
+private:
   Cards hands_[4];
   Contract contract_;
   Seat next_seat_;

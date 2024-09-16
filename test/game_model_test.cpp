@@ -96,9 +96,12 @@ TEST(Game, play_unplay) {
   Game g(contract, hands);
 
   EXPECT_EQ(g.trick_count(), 0);
-  EXPECT_EQ(g.next_player(), WEST);
+  EXPECT_EQ(g.next_seat(), WEST);
   EXPECT_EQ(g.tricks_taken_by_ns(), 0);
   EXPECT_EQ(g.tricks_taken_by_ew(), 0);
+  for (int i = 0; i < 4; i++) {
+    EXPECT_EQ(g.hand((Seat)i), hands[i]);
+  }
 
   g.play(Card("2S"));
   g.play(Card("9S"));
@@ -106,7 +109,7 @@ TEST(Game, play_unplay) {
   g.play(Card("6S"));
 
   EXPECT_EQ(g.trick_count(), 1);
-  EXPECT_EQ(g.next_player(), NORTH);
+  EXPECT_EQ(g.next_seat(), NORTH);
   EXPECT_EQ(g.tricks_taken_by_ns(), 1);
   EXPECT_EQ(g.tricks_taken_by_ew(), 0);
   EXPECT_FALSE(g.finished());
@@ -117,15 +120,18 @@ TEST(Game, play_unplay) {
   g.play(Card("AS"));
 
   EXPECT_EQ(g.trick_count(), 2);
-  EXPECT_EQ(g.next_player(), SOUTH);
+  EXPECT_EQ(g.next_seat(), SOUTH);
   EXPECT_EQ(g.tricks_taken_by_ns(), 2);
   EXPECT_EQ(g.tricks_taken_by_ew(), 0);
   EXPECT_TRUE(g.finished());
+  for (int i = 0; i < 4; i++) {
+    EXPECT_TRUE(g.hand((Seat)i).empty());
+  }
 
   g.unplay();
 
   EXPECT_EQ(g.trick_count(), 1);
-  EXPECT_EQ(g.next_player(), WEST);
+  EXPECT_EQ(g.next_seat(), WEST);
   EXPECT_EQ(g.tricks_taken_by_ns(), 1);
   EXPECT_EQ(g.tricks_taken_by_ew(), 0);
   EXPECT_FALSE(g.finished());
@@ -135,7 +141,7 @@ TEST(Game, play_unplay) {
   g.unplay();
 
   EXPECT_EQ(g.trick_count(), 1);
-  EXPECT_EQ(g.next_player(), NORTH);
+  EXPECT_EQ(g.next_seat(), NORTH);
   EXPECT_EQ(g.tricks_taken_by_ns(), 1);
   EXPECT_EQ(g.tricks_taken_by_ew(), 0);
   EXPECT_FALSE(g.finished());
@@ -146,8 +152,74 @@ TEST(Game, play_unplay) {
   g.unplay();
 
   EXPECT_EQ(g.trick_count(), 0);
-  EXPECT_EQ(g.next_player(), WEST);
+  EXPECT_EQ(g.next_seat(), WEST);
   EXPECT_EQ(g.tricks_taken_by_ns(), 0);
   EXPECT_EQ(g.tricks_taken_by_ew(), 0);
   EXPECT_FALSE(g.finished());
+  for (int i = 0; i < 4; i++) {
+    EXPECT_EQ(g.hand((Seat)i), hands[i]);
+  }
+
+  EXPECT_THROW(g.unplay(), std::runtime_error);
+}
+
+TEST(Game, valid_plays) {
+  Contract contract = Contract(1, HEARTS, NORTH);
+  Cards hands[4] = {Cards("S A2 H - D - C -"), Cards("S 93 H - D - C -"),
+                    Cards("S 5  H 2 D - C -"), Cards("S 6  H 3 D - C -")};
+  Game g(contract, hands);
+
+  EXPECT_EQ(g.valid_plays(), Cards("S A2 H - D - C -"));
+  g.play(Card("2S"));
+  EXPECT_EQ(g.valid_plays(), Cards("S 93 H - D - C -"));
+  g.play(Card("9S"));
+  EXPECT_EQ(g.valid_plays(), Cards("S 5  H - D - C -"));
+  g.play(Card("5S"));
+  EXPECT_EQ(g.valid_plays(), Cards("S 6  H - D - C -"));
+  g.play(Card("6S"));
+  EXPECT_EQ(g.valid_plays(), Cards("S 3  H - D - C -"));
+  g.play(Card("3S"));
+  EXPECT_EQ(g.valid_plays(), Cards("S -  H 2 D - C -"));
+  g.play(Card("2H"));
+  EXPECT_EQ(g.valid_plays(), Cards("S -  H 3 D - C -"));
+  g.play(Card("3H"));
+  EXPECT_EQ(g.valid_plays(), Cards("S A  H - D - C -"));
+  g.play(Card("AS"));
+  EXPECT_EQ(g.valid_plays(), Cards());
+}
+
+void test_play_unplay_dfs(Game &g) {
+  bool finished = g.finished();
+  Seat next_seat = g.next_seat();
+  int trick_count = g.trick_count();
+  int tricks_taken_by_ew = g.tricks_taken_by_ew();
+  int tricks_taken_by_ns = g.tricks_taken_by_ns();
+  Cards hands[4];
+  for (int i = 0; i < 4; i++) {
+    hands[i] = g.hand((Seat)i);
+  }
+
+  Cards p = g.valid_plays();
+  for (auto i = p.first(); i.valid(); i = p.next(i)) {
+    g.play(i.card());
+    test_play_unplay_dfs(g);
+    g.unplay();
+
+    EXPECT_EQ(g.finished(), finished);
+    EXPECT_EQ(g.next_seat(), next_seat);
+    EXPECT_EQ(g.trick_count(), trick_count);
+    EXPECT_EQ(g.tricks_taken_by_ew(), tricks_taken_by_ew);
+    EXPECT_EQ(g.tricks_taken_by_ns(), tricks_taken_by_ns);
+    for (int j = 0; j < 4; j++) {
+      EXPECT_EQ(g.hand(Seat(j)), hands[j]);
+    }
+  }
+}
+
+TEST(Game, play_unplay_random) {
+  std::default_random_engine random;
+  Game g = Game::random_deal(random, 3);
+  for (int i = 0; i < 500; i++) {
+    test_play_unplay_dfs(g);
+  }
 }
