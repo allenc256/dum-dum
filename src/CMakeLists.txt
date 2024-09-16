@@ -1,7 +1,7 @@
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "*.cpp" "*.h")
 list(REMOVE_ITEM SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp)
 
-add_executable(dumdum Main.cpp ${SOURCES})
+add_executable(dumdum main.cpp ${SOURCES})
 add_library(dumdum_test_lib STATIC ${SOURCES})
 target_include_directories(dumdum_test_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 

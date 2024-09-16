@@ -143,13 +143,13 @@ public:
   Contract contract() const { return contract_; }
   Cards hand(Seat seat) const { return hands_[seat]; }
   Seat next_seat() const { return next_seat_; }
-  Trick &current_trick() { return tricks_[trick_count_]; }
-  const Trick &current_trick() const { return tricks_[trick_count_]; }
-  int trick_count() const { return trick_count_; }
-  int trick_max_count() const { return trick_max_count_; }
+  Trick &current_trick() { return tricks_[tricks_taken_]; }
+  const Trick &current_trick() const { return tricks_[tricks_taken_]; }
+  int tricks_taken() const { return tricks_taken_; }
+  int tricks_max() const { return tricks_max_; }
   int tricks_taken_by_ns() const { return tricks_taken_by_ns_; }
-  int tricks_taken_by_ew() const { return trick_count_ - tricks_taken_by_ns_; }
-  bool finished() const { return trick_count_ == trick_max_count_; }
+  int tricks_taken_by_ew() const { return tricks_taken_ - tricks_taken_by_ns_; }
+  bool finished() const { return tricks_taken_ == tricks_max_; }
 
   void play(Card card);
   void unplay();
@@ -162,8 +162,8 @@ private:
   Contract contract_;
   Seat next_seat_;
   Trick tricks_[13];
-  int trick_count_;
-  int trick_max_count_;
+  int tricks_taken_;
+  int tricks_max_;
   int tricks_taken_by_ns_;
 
   friend std::ostream &operator<<(std::ostream &os, const Game &g);

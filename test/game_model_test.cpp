@@ -95,7 +95,7 @@ TEST(Game, play_unplay) {
                     Cards("S 5  H 2 D - C -"), Cards("S 6  H 3 D - C -")};
   Game g(contract, hands);
 
-  EXPECT_EQ(g.trick_count(), 0);
+  EXPECT_EQ(g.tricks_taken(), 0);
   EXPECT_EQ(g.next_seat(), WEST);
   EXPECT_EQ(g.tricks_taken_by_ns(), 0);
   EXPECT_EQ(g.tricks_taken_by_ew(), 0);
@@ -108,7 +108,7 @@ TEST(Game, play_unplay) {
   g.play(Card("5S"));
   g.play(Card("6S"));
 
-  EXPECT_EQ(g.trick_count(), 1);
+  EXPECT_EQ(g.tricks_taken(), 1);
   EXPECT_EQ(g.next_seat(), NORTH);
   EXPECT_EQ(g.tricks_taken_by_ns(), 1);
   EXPECT_EQ(g.tricks_taken_by_ew(), 0);
@@ -119,7 +119,7 @@ TEST(Game, play_unplay) {
   g.play(Card("3H"));
   g.play(Card("AS"));
 
-  EXPECT_EQ(g.trick_count(), 2);
+  EXPECT_EQ(g.tricks_taken(), 2);
   EXPECT_EQ(g.next_seat(), SOUTH);
   EXPECT_EQ(g.tricks_taken_by_ns(), 2);
   EXPECT_EQ(g.tricks_taken_by_ew(), 0);
@@ -130,7 +130,7 @@ TEST(Game, play_unplay) {
 
   g.unplay();
 
-  EXPECT_EQ(g.trick_count(), 1);
+  EXPECT_EQ(g.tricks_taken(), 1);
   EXPECT_EQ(g.next_seat(), WEST);
   EXPECT_EQ(g.tricks_taken_by_ns(), 1);
   EXPECT_EQ(g.tricks_taken_by_ew(), 0);
@@ -140,7 +140,7 @@ TEST(Game, play_unplay) {
   g.unplay();
   g.unplay();
 
-  EXPECT_EQ(g.trick_count(), 1);
+  EXPECT_EQ(g.tricks_taken(), 1);
   EXPECT_EQ(g.next_seat(), NORTH);
   EXPECT_EQ(g.tricks_taken_by_ns(), 1);
   EXPECT_EQ(g.tricks_taken_by_ew(), 0);
@@ -151,7 +151,7 @@ TEST(Game, play_unplay) {
   g.unplay();
   g.unplay();
 
-  EXPECT_EQ(g.trick_count(), 0);
+  EXPECT_EQ(g.tricks_taken(), 0);
   EXPECT_EQ(g.next_seat(), WEST);
   EXPECT_EQ(g.tricks_taken_by_ns(), 0);
   EXPECT_EQ(g.tricks_taken_by_ew(), 0);
@@ -191,7 +191,7 @@ TEST(Game, valid_plays) {
 void test_play_unplay_dfs(Game &g) {
   bool finished = g.finished();
   Seat next_seat = g.next_seat();
-  int trick_count = g.trick_count();
+  int trick_count = g.tricks_taken();
   int tricks_taken_by_ew = g.tricks_taken_by_ew();
   int tricks_taken_by_ns = g.tricks_taken_by_ns();
   Cards hands[4];
@@ -207,9 +207,11 @@ void test_play_unplay_dfs(Game &g) {
 
     EXPECT_EQ(g.finished(), finished);
     EXPECT_EQ(g.next_seat(), next_seat);
-    EXPECT_EQ(g.trick_count(), trick_count);
+    EXPECT_EQ(g.tricks_taken(), trick_count);
     EXPECT_EQ(g.tricks_taken_by_ew(), tricks_taken_by_ew);
     EXPECT_EQ(g.tricks_taken_by_ns(), tricks_taken_by_ns);
+    EXPECT_EQ(g.tricks_taken_by_ew() + g.tricks_taken_by_ns(),
+              g.tricks_taken());
     for (int j = 0; j < 4; j++) {
       EXPECT_EQ(g.hand(Seat(j)), hands[j]);
     }

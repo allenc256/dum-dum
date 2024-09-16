@@ -86,16 +86,15 @@ std::ostream &operator<<(std::ostream &os, const Game &g) {
   os << "trick:              ";
   if (g.current_trick().started()) {
     os << g.current_trick() << std::endl;
-  } else if (g.trick_count_ > 0) {
-    os << g.tricks_[g.trick_count_ - 1] << std::endl;
+  } else if (g.tricks_taken_ > 0) {
+    os << g.tricks_[g.tricks_taken_ - 1] << std::endl;
   } else {
     os << "-" << std::endl;
   }
   os << "next_seat:          " << g.next_seat_ << std::endl;
   os << "tricks_taken_by_ns: " << g.tricks_taken_by_ns_ << std::endl;
-  os << "tricks_taken_by_ew: " << (g.trick_count_ - g.tricks_taken_by_ns_)
-     << std::endl;
-  os << "tricks_max_count:   " << g.trick_max_count_ << std::endl;
+  os << "tricks_taken_by_ew: " << g.tricks_taken_by_ew() << std::endl;
+  os << "tricks_max:         " << g.tricks_max_ << std::endl;
   print_chars(os, spacing * 3, '-');
   os << std::endl;
 
@@ -128,10 +127,10 @@ Game Game::random_deal(std::default_random_engine &random, int cards_per_hand) {
 
 Game::Game(Contract contract, Cards hands[4])
     : contract_(contract), next_seat_(left_seat(contract.declarer())),
-      trick_count_(0), tricks_taken_by_ns_(0) {
-  trick_max_count_ = hands[0].count();
+      tricks_taken_(0), tricks_taken_by_ns_(0) {
+  tricks_max_ = hands[0].count();
   for (int i = 1; i < 4; i++) {
-    if (hands[i].count() != trick_max_count_) {
+    if (hands[i].count() != tricks_max_) {
       throw std::runtime_error("hands must be same size");
     }
   }
@@ -150,7 +149,7 @@ Game::Game(Contract contract, Cards hands[4])
 }
 
 bool Game::valid_play(Card c) const {
-  if (trick_count_ >= trick_max_count_) {
+  if (tricks_taken_ >= tricks_max_) {
     return false;
   }
   Cards cs = hands_[next_seat_];
@@ -183,7 +182,7 @@ void Game::play(Card c) {
     if (next_seat_ == NORTH || next_seat_ == SOUTH) {
       tricks_taken_by_ns_++;
     }
-    trick_count_++;
+    tricks_taken_++;
   }
 }
 
@@ -195,8 +194,8 @@ void Game::unplay() {
     next_seat_ = t.next_seat();
     hands_[next_seat_].add(c);
   } else {
-    if (trick_count_ > 0) {
-      trick_count_--;
+    if (tricks_taken_ > 0) {
+      tricks_taken_--;
       Trick &t = current_trick();
       assert(t.finished());
       Seat winner = t.next_seat();
