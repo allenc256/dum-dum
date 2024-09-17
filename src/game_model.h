@@ -142,10 +142,17 @@ public:
 
   Contract contract() const { return contract_; }
   Cards hand(Seat seat) const { return hands_[seat]; }
+
   Seat next_seat() const { return next_seat_; }
   Trick &current_trick() { return tricks_[tricks_taken_]; }
   const Trick &current_trick() const { return tricks_[tricks_taken_]; }
+
+  bool started() const {
+    return current_trick().started() || tricks_taken_ > 0;
+  }
+
   int tricks_taken() const { return tricks_taken_; }
+  int tricks_left() const { return tricks_max_ - tricks_taken_; }
   int tricks_max() const { return tricks_max_; }
   int tricks_taken_by_ns() const { return tricks_taken_by_ns_; }
   int tricks_taken_by_ew() const { return tricks_taken_ - tricks_taken_by_ns_; }
