@@ -45,7 +45,7 @@ std::ostream &operator<<(std::ostream &os, Contract c) {
 }
 
 std::ostream &operator<<(std::ostream &os, const Trick &t) {
-  if (t.card_count() == 0) {
+  if (!t.started()) {
     os << "-";
   } else {
     for (int i = 0; i < t.card_count(); i++) {
@@ -53,6 +53,9 @@ std::ostream &operator<<(std::ostream &os, const Trick &t) {
         os << " ";
       }
       os << t.seat(i) << ":" << t.card(i);
+    }
+    if (t.finished()) {
+      os << " (won by " << t.next_seat() << ")";
     }
   }
   return os;

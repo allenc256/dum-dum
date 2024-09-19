@@ -11,7 +11,9 @@ FetchContent_MakeAvailable(googletest)
 
 enable_testing()
 
-set(CMAKE_CXX_FLAGS --coverage)
+if (ENABLE_COVERAGE)
+  set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} --coverage)
+endif()
 
 include(GoogleTest)
 
@@ -19,14 +21,5 @@ file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "*.cpp" "*.h")
 
 add_executable(dumdum_test ${SOURCES})
 target_link_libraries(dumdum_test dumdum_test_lib GTest::gmock GTest::gtest_main)
-
-# Required to avoid code coverage errors on linking.
-file(GLOB_RECURSE COVERAGE_FILES ${CMAKE_BINARY_DIR}/**/*.gcno)
-list(TRANSFORM COVERAGE_FILES REPLACE "[.]gcno$" ".gcda")
-add_custom_target(clean_coverage_test
-  COMMAND ${CMAKE_COMMAND} -E remove -f "${COVERAGE_FILES}"
-  COMMAND_EXPAND_LISTS
-)
-add_dependencies(dumdum_test clean_coverage_test)
 
 gtest_discover_tests(dumdum_test)

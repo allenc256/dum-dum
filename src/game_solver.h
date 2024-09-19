@@ -13,7 +13,7 @@ struct State {
   uint8_t alpha;
   uint8_t beta;
 
-  State(const Game &g, int alpha, int beta);
+  State(const Game &g, int alpha, int beta, bool normalize);
 
   void sha256_hash(uint8_t digest[32]) const;
 
@@ -54,6 +54,7 @@ public:
   void enable_all_optimizations(bool enabled) {
     alpha_beta_pruning_enabled_ = enabled;
     transposition_table_enabled_ = enabled;
+    state_normalization_ = enabled;
   }
 
   void enable_alpha_beta_pruning(bool enabled) {
@@ -62,6 +63,10 @@ public:
 
   void enable_transposition_table(bool enabled) {
     transposition_table_enabled_ = enabled;
+  }
+
+  void enable_state_normalization(bool enabled) {
+    state_normalization_ = enabled;
   }
 
   void enable_tracing(std::ostream &os);
@@ -82,6 +87,7 @@ private:
   absl::flat_hash_map<State, uint8_t> transposition_table_;
   bool alpha_beta_pruning_enabled_;
   bool transposition_table_enabled_;
+  bool state_normalization_;
   std::unique_ptr<Tracer> tracer_;
 };
 

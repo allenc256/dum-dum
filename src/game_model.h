@@ -163,6 +163,11 @@ public:
   Trick &current_trick() { return tricks_[tricks_taken_]; }
   const Trick &current_trick() const { return tricks_[tricks_taken_]; }
 
+  const Trick &trick(int i) const {
+    assert(i < tricks_taken_);
+    return tricks_[i];
+  }
+
   bool started() const {
     return current_trick().started() || tricks_taken_ > 0;
   }

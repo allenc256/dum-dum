@@ -1,22 +1,39 @@
 #include "game_solver.h"
 #include <picosha2.h>
 
-State::State(const Game &g, int alpha_, int beta_) {
+State::State(const Game &g, int alpha_, int beta_, bool normalize) {
   assert(alpha >= 0 && beta >= 0);
+
   memset(this, 0, sizeof(State));
+
   alpha = (uint8_t)alpha_;
   beta = (uint8_t)beta_;
-  for (int i = 0; i < 4; i++) {
-    hands[i] = g.hand((Seat)i).bits();
-  }
+
   const Trick &t = g.current_trick();
+
+  Cards to_collapse;
+  if (normalize) {
+    for (int i = 0; i < 4; i++) {
+      to_collapse.add_all(g.hand((Seat)i));
+    }
+    if (t.started()) {
+      for (int i = 0; i < t.card_count(); i++) {
+        to_collapse.add(t.card(i));
+      }
+    }
+    to_collapse = to_collapse.complement();
+  }
+
+  for (int i = 0; i < 4; i++) {
+    hands[i] = g.hand((Seat)i).collapse_ranks(to_collapse).bits();
+  }
   if (!t.started()) {
     trick_lead_seat = g.next_seat();
   } else {
     trick_lead_seat = t.lead_seat();
     trick_card_count = (uint8_t)t.card_count();
     for (int i = 0; i < trick_card_count; i++) {
-      Card c = t.card((int)i);
+      Card c = Cards::collapse_rank(t.card(i), to_collapse);
       trick[i] = (uint8_t)((c.rank() << 4) | c.suit());
     }
   }
@@ -139,7 +156,7 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
     return game_.tricks_taken_by_ns();
   }
 
-  State state(game_, alpha, beta);
+  State state(game_, alpha, beta, state_normalization_);
   if (!best_play && transposition_table_enabled_) {
     auto it = transposition_table_.find(state);
     if (it != transposition_table_.end()) {

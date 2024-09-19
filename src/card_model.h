@@ -91,6 +91,7 @@ public:
   uint64_t bits() const { return bits_; }
 
   void add(Card c) { bits_ |= to_card_bit(c); }
+  void add_all(Cards c) { bits_ |= c.bits_; }
   void remove(Card c) { bits_ &= ~to_card_bit(c); }
   void add(int card_index) { bits_ |= to_card_bit(card_index); }
   void remove(int card_index) { bits_ &= ~to_card_bit(card_index); }
@@ -101,6 +102,9 @@ public:
   Cards complement() const { return Cards(~bits_ & ALL_MASK); }
 
   Cards collapse_ranks(Cards to_collapse) const {
+    if (!to_collapse.bits_) {
+      return *this;
+    }
     assert(disjoint(to_collapse));
     uint64_t bits = bits_;
     for (int suit_base = 0; suit_base < 52; suit_base += 13) {
