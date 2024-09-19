@@ -6,18 +6,18 @@
 constexpr int DEAL_SIZE = 4;
 
 TEST(State, hash) {
-  std::default_random_engine random(123);
+  std::default_random_engine      random(123);
   std::uniform_int_distribution<> d1(0, 3);
   std::uniform_int_distribution<> d2(0, 13);
-  std::vector<State> states;
+  std::vector<State>              states;
   for (int i = 0; i < 100; i++) {
-    Game g = Game::random_deal(random, 13);
-    int tricks = d1(random);
+    Game g      = Game::random_deal(random, 13);
+    int  tricks = d1(random);
     for (int j = 0; j < tricks; j++) {
       g.play(g.valid_plays().first().card());
     }
     int alpha = d2(random);
-    int beta = d2(random);
+    int beta  = d2(random);
     states.push_back(State(g, alpha, beta, false));
   }
   EXPECT_TRUE(absl::VerifyTypeImplementsAbslHashCorrectly(states));
@@ -42,7 +42,7 @@ TEST(Solver, alpha_beta_pruning) {
   std::default_random_engine random(123);
 
   for (int i = 0; i < 100; i++) {
-    Game g = Game::random_deal(random, DEAL_SIZE);
+    Game   g  = Game::random_deal(random, DEAL_SIZE);
     Solver s1 = Solver(g);
     Solver s2 = Solver(g);
     s1.enable_all_optimizations(false);
@@ -59,7 +59,7 @@ TEST(Solver, transposition_table) {
   std::default_random_engine random(123);
 
   for (int i = 0; i < 100; i++) {
-    Game g = Game::random_deal(random, DEAL_SIZE);
+    Game   g  = Game::random_deal(random, DEAL_SIZE);
     Solver s1 = Solver(g);
     Solver s2 = Solver(g);
     s1.enable_all_optimizations(false);
@@ -76,7 +76,7 @@ TEST(Solver, state_normalization) {
   std::default_random_engine random(123);
 
   for (int i = 0; i < 100; i++) {
-    Game g = Game::random_deal(random, DEAL_SIZE);
+    Game   g  = Game::random_deal(random, DEAL_SIZE);
     Solver s1 = Solver(g);
     Solver s2 = Solver(g);
     s1.enable_all_optimizations(false);
@@ -95,7 +95,7 @@ TEST(Solver, all_optimizations) {
   std::default_random_engine random(123);
 
   for (int i = 0; i < 100; i++) {
-    Game g = Game::random_deal(random, DEAL_SIZE);
+    Game   g  = Game::random_deal(random, DEAL_SIZE);
     Solver s1 = Solver(g);
     Solver s2 = Solver(g);
     s1.enable_all_optimizations(true);

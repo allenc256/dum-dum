@@ -30,16 +30,18 @@ std::istream &operator>>(std::istream &is, Seat &s);
 class Contract {
 public:
   Contract(int level, Suit suit, Seat declarer)
-      : level_(level), suit_(suit), declarer_(declarer) {
+      : level_(level),
+        suit_(suit),
+        declarer_(declarer) {
     assert(level > 0 && level <= 7);
   }
 
-  int level() const { return level_; }
+  int  level() const { return level_; }
   Suit suit() const { return suit_; }
   Seat declarer() const { return declarer_; }
 
 private:
-  int level_;
+  int  level_;
   Suit suit_;
   Seat declarer_;
 };
@@ -49,15 +51,18 @@ std::ostream &operator<<(std::ostream &os, Contract c);
 class Trick {
 public:
   Trick()
-      : trump_suit_(NO_TRUMP), lead_seat_(WEST), lead_suit_(NO_TRUMP),
-        card_count_(0), winner_(0) {}
+      : trump_suit_(NO_TRUMP),
+        lead_seat_(WEST),
+        lead_suit_(NO_TRUMP),
+        card_count_(0),
+        winner_(0) {}
 
   Card card(int index) const {
     assert(index >= 0 && index < 4);
     return cards_[index];
   }
 
-  int card_count() const { return card_count_; }
+  int  card_count() const { return card_count_; }
   bool started() const { return card_count_ > 0; }
   bool finished() const { return card_count_ >= 4; }
 
@@ -87,11 +92,11 @@ public:
   void play_start(Suit trump_suit, Seat lead_seat, Card c) {
     assert(card_count_ == 0);
     trump_suit_ = trump_suit;
-    lead_seat_ = lead_seat;
-    lead_suit_ = c.suit();
-    cards_[0] = c;
+    lead_seat_  = lead_seat;
+    lead_suit_  = c.suit();
+    cards_[0]   = c;
     card_count_ = 1;
-    winner_ = 0;
+    winner_     = 0;
   }
 
   void play_continue(Card c) {
@@ -112,11 +117,11 @@ public:
 private:
   void compute_winner() {
     assert(finished());
-    Card best = cards_[0];
-    int winner = 0;
+    Card best   = cards_[0];
+    int  winner = 0;
     for (int i = 1; i < 4; i++) {
       if (better_card(cards_[i], best)) {
-        best = cards_[i];
+        best   = cards_[i];
         winner = i;
       }
     }
@@ -143,24 +148,24 @@ private:
   Seat lead_seat_;
   Suit lead_suit_;
   Card cards_[4];
-  int card_count_;
-  int winner_;
+  int  card_count_;
+  int  winner_;
 };
 
 std::ostream &operator<<(std::ostream &os, const Trick &t);
 
 class Game {
 public:
-  static Game random_deal(std::default_random_engine &random,
-                          int cards_per_hand);
+  static Game
+  random_deal(std::default_random_engine &random, int cards_per_hand);
 
   Game(Contract contract, Cards hands[4]);
 
   Contract contract() const { return contract_; }
-  Cards hand(Seat seat) const { return hands_[seat]; }
+  Cards    hand(Seat seat) const { return hands_[seat]; }
+  Seat     next_seat() const { return next_seat_; }
 
-  Seat next_seat() const { return next_seat_; }
-  Trick &current_trick() { return tricks_[tricks_taken_]; }
+  Trick       &current_trick() { return tricks_[tricks_taken_]; }
   const Trick &current_trick() const { return tricks_[tricks_taken_]; }
 
   const Trick &trick(int i) const {
@@ -182,17 +187,17 @@ public:
   void play(Card card);
   void unplay();
 
-  bool valid_play(Card c) const;
+  bool  valid_play(Card c) const;
   Cards valid_plays() const;
 
 private:
-  Cards hands_[4];
+  Cards    hands_[4];
   Contract contract_;
-  Seat next_seat_;
-  Trick tricks_[14];
-  int tricks_taken_;
-  int tricks_max_;
-  int tricks_taken_by_ns_;
+  Seat     next_seat_;
+  Trick    tricks_[14];
+  int      tricks_taken_;
+  int      tricks_max_;
+  int      tricks_taken_by_ns_;
 
   friend std::ostream &operator<<(std::ostream &os, const Game &g);
 };

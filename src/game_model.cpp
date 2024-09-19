@@ -1,4 +1,5 @@
 #include "game_model.h"
+
 #include <random>
 
 static void print_chars(std::ostream &os, int n, char ch) {
@@ -23,18 +24,10 @@ std::istream &operator>>(std::istream &is, Seat &s) {
   char ch;
   is >> ch;
   switch (ch) {
-  case 'W':
-    s = WEST;
-    break;
-  case 'N':
-    s = NORTH;
-    break;
-  case 'E':
-    s = EAST;
-    break;
-  case 'S':
-    s = SOUTH;
-    break;
+  case 'W': s = WEST; break;
+  case 'N': s = NORTH; break;
+  case 'E': s = EAST; break;
+  case 'S': s = SOUTH; break;
   }
   throw ParseFailure("bad seat");
 }
@@ -121,16 +114,18 @@ Game Game::random_deal(std::default_random_engine &random, int cards_per_hand) {
   std::uniform_int_distribution<> cd(1, 7);
   std::uniform_int_distribution<> sd(0, 4);
   std::uniform_int_distribution<> dd(0, 3);
-  int level = cd(random);
-  Suit suit = (Suit)sd(random);
-  Seat declarer = (Seat)dd(random);
+  int                             level    = cd(random);
+  Suit                            suit     = (Suit)sd(random);
+  Seat                            declarer = (Seat)dd(random);
 
   return Game(Contract(level, suit, declarer), c);
 }
 
 Game::Game(Contract contract, Cards hands[4])
-    : contract_(contract), next_seat_(left_seat(contract.declarer())),
-      tricks_taken_(0), tricks_taken_by_ns_(0) {
+    : contract_(contract),
+      next_seat_(left_seat(contract.declarer())),
+      tricks_taken_(0),
+      tricks_taken_by_ns_(0) {
   tricks_max_ = hands[0].count();
   for (int i = 1; i < 4; i++) {
     if (hands[i].count() != tricks_max_) {
@@ -155,8 +150,8 @@ bool Game::valid_play(Card c) const {
   if (tricks_taken_ >= tricks_max_) {
     return false;
   }
-  Cards cs = hands_[next_seat_];
-  const Trick &t = current_trick();
+  Cards        cs = hands_[next_seat_];
+  const Trick &t  = current_trick();
   if (!cs.contains(c)) {
     return false;
   }
@@ -193,7 +188,7 @@ void Game::unplay() {
   Trick &t = current_trick();
   if (t.started()) {
     assert(!t.finished());
-    Card c = t.unplay();
+    Card c     = t.unplay();
     next_seat_ = t.next_seat();
     hands_[next_seat_].add(c);
   } else {
@@ -205,7 +200,7 @@ void Game::unplay() {
       if (winner == NORTH || winner == SOUTH) {
         tricks_taken_by_ns_--;
       }
-      Card c = t.unplay();
+      Card c     = t.unplay();
       next_seat_ = t.next_seat();
       hands_[next_seat_].add(c);
     } else {
@@ -219,7 +214,7 @@ Cards Game::valid_plays() const {
     return Cards();
   }
 
-  Cards c = hands_[next_seat_];
+  Cards        c = hands_[next_seat_];
   const Trick &t = current_trick();
   if (t.started()) {
     Cards cs = c.intersect_suit(t.lead_suit());

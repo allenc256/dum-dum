@@ -8,7 +8,7 @@
 
 void show_line(const Game &g, std::string line) {
   std::istringstream is(line);
-  Game copy(g);
+  Game               copy(g);
 
   std::cout << "playing: ";
   while (is.peek() != EOF) {
@@ -23,12 +23,12 @@ void show_line(const Game &g, std::string line) {
 
 int main() {
   std::default_random_engine random(123);
-  Game g = Game::random_deal(random, 8);
-  Solver s(g);
+  Game                       g = Game::random_deal(random, 8);
+  Solver                     s(g);
 
   auto begin = std::chrono::steady_clock::now();
-  auto r = s.solve();
-  auto end = std::chrono::steady_clock::now();
+  auto r     = s.solve();
+  auto end   = std::chrono::steady_clock::now();
   auto elapsed_ms =
       std::chrono::duration_cast<std::chrono::milliseconds>(end - begin)
           .count();

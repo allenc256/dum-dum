@@ -13,8 +13,12 @@ Trick make_trick(Suit trump_suit, Seat lead, std::vector<std::string> cards) {
   return t;
 }
 
-void test_trick(Suit trump_suit, Seat lead, std::vector<std::string> cards,
-                Seat expected_winner) {
+void test_trick(
+    Suit                     trump_suit,
+    Seat                     lead,
+    std::vector<std::string> cards,
+    Seat                     expected_winner
+) {
   Trick t = make_trick(trump_suit, lead, cards);
   EXPECT_TRUE(t.started());
   EXPECT_TRUE(t.finished());
@@ -72,7 +76,7 @@ TEST(Trick, unplay) {
 
 TEST(Game, random_deal) {
   std::default_random_engine random(123);
-  Game g = Game::random_deal(random, 13);
+  Game                       g = Game::random_deal(random, 13);
 
   for (int n = 0; n < 100; n++) {
     for (int i = 0; i < 4; i++) {
@@ -91,8 +95,12 @@ TEST(Game, random_deal) {
 
 TEST(Game, play_unplay) {
   Contract contract = Contract(1, HEARTS, NORTH);
-  Cards hands[4] = {Cards("S A2 H - D - C -"), Cards("S 93 H - D - C -"),
-                    Cards("S 5  H 2 D - C -"), Cards("S 6  H 3 D - C -")};
+  Cards    hands[4] = {
+      Cards("S A2 H - D - C -"),
+      Cards("S 93 H - D - C -"),
+      Cards("S 5  H 2 D - C -"),
+      Cards("S 6  H 3 D - C -")
+  };
   Game g(contract, hands);
 
   EXPECT_EQ(g.tricks_taken(), 0);
@@ -165,8 +173,12 @@ TEST(Game, play_unplay) {
 
 TEST(Game, valid_plays) {
   Contract contract = Contract(1, HEARTS, NORTH);
-  Cards hands[4] = {Cards("S A2 H - D - C -"), Cards("S 93 H - D - C -"),
-                    Cards("S 5  H 2 D - C -"), Cards("S 6  H 3 D - C -")};
+  Cards    hands[4] = {
+      Cards("S A2 H - D - C -"),
+      Cards("S 93 H - D - C -"),
+      Cards("S 5  H 2 D - C -"),
+      Cards("S 6  H 3 D - C -")
+  };
   Game g(contract, hands);
 
   EXPECT_EQ(g.valid_plays(), Cards("S A2 H - D - C -"));
@@ -189,11 +201,11 @@ TEST(Game, valid_plays) {
 }
 
 void test_play_unplay_dfs(Game &g) {
-  bool finished = g.finished();
-  Seat next_seat = g.next_seat();
-  int trick_count = g.tricks_taken();
-  int tricks_taken_by_ew = g.tricks_taken_by_ew();
-  int tricks_taken_by_ns = g.tricks_taken_by_ns();
+  bool  finished           = g.finished();
+  Seat  next_seat          = g.next_seat();
+  int   trick_count        = g.tricks_taken();
+  int   tricks_taken_by_ew = g.tricks_taken_by_ew();
+  int   tricks_taken_by_ns = g.tricks_taken_by_ns();
   Cards hands[4];
   for (int i = 0; i < 4; i++) {
     hands[i] = g.hand((Seat)i);
@@ -210,8 +222,9 @@ void test_play_unplay_dfs(Game &g) {
     EXPECT_EQ(g.tricks_taken(), trick_count);
     EXPECT_EQ(g.tricks_taken_by_ew(), tricks_taken_by_ew);
     EXPECT_EQ(g.tricks_taken_by_ns(), tricks_taken_by_ns);
-    EXPECT_EQ(g.tricks_taken_by_ew() + g.tricks_taken_by_ns(),
-              g.tricks_taken());
+    EXPECT_EQ(
+        g.tricks_taken_by_ew() + g.tricks_taken_by_ns(), g.tricks_taken()
+    );
     for (int j = 0; j < 4; j++) {
       EXPECT_EQ(g.hand(Seat(j)), hands[j]);
     }
@@ -220,7 +233,7 @@ void test_play_unplay_dfs(Game &g) {
 
 TEST(Game, play_unplay_random) {
   std::default_random_engine random;
-  Game g = Game::random_deal(random, 3);
+  Game                       g = Game::random_deal(random, 3);
   for (int i = 0; i < 500; i++) {
     test_play_unplay_dfs(g);
   }

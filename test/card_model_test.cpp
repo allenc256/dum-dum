@@ -61,7 +61,8 @@ TEST(Cards, iostream) {
   std::array<const char *, 3> test_cases = {
       "♠ T ♥ - ♦ 432 ♣ KQJ",
       "♠ AKQJT98765432 ♥ AKQJT98765432 ♦ AKQJT98765432 ♣ AKQJT98765432",
-      "♠ - ♥ - ♦ - ♣ -"};
+      "♠ - ♥ - ♦ - ♣ -"
+  };
 
   for (const char *s : test_cases) {
     SCOPED_TRACE(s);
@@ -73,7 +74,7 @@ TEST(Cards, iostream) {
 }
 
 std::vector<Card> iterate_cards(std::string s) {
-  Cards c = Cards(s);
+  Cards             c = Cards(s);
   std::vector<Card> result;
   for (auto it = c.first(); it.valid(); it = c.next(it)) {
     result.push_back(it.card());
@@ -83,17 +84,21 @@ std::vector<Card> iterate_cards(std::string s) {
 
 TEST(Cards, iteration) {
   EXPECT_THAT(iterate_cards("♠ - ♥ - ♦ - ♣ -"), IsEmpty());
-  EXPECT_THAT(iterate_cards("♠ A ♥ - ♦ - ♣ -"),
-              ElementsAreArray({Card(ACE, SPADES)}));
-  EXPECT_THAT(iterate_cards("♠ A ♥ - ♦ 432 ♣ KQ2"), ElementsAreArray({
-                                                        Card(ACE, SPADES),
-                                                        Card(RANK_4, DIAMONDS),
-                                                        Card(RANK_3, DIAMONDS),
-                                                        Card(RANK_2, DIAMONDS),
-                                                        Card(KING, CLUBS),
-                                                        Card(QUEEN, CLUBS),
-                                                        Card(RANK_2, CLUBS),
-                                                    }));
+  EXPECT_THAT(
+      iterate_cards("♠ A ♥ - ♦ - ♣ -"), ElementsAreArray({Card(ACE, SPADES)})
+  );
+  EXPECT_THAT(
+      iterate_cards("♠ A ♥ - ♦ 432 ♣ KQ2"),
+      ElementsAreArray({
+          Card(ACE, SPADES),
+          Card(RANK_4, DIAMONDS),
+          Card(RANK_3, DIAMONDS),
+          Card(RANK_2, DIAMONDS),
+          Card(KING, CLUBS),
+          Card(QUEEN, CLUBS),
+          Card(RANK_2, CLUBS),
+      })
+  );
 }
 
 TEST(Cards, count) {
@@ -101,7 +106,8 @@ TEST(Cards, count) {
   EXPECT_THAT(
       Cards("♠ AKQJT98765432 ♥ AKQJT98765432 ♦ AKQJT98765432 ♣ AKQJT98765432")
           .count(),
-      52);
+      52
+  );
   EXPECT_THAT(Cards("♠ - ♥ - ♦ - ♣ -").count(), 0);
 }
 
@@ -114,26 +120,37 @@ TEST(Cards, disjoint) {
 }
 
 TEST(Cards, collapse_rank) {
-  EXPECT_EQ(Cards::collapse_rank(Card("AC"), Cards("♠ - ♥ - ♦ - ♣ J3")),
-            Card("QC"));
-  EXPECT_EQ(Cards::collapse_rank(Card("8C"), Cards("♠ - ♥ - ♦ - ♣ T3")),
-            Card("7C"));
+  EXPECT_EQ(
+      Cards::collapse_rank(Card("AC"), Cards("♠ - ♥ - ♦ - ♣ J3")), Card("QC")
+  );
+  EXPECT_EQ(
+      Cards::collapse_rank(Card("8C"), Cards("♠ - ♥ - ♦ - ♣ T3")), Card("7C")
+  );
   EXPECT_EQ(
       Cards::collapse_rank(Card("8C"), Cards().with(Card("8C")).complement()),
-      Card("2C"));
-  EXPECT_EQ(Cards::collapse_rank(Card("8C"),
-                                 Cards().complement().intersect_suit(SPADES)),
-            Card("8C"));
+      Card("2C")
+  );
+  EXPECT_EQ(
+      Cards::collapse_rank(
+          Card("8C"), Cards().complement().intersect_suit(SPADES)
+      ),
+      Card("8C")
+  );
 }
 
 TEST(Cards, collapse_ranks) {
-  EXPECT_EQ(Cards("♠ - ♥ - ♦ - ♣ 3").collapse_ranks(Cards("♠ - ♥ - ♦ - ♣ 2")),
-            Cards("♠ - ♥ - ♦ - ♣ 2"));
-  EXPECT_EQ(Cards("♠ - ♥ - ♦ - ♣ 4").collapse_ranks(Cards("♠ - ♥ - ♦ - ♣ 2")),
-            Cards("♠ - ♥ - ♦ - ♣ 3"));
+  EXPECT_EQ(
+      Cards("♠ - ♥ - ♦ - ♣ 3").collapse_ranks(Cards("♠ - ♥ - ♦ - ♣ 2")),
+      Cards("♠ - ♥ - ♦ - ♣ 2")
+  );
+  EXPECT_EQ(
+      Cards("♠ - ♥ - ♦ - ♣ 4").collapse_ranks(Cards("♠ - ♥ - ♦ - ♣ 2")),
+      Cards("♠ - ♥ - ♦ - ♣ 3")
+  );
   EXPECT_EQ(
       Cards("♠ AJ ♥ - ♦ T3 ♣ -").collapse_ranks(Cards("♠ KQ43 ♥ - ♦ 74 ♣ -")),
-      Cards("♠ T9 ♥ - ♦ 83 ♣ -"));
+      Cards("♠ T9 ♥ - ♦ 83 ♣ -")
+  );
   Cards c = Cards("♠ AJ76 ♥ A ♦ 543 ♣ 2");
   EXPECT_EQ(c.collapse_ranks(c.complement()), Cards("♠ 5432 ♥ 2 ♦ 432 ♣ 2"));
   EXPECT_EQ(c.collapse_ranks(Cards()), c);

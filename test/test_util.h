@@ -5,7 +5,7 @@
 
 template <class T> T from_string(std::string s) {
   std::istringstream is(s);
-  T x;
+  T                  x;
   is >> x;
   return x;
 }

@@ -1,4 +1,5 @@
 #include "game_solver.h"
+
 #include <picosha2.h>
 
 State::State(const Game &g, int alpha_, int beta_, bool normalize) {
@@ -6,8 +7,8 @@ State::State(const Game &g, int alpha_, int beta_, bool normalize) {
 
   memset(this, 0, sizeof(State));
 
-  alpha = (uint8_t)alpha_;
-  beta = (uint8_t)beta_;
+  alpha          = (uint8_t)alpha_;
+  beta           = (uint8_t)beta_;
 
   const Trick &t = g.current_trick();
 
@@ -30,10 +31,10 @@ State::State(const Game &g, int alpha_, int beta_, bool normalize) {
   if (!t.started()) {
     trick_lead_seat = g.next_seat();
   } else {
-    trick_lead_seat = t.lead_seat();
+    trick_lead_seat  = t.lead_seat();
     trick_card_count = (uint8_t)t.card_count();
     for (int i = 0; i < trick_card_count; i++) {
-      Card c = Cards::collapse_rank(t.card(i), to_collapse);
+      Card c   = Cards::collapse_rank(t.card(i), to_collapse);
       trick[i] = (uint8_t)((c.rank() << 4) | c.suit());
     }
   }
@@ -41,14 +42,15 @@ State::State(const Game &g, int alpha_, int beta_, bool normalize) {
 
 void State::sha256_hash(uint8_t digest[32]) const {
   uint8_t *in_begin = (uint8_t *)this;
-  uint8_t *in_end = in_begin + sizeof(State);
+  uint8_t *in_end   = in_begin + sizeof(State);
   picosha2::hash256(in_begin, in_end, digest, digest + 32);
 }
 
 class Solver::Tracer {
 public:
   Tracer(std::ostream &os, int trace_depth)
-      : os_(os), trace_depth_(trace_depth) {}
+      : os_(os),
+        trace_depth_(trace_depth) {}
   ~Tracer() {}
 
   void trace_game(const Game &game) { os_ << game << std::endl; }
@@ -57,30 +59,54 @@ public:
   void trace_unplay() { line_.pop_back(); }
 
   void trace_terminal(const Game &game, int alpha, int beta) {
-    trace_line(game, nullptr, alpha, beta, "terminal",
-               game.tricks_taken_by_ns());
+    trace_line(
+        game, nullptr, alpha, beta, "terminal", game.tricks_taken_by_ns()
+    );
   }
 
-  void trace_table_lookup(const Game &game, const State &state, int alpha,
-                          int beta, int best_tricks_by_ns) {
+  void trace_table_lookup(
+      const Game  &game,
+      const State &state,
+      int          alpha,
+      int          beta,
+      int          best_tricks_by_ns
+  ) {
     trace_line(game, &state, alpha, beta, "lookup", best_tricks_by_ns);
   }
 
-  void trace_search_start(const Game &game, const State &state, int alpha,
-                          int beta) {
+  void trace_search_start(
+      const Game &game, const State &state, int alpha, int beta
+  ) {
     trace_line(game, &state, alpha, beta, "start", -1);
   }
 
-  void trace_search_end(const Game &game, const State &state, int alpha,
-                        int beta, bool alpha_beta_pruned,
-                        int best_tricks_by_ns) {
-    trace_line(game, &state, alpha, beta,
-               alpha_beta_pruned ? "end_pruned" : "end", best_tricks_by_ns);
+  void trace_search_end(
+      const Game  &game,
+      const State &state,
+      int          alpha,
+      int          beta,
+      bool         alpha_beta_pruned,
+      int          best_tricks_by_ns
+  ) {
+    trace_line(
+        game,
+        &state,
+        alpha,
+        beta,
+        alpha_beta_pruned ? "end_pruned" : "end",
+        best_tricks_by_ns
+    );
   }
 
 private:
-  void trace_line(const Game &game, const State *state, int alpha, int beta,
-                  const char *tag, int best_tricks_by_ns) {
+  void trace_line(
+      const Game  &game,
+      const State *state,
+      int          alpha,
+      int          beta,
+      const char  *tag,
+      int          best_tricks_by_ns
+  ) {
     int depth = (int)line_.size();
     if (depth > trace_depth_) {
       return;
@@ -121,9 +147,9 @@ private:
     os_ << std::endl;
   }
 
-  std::ostream &os_;
+  std::ostream     &os_;
   std::vector<Card> line_;
-  int trace_depth_;
+  int               trace_depth_;
 };
 
 Solver::Solver(Game g) : game_(g), states_explored_(0) {
@@ -162,8 +188,9 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
     if (it != transposition_table_.end()) {
       int best_tricks_by_ns = game_.tricks_taken_by_ns() + it->second;
       if (tracer_) {
-        tracer_->trace_table_lookup(game_, state, alpha, beta,
-                                    best_tricks_by_ns);
+        tracer_->trace_table_lookup(
+            game_, state, alpha, beta, best_tricks_by_ns
+        );
       }
       return best_tricks_by_ns;
     }
@@ -172,12 +199,12 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
   states_explored_++;
 
   bool maximizing;
-  int best_tricks_by_ns;
+  int  best_tricks_by_ns;
   if (game_.next_seat() == NORTH || game_.next_seat() == SOUTH) {
-    maximizing = true;
+    maximizing        = true;
     best_tricks_by_ns = -1;
   } else {
-    maximizing = false;
+    maximizing        = false;
     best_tricks_by_ns = game_.tricks_max() + 1;
   }
 
@@ -185,8 +212,8 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
     tracer_->trace_search_start(game_, state, alpha, beta);
   }
 
-  Cards valid_plays = game_.valid_plays();
-  bool alpha_beta_pruned = false;
+  Cards valid_plays       = game_.valid_plays();
+  bool  alpha_beta_pruned = false;
   for (auto i = valid_plays.first(); i.valid(); i = valid_plays.next(i)) {
     Card c = i.card();
     game_.play(c);
@@ -249,8 +276,9 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
   }
 
   if (tracer_) {
-    tracer_->trace_search_end(game_, state, alpha, beta, alpha_beta_pruned,
-                              best_tricks_by_ns);
+    tracer_->trace_search_end(
+        game_, state, alpha, beta, alpha_beta_pruned, best_tricks_by_ns
+    );
   }
 
   return best_tricks_by_ns;

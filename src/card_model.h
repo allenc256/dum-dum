@@ -70,7 +70,7 @@ public:
   public:
     bool valid() const { return card_index_ >= 0; }
     Card card() const { return from_card_index(card_index_); }
-    int card_index() const { return card_index_; }
+    int  card_index() const { return card_index_; }
 
   private:
     Iter(int card_index) : card_index_(card_index) {
@@ -90,14 +90,14 @@ public:
 
   uint64_t bits() const { return bits_; }
 
-  void add(Card c) { bits_ |= to_card_bit(c); }
-  void add_all(Cards c) { bits_ |= c.bits_; }
-  void remove(Card c) { bits_ &= ~to_card_bit(c); }
-  void add(int card_index) { bits_ |= to_card_bit(card_index); }
-  void remove(int card_index) { bits_ &= ~to_card_bit(card_index); }
-  void clear() { bits_ = 0; }
-  bool contains(Card c) const { return bits_ & to_card_bit(c); }
-  int count() const { return std::popcount(bits_); }
+  void  add(Card c) { bits_ |= to_card_bit(c); }
+  void  add_all(Cards c) { bits_ |= c.bits_; }
+  void  remove(Card c) { bits_ &= ~to_card_bit(c); }
+  void  add(int card_index) { bits_ |= to_card_bit(card_index); }
+  void  remove(int card_index) { bits_ &= ~to_card_bit(card_index); }
+  void  clear() { bits_ = 0; }
+  bool  contains(Card c) const { return bits_ & to_card_bit(c); }
+  int   count() const { return std::popcount(bits_); }
   Cards with(Card c) { return Cards(bits_ | to_card_bit(c)); }
   Cards complement() const { return Cards(~bits_ & ALL_MASK); }
 
@@ -126,7 +126,7 @@ public:
   static Card collapse_rank(Card card, Cards to_collapse) {
     assert(!to_collapse.contains(card));
     int suit_base = card.suit() * 13;
-    int rank = card.rank();
+    int rank      = card.rank();
     for (int j = 0; j < card.rank(); j++) {
       bool should_collapse =
           ((uint64_t)1 << (suit_base + j)) & to_collapse.bits_;
@@ -167,7 +167,7 @@ public:
   uint64_t bits_;
 
 private:
-  static int to_card_index(Card c) { return c.rank() + c.suit() * 13; }
+  static int      to_card_index(Card c) { return c.rank() + c.suit() * 13; }
   static uint64_t to_card_bit(Card c) { return to_card_bit(to_card_index(c)); }
   static uint64_t to_card_bit(int card_index) {
     return ((uint64_t)1) << card_index;

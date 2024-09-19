@@ -10,14 +10,10 @@ static Suit parse_suit(std::istream &is) {
     throw ParseFailure("stream error");
   }
   switch ((uint8_t)ch) {
-  case 'C':
-    return Suit::CLUBS;
-  case 'D':
-    return Suit::DIAMONDS;
-  case 'H':
-    return Suit::HEARTS;
-  case 'S':
-    return Suit::SPADES;
+  case 'C': return Suit::CLUBS;
+  case 'D': return Suit::DIAMONDS;
+  case 'H': return Suit::HEARTS;
+  case 'S': return Suit::SPADES;
   case 'N':
     if (!is.get(ch) || ch != 'T') {
       throw ParseFailure("bad suit");
@@ -29,14 +25,10 @@ static Suit parse_suit(std::istream &is) {
     }
     is.get(ch);
     switch ((uint8_t)ch) {
-    case 0xA3:
-      return Suit::CLUBS;
-    case 0xA6:
-      return Suit::DIAMONDS;
-    case 0xA5:
-      return Suit::HEARTS;
-    case 0xA0:
-      return Suit::SPADES;
+    case 0xA3: return Suit::CLUBS;
+    case 0xA6: return Suit::DIAMONDS;
+    case 0xA5: return Suit::HEARTS;
+    case 0xA0: return Suit::SPADES;
     }
   }
   throw ParseFailure("bad suit");
@@ -67,18 +59,12 @@ static Rank parse_rank(std::istream &is) {
     return (Rank)(ch - '2');
   }
   switch (ch) {
-  case 'T':
-    return Rank::TEN;
-  case 'J':
-    return Rank::JACK;
-  case 'Q':
-    return Rank::QUEEN;
-  case 'K':
-    return Rank::KING;
-  case 'A':
-    return Rank::ACE;
-  default:
-    throw ParseFailure("bad rank");
+  case 'T': return Rank::TEN;
+  case 'J': return Rank::JACK;
+  case 'Q': return Rank::QUEEN;
+  case 'K': return Rank::KING;
+  case 'A': return Rank::ACE;
+  default: throw ParseFailure("bad rank");
   }
 }
 
@@ -155,16 +141,11 @@ bool is_rank_char(int ch) {
     return true;
   } else {
     switch (ch) {
-    case 'T':
-      return true;
-    case 'J':
-      return true;
-    case 'Q':
-      return true;
-    case 'K':
-      return true;
-    case 'A':
-      return true;
+    case 'T': return true;
+    case 'J': return true;
+    case 'Q': return true;
+    case 'K': return true;
+    case 'A': return true;
     }
   }
   return false;
@@ -173,8 +154,8 @@ bool is_rank_char(int ch) {
 static void parse_cards_ranks(std::istream &is, Suit s, Cards &cs) {
   Rank r;
   Rank last_rank;
-  int ch;
-  int count = 0;
+  int  ch;
+  int  count = 0;
 
   is >> std::ws;
   while (true) {
