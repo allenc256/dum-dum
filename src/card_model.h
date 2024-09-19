@@ -11,7 +11,7 @@ public:
   using std::runtime_error::runtime_error;
 };
 
-enum Suit : uint8_t {
+enum Suit {
   CLUBS,
   DIAMONDS,
   HEARTS,
@@ -22,7 +22,7 @@ enum Suit : uint8_t {
 std::istream &operator>>(std::istream &is, Suit &s);
 std::ostream &operator<<(std::ostream &os, Suit s);
 
-enum Rank : uint8_t {
+enum Rank {
   RANK_2,
   RANK_3,
   RANK_4,
@@ -85,7 +85,10 @@ public:
   };
 
   Cards() : bits_(0) {}
+  Cards(uint64_t bits) : bits_(bits) { assert(!(bits & INVALID_MASK)); }
   Cards(std::string_view s);
+
+  uint64_t bits() const { return bits_; }
 
   void add(Card c) { bits_ |= to_card_bit(c); }
   void remove(Card c) { bits_ &= ~to_card_bit(c); }
@@ -126,8 +129,6 @@ public:
   uint64_t bits_;
 
 private:
-  Cards(uint64_t bits) : bits_(bits) { assert(!(bits & INVALID_MASK)); }
-
   static int to_card_index(Card c) { return c.rank() + c.suit() * 13; }
   static uint64_t to_card_bit(Card c) { return to_card_bit(to_card_index(c)); }
   static uint64_t to_card_bit(int card_index) {

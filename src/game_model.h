@@ -4,7 +4,7 @@
 
 #include "card_model.h"
 
-enum Seat : uint8_t {
+enum Seat {
   WEST,
   NORTH,
   EAST,
@@ -52,13 +52,29 @@ public:
       : trump_suit_(NO_TRUMP), lead_seat_(WEST), lead_suit_(NO_TRUMP),
         card_count_(0), winner_(0) {}
 
+  Card card(int index) const {
+    assert(index >= 0 && index < 4);
+    return cards_[index];
+  }
+
   int card_count() const { return card_count_; }
-  Card card(int index) const { return cards_[index]; }
-  Seat lead_seat() const { return lead_seat_; }
-  Suit lead_suit() const { return lead_suit_; }
-  Seat seat(int index) const { return right_seat(lead_seat_, index); }
   bool started() const { return card_count_ > 0; }
   bool finished() const { return card_count_ >= 4; }
+
+  Seat lead_seat() const {
+    assert(started());
+    return lead_seat_;
+  }
+
+  Suit lead_suit() const {
+    assert(started());
+    return lead_suit_;
+  }
+
+  Seat seat(int index) const {
+    assert(index >= 0 && index < 4);
+    return right_seat(lead_seat_, index);
+  }
 
   Seat next_seat() const {
     if (finished()) {
@@ -168,7 +184,7 @@ private:
   Cards hands_[4];
   Contract contract_;
   Seat next_seat_;
-  Trick tricks_[13];
+  Trick tricks_[14];
   int tricks_taken_;
   int tricks_max_;
   int tricks_taken_by_ns_;

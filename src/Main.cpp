@@ -1,19 +1,49 @@
 #include "game_model.h"
 #include "game_solver.h"
 #include <bitset>
+#include <fstream>
 #include <iostream>
 #include <random>
 
+void show_line(const Game &g, std::string line) {
+  std::istringstream is(line);
+  Game copy(g);
+
+  std::cout << "playing: ";
+  while (is.peek() != EOF) {
+    Card c;
+    is >> c;
+    std::cout << c;
+    copy.play(c);
+  }
+  std::cout << std::endl;
+  std::cout << copy;
+}
+
 int main() {
-  std::default_random_engine random(1234);
-  Game g = Game::random_deal(random, 5);
-  GameSolver gs = GameSolver(g);
+  std::default_random_engine random(123);
 
-  std::cout << g << std::endl;
+  for (int i = 0; i < 6; i++) {
+    Game g = Game::random_deal(random, 3);
+    if (i != 5) {
+      continue;
+    }
 
-  int best_tricks_by_ns = gs.solve();
-  std::cout << "best_tricks_by_ns:  " << best_tricks_by_ns << std::endl;
-  std::cout << "states_explored:    " << gs.states_explored() << std::endl;
+    Solver s1(g);
+    Solver s2(g);
+    s1.disable_all_optimizations();
+    s1.enable_transposition_table(true);
+    s2.disable_all_optimizations();
+
+    for (int i = 0; i < 5; i++) {
+      auto r1 = s1.solve();
+      auto r2 = s2.solve();
+      s1.game().play(r1.best_play());
+      s2.game().play(r1.best_play());
+      std::cout << r1.tricks_taken_by_ns() << " " << r2.tricks_taken_by_ns()
+                << std::endl;
+    }
+  }
 
   return 0;
 }

@@ -10,3 +10,5 @@ enable_testing()
 add_subdirectory(src)
 add_subdirectory(test)
 add_subdirectory(abseil-cpp)
+add_subdirectory(PicoSHA2)
+

@@ -12,7 +12,7 @@ int print_cards_in_suit(std::ostream &os, Cards c, Suit s);
 const char *SEAT_STR = "WNES";
 
 std::ostream &operator<<(std::ostream &os, Seat s) {
-  if (s < 0 || s >= 4) {
+  if ((int)s < 0 || (int)s >= 4) {
     throw std::runtime_error("bad seat");
   }
   os << SEAT_STR[s];

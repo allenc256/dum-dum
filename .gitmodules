@@ -1,3 +1,6 @@
 [submodule "abseil-cpp"]
 	path = abseil-cpp
 	url = https://github.com/abseil/abseil-cpp
+[submodule "PicoSHA2"]
+	path = PicoSHA2
+	url = git@github.com:okdshin/PicoSHA2.git
