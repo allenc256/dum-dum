@@ -1,6 +1,7 @@
 #include "game_model.h"
 #include "game_solver.h"
 #include <bitset>
+#include <chrono>
 #include <fstream>
 #include <iostream>
 #include <random>
@@ -22,28 +23,20 @@ void show_line(const Game &g, std::string line) {
 
 int main() {
   std::default_random_engine random(123);
+  Game g = Game::random_deal(random, 5);
+  Solver s(g);
 
-  for (int i = 0; i < 6; i++) {
-    Game g = Game::random_deal(random, 3);
-    if (i != 5) {
-      continue;
-    }
+  auto begin = std::chrono::steady_clock::now();
+  auto r = s.solve();
+  auto end = std::chrono::steady_clock::now();
+  auto elapsed_ms =
+      std::chrono::duration_cast<std::chrono::milliseconds>(end - begin)
+          .count();
 
-    Solver s1(g);
-    Solver s2(g);
-    s1.enable_all_optimizations(false);
-    s1.enable_transposition_table(true);
-    s2.enable_all_optimizations(false);
-
-    for (int i = 0; i < 5; i++) {
-      auto r1 = s1.solve();
-      auto r2 = s2.solve();
-      s1.game().play(r1.best_play());
-      s2.game().play(r1.best_play());
-      std::cout << r1.tricks_taken_by_ns() << " " << r2.tricks_taken_by_ns()
-                << std::endl;
-    }
-  }
+  std::cout << g << std::endl;
+  std::cout << "best_tricks_by_ns:  " << r.tricks_taken_by_ns() << std::endl
+            << "states_explored:    " << r.states_explored() << std::endl
+            << "elapsed_ms:         " << elapsed_ms << std::endl;
 
   return 0;
 }

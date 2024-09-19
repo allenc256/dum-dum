@@ -1,9 +1,11 @@
 #include "game_solver.h"
 #include <picosha2.h>
 
-State::State(const Game &g, int alpha, int beta) {
+State::State(const Game &g, int alpha_, int beta_) {
   assert(alpha >= 0 && beta >= 0);
   memset(this, 0, sizeof(State));
+  alpha = (uint8_t)alpha_;
+  beta = (uint8_t)beta_;
   for (int i = 0; i < 4; i++) {
     hands[i] = g.hand((Seat)i).bits();
   }
