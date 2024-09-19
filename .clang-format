@@ -5,8 +5,5 @@ BinPackParameters: false
 PackConstructorInitializers: CurrentLine
 AlignAfterOpenBracket: BlockIndent
 AllowShortCaseLabelsOnASingleLine: true
-AlignConsecutiveAssignments:
-  Enabled: true
-  AcrossEmptyLines: true
+AlignConsecutiveAssignments: true
 AlignConsecutiveDeclarations: true
-  

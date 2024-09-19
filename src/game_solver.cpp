@@ -7,8 +7,8 @@ State::State(const Game &g, int alpha_, int beta_, bool normalize) {
 
   memset(this, 0, sizeof(State));
 
-  alpha          = (uint8_t)alpha_;
-  beta           = (uint8_t)beta_;
+  alpha = (uint8_t)alpha_;
+  beta  = (uint8_t)beta_;
 
   const Trick &t = g.current_trick();
 
