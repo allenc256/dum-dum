@@ -31,9 +31,9 @@ int main() {
 
     Solver s1(g);
     Solver s2(g);
-    s1.disable_all_optimizations();
+    s1.enable_all_optimizations(false);
     s1.enable_transposition_table(true);
-    s2.disable_all_optimizations();
+    s2.enable_all_optimizations(false);
 
     for (int i = 0; i < 5; i++) {
       auto r1 = s1.solve();

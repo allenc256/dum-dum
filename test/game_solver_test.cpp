@@ -12,9 +12,9 @@ TEST(Solver, alpha_beta_pruning) {
     Solver s2 = Solver(g);
     std::vector<Card> line1;
     std::vector<Card> line2;
-    s1.disable_all_optimizations();
+    s1.enable_all_optimizations(false);
     s1.enable_alpha_beta_pruning(true);
-    s2.disable_all_optimizations();
+    s2.enable_all_optimizations(false);
     Solver::Result r1 = s1.solve();
     Solver::Result r2 = s2.solve();
     ASSERT_EQ(r1.tricks_taken_by_ns(), r2.tricks_taken_by_ns());
@@ -31,14 +31,14 @@ TEST(Solver, transposition_table) {
   std::default_random_engine random(123);
 
   for (int i = 0; i < 100; i++) {
-    Game g = Game::random_deal(random, 3);
+    Game g = Game::random_deal(random, 4);
     Solver s1 = Solver(g);
     Solver s2 = Solver(g);
     std::vector<Card> line1;
     std::vector<Card> line2;
-    s1.disable_all_optimizations();
+    s1.enable_all_optimizations(false);
     s1.enable_transposition_table(true);
-    s2.disable_all_optimizations();
+    s2.enable_all_optimizations(false);
     Solver::Result r1 = s1.solve();
     Solver::Result r2 = s2.solve();
     SCOPED_TRACE(::testing::Message() << "iteration " << i);

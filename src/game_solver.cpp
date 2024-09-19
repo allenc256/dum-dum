@@ -108,7 +108,7 @@ private:
 };
 
 Solver::Solver(Game g) : game_(g), states_explored_(0) {
-  enable_all_optimizations();
+  enable_all_optimizations(true);
 }
 
 Solver::~Solver() {}

@@ -51,14 +51,9 @@ public:
   Solver(Game g);
   ~Solver();
 
-  void enable_all_optimizations() {
-    alpha_beta_pruning_enabled_ = true;
-    transposition_table_enabled_ = true;
-  }
-
-  void disable_all_optimizations() {
-    alpha_beta_pruning_enabled_ = false;
-    transposition_table_enabled_ = false;
+  void enable_all_optimizations(bool enabled) {
+    alpha_beta_pruning_enabled_ = enabled;
+    transposition_table_enabled_ = enabled;
   }
 
   void enable_alpha_beta_pruning(bool enabled) {
@@ -71,12 +66,6 @@ public:
 
   void enable_tracing(std::ostream &os);
   void enable_tracing(std::ostream &os, int trace_depth);
-
-  int states_explored() const { return states_explored_; }
-
-  size_t transposition_table_size() const {
-    return transposition_table_.size();
-  }
 
   Game &game() { return game_; }
   const Game &game() const { return game_; }
