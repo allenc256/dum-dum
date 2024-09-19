@@ -20,6 +20,8 @@ TEST(Rank, ostream) {
   EXPECT_EQ(to_string(ACE), "A");
 }
 
+TEST(Card, sizeof) { EXPECT_TRUE(sizeof(Card) <= sizeof(int)); }
+
 TEST(Suit, istream) {
   EXPECT_EQ(from_string<Suit>("C"), CLUBS);
   EXPECT_EQ(from_string<Suit>("S"), SPADES);
@@ -53,6 +55,8 @@ void test_read_write_cards(std::string s) {
   EXPECT_EQ(to_string(from_string<Cards>(s)), s);
 }
 
+TEST(Cards, sizeof) { EXPECT_TRUE(sizeof(Cards) == sizeof(uint64_t)); }
+
 TEST(Cards, iostream) {
   std::array<const char *, 3> test_cases = {
       "♠ T ♥ - ♦ 432 ♣ KQJ",
@@ -69,7 +73,7 @@ TEST(Cards, iostream) {
 }
 
 std::vector<Card> iterate_cards(std::string s) {
-  Cards c = from_string<Cards>(s);
+  Cards c = Cards(s);
   std::vector<Card> result;
   for (auto it = c.first(); it.valid(); it = c.next(it)) {
     result.push_back(it.card());
@@ -93,19 +97,44 @@ TEST(Cards, iteration) {
 }
 
 TEST(Cards, count) {
-  EXPECT_THAT(from_string<Cards>("♠ T ♥ - ♦ 432 ♣ KQJ").count(), 7);
+  EXPECT_THAT(Cards("♠ T ♥ - ♦ 432 ♣ KQJ").count(), 7);
   EXPECT_THAT(
-      from_string<Cards>(
-          "♠ AKQJT98765432 ♥ AKQJT98765432 ♦ AKQJT98765432 ♣ AKQJT98765432")
+      Cards("♠ AKQJT98765432 ♥ AKQJT98765432 ♦ AKQJT98765432 ♣ AKQJT98765432")
           .count(),
       52);
-  EXPECT_THAT(from_string<Cards>("♠ - ♥ - ♦ - ♣ -").count(), 0);
+  EXPECT_THAT(Cards("♠ - ♥ - ♦ - ♣ -").count(), 0);
 }
 
 TEST(Cards, disjoint) {
-  Cards c1 = from_string<Cards>("♠ T ♥ - ♦ 432 ♣ KQJ");
-  Cards c2 = from_string<Cards>("♠ T ♥ - ♦ - ♣ -");
-  Cards c3 = from_string<Cards>("♠ J ♥ - ♦ 65 ♣ A");
+  Cards c1 = Cards("♠ T ♥ - ♦ 432 ♣ KQJ");
+  Cards c2 = Cards("♠ T ♥ - ♦ - ♣ -");
+  Cards c3 = Cards("♠ J ♥ - ♦ 65 ♣ A");
   EXPECT_FALSE(c1.disjoint(c2));
   EXPECT_TRUE(c1.disjoint(c3));
+}
+
+TEST(Cards, collapse_rank) {
+  EXPECT_EQ(Cards::collapse_rank(Card("AC"), Cards("♠ - ♥ - ♦ - ♣ J3")),
+            Card("QC"));
+  EXPECT_EQ(Cards::collapse_rank(Card("8C"), Cards("♠ - ♥ - ♦ - ♣ T3")),
+            Card("7C"));
+  EXPECT_EQ(
+      Cards::collapse_rank(Card("8C"), Cards().with(Card("8C")).complement()),
+      Card("2C"));
+  EXPECT_EQ(Cards::collapse_rank(Card("8C"),
+                                 Cards().complement().intersect_suit(SPADES)),
+            Card("8C"));
+}
+
+TEST(Cards, collapse_ranks) {
+  EXPECT_EQ(Cards("♠ - ♥ - ♦ - ♣ 3").collapse_ranks(Cards("♠ - ♥ - ♦ - ♣ 2")),
+            Cards("♠ - ♥ - ♦ - ♣ 2"));
+  EXPECT_EQ(Cards("♠ - ♥ - ♦ - ♣ 4").collapse_ranks(Cards("♠ - ♥ - ♦ - ♣ 2")),
+            Cards("♠ - ♥ - ♦ - ♣ 3"));
+  EXPECT_EQ(
+      Cards("♠ AJ ♥ - ♦ T3 ♣ -").collapse_ranks(Cards("♠ KQ43 ♥ - ♦ 74 ♣ -")),
+      Cards("♠ T9 ♥ - ♦ 83 ♣ -"));
+  Cards c = Cards("♠ AJ76 ♥ A ♦ 543 ♣ 2");
+  EXPECT_EQ(c.collapse_ranks(c.complement()), Cards("♠ 5432 ♥ 2 ♦ 432 ♣ 2"));
+  EXPECT_EQ(c.collapse_ranks(Cards()), c);
 }

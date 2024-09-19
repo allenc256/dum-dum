@@ -84,3 +84,5 @@ private:
   bool transposition_table_enabled_;
   std::unique_ptr<Tracer> tracer_;
 };
+
+void normalize_state(Cards hands[4], Card trick_cards[4], int trick_card_count);

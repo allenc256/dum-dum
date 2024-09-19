@@ -11,7 +11,7 @@ public:
   using std::runtime_error::runtime_error;
 };
 
-enum Suit {
+enum Suit : uint8_t {
   CLUBS,
   DIAMONDS,
   HEARTS,
@@ -22,7 +22,7 @@ enum Suit {
 std::istream &operator>>(std::istream &is, Suit &s);
 std::ostream &operator<<(std::ostream &os, Suit s);
 
-enum Rank {
+enum Rank : uint8_t {
   RANK_2,
   RANK_3,
   RANK_4,
@@ -85,7 +85,7 @@ public:
   };
 
   Cards() : bits_(0) {}
-  Cards(uint64_t bits) : bits_(bits) { assert(!(bits & INVALID_MASK)); }
+  Cards(uint64_t bits) : bits_(bits) { assert(!(bits & ~ALL_MASK)); }
   Cards(std::string_view s);
 
   uint64_t bits() const { return bits_; }
@@ -95,9 +95,43 @@ public:
   void add(int card_index) { bits_ |= to_card_bit(card_index); }
   void remove(int card_index) { bits_ &= ~to_card_bit(card_index); }
   void clear() { bits_ = 0; }
-
   bool contains(Card c) const { return bits_ & to_card_bit(c); }
   int count() const { return std::popcount(bits_); }
+  Cards with(Card c) { return Cards(bits_ | to_card_bit(c)); }
+  Cards complement() const { return Cards(~bits_ & ALL_MASK); }
+
+  Cards collapse_ranks(Cards to_collapse) const {
+    assert(disjoint(to_collapse));
+    uint64_t bits = bits_;
+    for (int suit_base = 0; suit_base < 52; suit_base += 13) {
+      uint64_t s = SUIT_MASK << suit_base;
+      uint64_t m = s;
+      for (int j = 0; j < 12; j++) {
+        bool should_collapse =
+            ((uint64_t)1 << (suit_base + j)) & to_collapse.bits_;
+        if (should_collapse) {
+          bits = ((bits & m) >> 1) | (bits & ~m);
+        } else {
+          m = (m << 1) & s;
+        }
+      }
+    }
+    return Cards(bits);
+  }
+
+  static Card collapse_rank(Card card, Cards to_collapse) {
+    assert(!to_collapse.contains(card));
+    int suit_base = card.suit() * 13;
+    int rank = card.rank();
+    for (int j = 0; j < card.rank(); j++) {
+      bool should_collapse =
+          ((uint64_t)1 << (suit_base + j)) & to_collapse.bits_;
+      if (should_collapse) {
+        rank--;
+      }
+    }
+    return Card((Rank)rank, card.suit());
+  }
 
   Iter first() const {
     int k = std::countl_zero(bits_ << 12);
@@ -140,8 +174,8 @@ private:
   }
 
   static const uint64_t SUIT_MASK = 0b1111111111111UL;
-  static const uint64_t INVALID_MASK =
-      ~0b1111111111111111111111111111111111111111111111111111UL;
+  static const uint64_t ALL_MASK =
+      0b1111111111111111111111111111111111111111111111111111UL;
 
   friend bool operator==(Cards c1, Cards c2);
 };
