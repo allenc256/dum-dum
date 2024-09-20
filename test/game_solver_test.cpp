@@ -48,7 +48,7 @@ TEST(Solver, alpha_beta_pruning) {
     s1.enable_all_optimizations(false);
     s1.enable_alpha_beta_pruning(true);
     s2.enable_all_optimizations(false);
-    EXPECT_NO_FATAL_FAILURE({
+    ASSERT_NO_FATAL_FAILURE({
       SCOPED_TRACE(::testing::Message() << "iteration " << i);
       validate_solvers(s1, s2);
     });
@@ -65,7 +65,7 @@ TEST(Solver, transposition_table) {
     s1.enable_all_optimizations(false);
     s1.enable_transposition_table(true);
     s2.enable_all_optimizations(false);
-    EXPECT_NO_FATAL_FAILURE({
+    ASSERT_NO_FATAL_FAILURE({
       SCOPED_TRACE(::testing::Message() << "iteration " << i);
       validate_solvers(s1, s2);
     });
@@ -84,7 +84,7 @@ TEST(Solver, state_normalization) {
     s1.enable_state_normalization(true);
     s2.enable_all_optimizations(false);
     s2.enable_transposition_table(true);
-    EXPECT_NO_FATAL_FAILURE({
+    ASSERT_NO_FATAL_FAILURE({
       SCOPED_TRACE(::testing::Message() << "iteration " << i);
       validate_solvers(s1, s2);
     });
@@ -100,7 +100,7 @@ TEST(Solver, all_optimizations) {
     Solver s2 = Solver(g);
     s1.enable_all_optimizations(true);
     s2.enable_all_optimizations(false);
-    EXPECT_NO_FATAL_FAILURE({
+    ASSERT_NO_FATAL_FAILURE({
       SCOPED_TRACE(::testing::Message() << "iteration " << i);
       validate_solvers(s1, s2);
     });

@@ -218,14 +218,40 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
     Card c = i.card();
     game_.play(c);
 
+    if (alpha_beta_pruning_enabled_) {
+      if (maximizing) {
+        int worst_case = game_.tricks_taken_by_ns();
+        if (worst_case >= beta) {
+          alpha_beta_pruned = true;
+          game_.unplay();
+          best_tricks_by_ns = worst_case;
+          if (best_play) {
+            *best_play = c;
+          }
+          break;
+        }
+      } else {
+        int best_case = game_.tricks_taken_by_ns() + game_.tricks_left();
+        if (best_case <= alpha) {
+          alpha_beta_pruned = true;
+          game_.unplay();
+          best_tricks_by_ns = best_case;
+          if (best_play) {
+            *best_play = c;
+          }
+          break;
+        }
+      }
+    }
+
     if (tracer_) {
       tracer_->trace_play(c);
     }
 
-    int tricks_by_ns = solve_internal(alpha, beta, nullptr);
+    int child_tricks_by_ns = solve_internal(alpha, beta, nullptr);
     if (maximizing) {
-      if (tricks_by_ns > best_tricks_by_ns) {
-        best_tricks_by_ns = tricks_by_ns;
+      if (child_tricks_by_ns > best_tricks_by_ns) {
+        best_tricks_by_ns = child_tricks_by_ns;
         if (best_play) {
           *best_play = c;
         }
@@ -243,8 +269,8 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
         }
       }
     } else {
-      if (tricks_by_ns < best_tricks_by_ns) {
-        best_tricks_by_ns = tricks_by_ns;
+      if (child_tricks_by_ns < best_tricks_by_ns) {
+        best_tricks_by_ns = child_tricks_by_ns;
         if (best_play) {
           *best_play = c;
         }
