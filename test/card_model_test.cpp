@@ -155,3 +155,14 @@ TEST(Cards, collapse_ranks) {
   EXPECT_EQ(c.collapse_ranks(c.complement()), Cards("♠ 5432 ♥ 2 ♦ 432 ♣ 2"));
   EXPECT_EQ(c.collapse_ranks(Cards()), c);
 }
+
+TEST(Cards, remove_equivalent_ranks) {
+  EXPECT_EQ(
+      Cards("♠ - ♥ - ♦ - ♣ 432").remove_equivalent_ranks(),
+      Cards("♠ - ♥ - ♦ - ♣ 4")
+  );
+  EXPECT_EQ(
+      Cards("♠ AKT98543 ♥ AQT953 ♦ - ♣ 432").remove_equivalent_ranks(),
+      Cards("♠ AT5      ♥ AQT53 ♦ - ♣ 4")
+  );
+}

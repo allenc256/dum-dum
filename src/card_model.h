@@ -137,6 +137,19 @@ public:
     return Card((Rank)rank, card.suit());
   }
 
+  Cards remove_equivalent_ranks() const {
+    uint64_t bits = 0;
+    uint64_t m1   = 0b0000000000001000000000000100000000000010000000000001UL;
+    uint64_t m2   = 0b0000000000010000000000001000000000000100000000000010UL;
+    for (int i = 0; i < 12; i++) {
+      bits |= (bits_ & m1) & ~((bits_ & m2) >> 1);
+      m1 <<= 1;
+      m2 <<= 1;
+    }
+    bits |= bits_ & m1;
+    return Cards(bits);
+  }
+
   Iter first() const {
     int k = std::countl_zero(bits_ << 12);
     return k < 64 ? Cards::Iter(51 - k) : Cards::Iter();

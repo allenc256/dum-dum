@@ -219,8 +219,8 @@ Cards Game::valid_plays() const {
   if (t.started()) {
     Cards cs = c.intersect_suit(t.lead_suit());
     if (!cs.empty()) {
-      return cs;
+      return cs.remove_equivalent_ranks();
     }
   }
-  return c;
+  return c.remove_equivalent_ranks();
 }

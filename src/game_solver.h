@@ -12,8 +12,8 @@ struct State {
   std::array<uint8_t, 4>  trick;
   uint8_t                 trick_card_count;
   uint8_t                 trick_lead_seat;
-  uint8_t                 alpha;
-  uint8_t                 beta;
+  int8_t                  alpha;
+  int8_t                  beta;
 
   State(const Game &g, int alpha, int beta, bool normalize);
 

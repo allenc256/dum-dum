@@ -3,12 +3,12 @@
 #include <picosha2.h>
 
 State::State(const Game &g, int alpha_, int beta_, bool normalize) {
-  assert(alpha >= 0 && beta >= 0);
+  assert(alpha_ >= 0 && beta_ >= 0);
 
   memset(this, 0, sizeof(State));
 
-  alpha = (uint8_t)(alpha_ - g.tricks_taken_by_ns());
-  beta  = (uint8_t)(beta_ - g.tricks_taken_by_ns());
+  alpha = (int8_t)(alpha_ - g.tricks_taken_by_ns());
+  beta  = (int8_t)(beta_ - g.tricks_taken_by_ns());
 
   const Trick &t = g.current_trick();
 
