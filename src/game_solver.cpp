@@ -212,12 +212,13 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
     tracer_->trace_search_start(game_, state, alpha, beta);
   }
 
-  Cards valid_plays = game_.valid_plays().remove_equivalent_ranks();
-  bool  prune       = false;
-  for (auto i = valid_plays.first(); i.valid() && !prune;
-       i      = valid_plays.next(i)) {
-    prune = solve_internal_child(
-        i.card(), maximizing, alpha, beta, best_tricks_by_ns, best_play
+  bool prune = solve_internal_search_plays(
+      maximizing, alpha, beta, best_tricks_by_ns, best_play
+  );
+
+  if (tracer_) {
+    tracer_->trace_search_end(
+        game_, state, alpha, beta, prune, best_tricks_by_ns
     );
   }
 
@@ -227,16 +228,28 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
     transposition_table_[state] = (uint8_t)tricks_takable_by_ns;
   }
 
-  if (tracer_) {
-    tracer_->trace_search_end(
-        game_, state, alpha, beta, prune, best_tricks_by_ns
-    );
-  }
-
   return best_tricks_by_ns;
 }
 
-bool Solver::solve_internal_child(
+bool Solver::solve_internal_search_plays(
+    bool  maximizing,
+    int  &alpha,
+    int  &beta,
+    int  &best_tricks_by_ns,
+    Card *best_play
+) {
+  Cards valid_plays = game_.valid_plays().remove_equivalent_ranks();
+  for (auto i = valid_plays.first(); i.valid(); i = valid_plays.next(i)) {
+    if (solve_internal_search_single_play(
+            i.card(), maximizing, alpha, beta, best_tricks_by_ns, best_play
+        )) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool Solver::solve_internal_search_single_play(
     Card  c,
     bool  maximizing,
     int  &alpha,

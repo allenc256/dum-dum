@@ -89,7 +89,14 @@ public:
 
 private:
   int  solve_internal(int alpha, int beta, Card *best_play);
-  bool solve_internal_child(
+  bool solve_internal_search_plays(
+      bool  maximizing,
+      int  &alpha,
+      int  &beta,
+      int  &best_tricks_by_ns,
+      Card *best_play
+  );
+  bool solve_internal_search_single_play(
       Card  play,
       bool  maximizing,
       int  &alpha,
