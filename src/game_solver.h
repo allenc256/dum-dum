@@ -88,7 +88,15 @@ public:
   Result solve();
 
 private:
-  int solve_internal(int alpha, int beta, Card *best_play);
+  int  solve_internal(int alpha, int beta, Card *best_play);
+  bool solve_internal_child(
+      Card  play,
+      bool  maximizing,
+      int  &alpha,
+      int  &beta,
+      int  &best_tricks_by_ns,
+      Card *best_play
+  );
 
   class Tracer;
 

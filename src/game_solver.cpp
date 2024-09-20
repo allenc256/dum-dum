@@ -212,87 +212,13 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
     tracer_->trace_search_start(game_, state, alpha, beta);
   }
 
-  Cards valid_plays       = game_.valid_plays();
-  bool  alpha_beta_pruned = false;
-  for (auto i = valid_plays.first(); i.valid(); i = valid_plays.next(i)) {
-    Card c = i.card();
-    game_.play(c);
-
-    if (alpha_beta_pruning_enabled_) {
-      if (maximizing) {
-        int worst_case = game_.tricks_taken_by_ns();
-        if (worst_case >= beta) {
-          alpha_beta_pruned = true;
-          game_.unplay();
-          best_tricks_by_ns = worst_case;
-          if (best_play) {
-            *best_play = c;
-          }
-          break;
-        }
-      } else {
-        int best_case = game_.tricks_taken_by_ns() + game_.tricks_left();
-        if (best_case <= alpha) {
-          alpha_beta_pruned = true;
-          game_.unplay();
-          best_tricks_by_ns = best_case;
-          if (best_play) {
-            *best_play = c;
-          }
-          break;
-        }
-      }
-    }
-
-    if (tracer_) {
-      tracer_->trace_play(c);
-    }
-
-    int child_tricks_by_ns = solve_internal(alpha, beta, nullptr);
-    if (maximizing) {
-      if (child_tricks_by_ns > best_tricks_by_ns) {
-        best_tricks_by_ns = child_tricks_by_ns;
-        if (best_play) {
-          *best_play = c;
-        }
-      }
-      if (alpha_beta_pruning_enabled_) {
-        if (best_tricks_by_ns >= beta) {
-          alpha_beta_pruned = true;
-          game_.unplay();
-          if (tracer_) {
-            tracer_->trace_unplay();
-          }
-          break;
-        } else {
-          alpha = std::max(alpha, best_tricks_by_ns);
-        }
-      }
-    } else {
-      if (child_tricks_by_ns < best_tricks_by_ns) {
-        best_tricks_by_ns = child_tricks_by_ns;
-        if (best_play) {
-          *best_play = c;
-        }
-      }
-      if (alpha_beta_pruning_enabled_) {
-        if (best_tricks_by_ns <= alpha) {
-          alpha_beta_pruned = true;
-          game_.unplay();
-          if (tracer_) {
-            tracer_->trace_unplay();
-          }
-          break;
-        } else {
-          beta = std::min(beta, best_tricks_by_ns);
-        }
-      }
-    }
-
-    game_.unplay();
-    if (tracer_) {
-      tracer_->trace_unplay();
-    }
+  Cards valid_plays = game_.valid_plays().remove_equivalent_ranks();
+  bool  prune       = false;
+  for (auto i = valid_plays.first(); i.valid() && !prune;
+       i      = valid_plays.next(i)) {
+    prune = solve_internal_child(
+        i.card(), maximizing, alpha, beta, best_tricks_by_ns, best_play
+    );
   }
 
   if (!best_play && transposition_table_enabled_) {
@@ -303,9 +229,89 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
 
   if (tracer_) {
     tracer_->trace_search_end(
-        game_, state, alpha, beta, alpha_beta_pruned, best_tricks_by_ns
+        game_, state, alpha, beta, prune, best_tricks_by_ns
     );
   }
 
   return best_tricks_by_ns;
+}
+
+bool Solver::solve_internal_child(
+    Card  c,
+    bool  maximizing,
+    int  &alpha,
+    int  &beta,
+    int  &best_tricks_by_ns,
+    Card *best_play
+) {
+  game_.play(c);
+  if (tracer_) {
+    tracer_->trace_play(c);
+  }
+
+  int  child_tricks_by_ns = -1;
+  bool prune              = false;
+
+  if (alpha_beta_pruning_enabled_) {
+    if (maximizing) {
+      int worst_case = game_.tricks_taken_by_ns();
+      if (worst_case >= beta) {
+        best_tricks_by_ns = worst_case;
+        if (best_play) {
+          *best_play = c;
+        }
+        prune = true;
+        goto unplay;
+      }
+    } else {
+      int best_case = game_.tricks_taken_by_ns() + game_.tricks_left();
+      if (best_case <= alpha) {
+        best_tricks_by_ns = best_case;
+        if (best_play) {
+          *best_play = c;
+        }
+        prune = true;
+        goto unplay;
+      }
+    }
+  }
+
+  child_tricks_by_ns = solve_internal(alpha, beta, nullptr);
+  if (maximizing) {
+    if (child_tricks_by_ns > best_tricks_by_ns) {
+      best_tricks_by_ns = child_tricks_by_ns;
+      if (best_play) {
+        *best_play = c;
+      }
+    }
+    if (alpha_beta_pruning_enabled_) {
+      if (best_tricks_by_ns >= beta) {
+        prune = true;
+      } else {
+        alpha = std::max(alpha, best_tricks_by_ns);
+      }
+    }
+  } else {
+    if (child_tricks_by_ns < best_tricks_by_ns) {
+      best_tricks_by_ns = child_tricks_by_ns;
+      if (best_play) {
+        *best_play = c;
+      }
+    }
+    if (alpha_beta_pruning_enabled_) {
+      if (best_tricks_by_ns <= alpha) {
+        prune = true;
+      } else {
+        beta = std::min(beta, best_tricks_by_ns);
+      }
+    }
+  }
+
+unplay:
+  game_.unplay();
+  if (tracer_) {
+    tracer_->trace_unplay();
+  }
+
+  return prune;
 }
