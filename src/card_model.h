@@ -89,6 +89,7 @@ public:
   Cards(std::string_view s);
 
   uint64_t bits() const { return bits_; }
+  uint64_t rank_bits(Suit s) const { return (bits_ >> (s * 13)) & SUIT_MASK; }
 
   void  add(Card c) { bits_ |= to_card_bit(c); }
   void  add_all(Cards c) { bits_ |= c.bits_; }
@@ -100,6 +101,14 @@ public:
   int   count() const { return std::popcount(bits_); }
   Cards with(Card c) { return Cards(bits_ | to_card_bit(c)); }
   Cards complement() const { return Cards(~bits_ & ALL_MASK); }
+
+  Cards permute_suits(Suit suit_map[4]) const {
+    uint64_t bits = 0;
+    for (int i = 0; i < 4; i++) {
+      bits |= rank_bits(suit_map[i]) << (i * 13);
+    }
+    return Cards(bits);
+  }
 
   Cards collapse_ranks(Cards to_collapse) const {
     if (!to_collapse.bits_) {

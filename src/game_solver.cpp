@@ -5,6 +5,7 @@
 struct State {
   State(const Game &g, int alpha, int beta, bool should_normalize) {
     const Trick &t      = g.current_trick();
+    trump_suit_         = g.contract().suit();
     trick_card_count_   = t.card_count();
     trick_lead_seat_    = t.started() ? t.lead_seat() : g.next_seat();
     tricks_taken_by_ns_ = g.tricks_taken_by_ns();
@@ -20,12 +21,12 @@ struct State {
     }
 
     if (should_normalize) {
-      *this = normalize();
+      *this = normalize_all();
     }
   }
 
-  State normalize() const {
-    State s = normalize_ranks();
+  State normalize_all() const {
+    State s = normalize_ranks().normalize_seats().normalize_suits();
 
     s.alpha_ -= tricks_taken_by_ns_;
     s.beta_ -= tricks_taken_by_ns_;
@@ -54,6 +55,65 @@ struct State {
     return s;
   }
 
+  State normalize_seats() const {
+    State s = *this;
+    if (trick_lead_seat_ == EAST || trick_lead_seat_ == SOUTH) {
+      for (int i = 0; i < 4; i++) {
+        s.hands_[i] = hands_[right_seat((Seat)i, 2)];
+      }
+      s.trick_lead_seat_ = right_seat(trick_lead_seat_, 2);
+    }
+    return s;
+  }
+
+  State normalize_suits() const {
+    uint64_t suit_rank_bits[4];
+    Suit     suit_map[4];
+
+    for (int suit_i = 0; suit_i < 4; suit_i++) {
+      uint64_t rank_bits = 0;
+      for (int seat_i = 0; seat_i < 4; seat_i++) {
+        rank_bits |= hands_[seat_i].rank_bits((Suit)suit_i) << (seat_i * 13);
+      }
+      suit_rank_bits[suit_i] = rank_bits;
+    }
+
+    if (trump_suit_ != NO_TRUMP) {
+      suit_rank_bits[trump_suit_] = ~0;
+    }
+
+    for (int i = 0; i < 4; i++) {
+      suit_map[i] = (Suit)i;
+    }
+    for (int i = 0; i < 4; i++) {
+      if ((Suit)i != trump_suit_) {
+        int best = i;
+        for (int j = i + 1; j < 4; j++) {
+          if ((Suit)j != trump_suit_ &&
+              suit_rank_bits[j] > suit_rank_bits[best]) {
+            best = j;
+          }
+        }
+        if (i != best) {
+          std::swap(suit_map[i], suit_map[best]);
+          std::swap(suit_rank_bits[i], suit_rank_bits[best]);
+        }
+      }
+    }
+
+    State s = *this;
+    for (int i = 0; i < 4; i++) {
+      s.hands_[i] = hands_[i].permute_suits(suit_map);
+    }
+    for (int i = 0; i < trick_card_count_; i++) {
+      const Card &c     = trick_cards_[i];
+      s.trick_cards_[i] = Card(c.rank(), suit_map[c.suit()]);
+    }
+
+    return s;
+  }
+
+  Suit  trump_suit_;
   Cards hands_[4];
   Card  trick_cards_[4];
   int   trick_card_count_;
