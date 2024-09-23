@@ -2,47 +2,92 @@
 
 #include <picosha2.h>
 
-State::State(const Game &g, int alpha_, int beta_, bool normalize) {
-  assert(alpha_ >= 0 && beta_ >= 0);
+struct State {
+  State(const Game &g, int alpha, int beta, bool should_normalize) {
+    const Trick &t      = g.current_trick();
+    trick_card_count_   = t.card_count();
+    trick_lead_seat_    = t.started() ? t.lead_seat() : g.next_seat();
+    tricks_taken_by_ns_ = g.tricks_taken_by_ns();
+    tricks_taken_by_ew_ = g.tricks_taken_by_ew();
+    alpha_              = alpha;
+    beta_               = beta;
 
-  memset(this, 0, sizeof(State));
-
-  alpha = (int8_t)(alpha_ - g.tricks_taken_by_ns());
-  beta  = (int8_t)(beta_ - g.tricks_taken_by_ns());
-
-  const Trick &t = g.current_trick();
-
-  Cards to_collapse;
-  if (normalize) {
     for (int i = 0; i < 4; i++) {
-      to_collapse.add_all(g.hand((Seat)i));
+      hands_[i] = g.hand((Seat)i);
     }
-    if (t.started()) {
-      for (int i = 0; i < t.card_count(); i++) {
-        to_collapse.add(t.card(i));
-      }
+    for (int i = 0; i < trick_card_count_; i++) {
+      trick_cards_[i] = t.card(i);
+    }
+
+    if (should_normalize) {
+      *this = normalize();
+    }
+  }
+
+  State normalize() const {
+    State s = normalize_ranks();
+
+    s.alpha_ -= tricks_taken_by_ns_;
+    s.beta_ -= tricks_taken_by_ns_;
+    s.tricks_taken_by_ns_ = 0;
+
+    return s;
+  }
+
+  State normalize_ranks() const {
+    Cards to_collapse;
+    for (int i = 0; i < 4; i++) {
+      to_collapse.add_all(hands_[i]);
+    }
+    for (int i = 0; i < trick_card_count_; i++) {
+      to_collapse.add(trick_cards_[i]);
     }
     to_collapse = to_collapse.complement();
+
+    State s = *this;
+    for (int i = 0; i < 4; i++) {
+      s.hands_[i] = hands_[i].collapse_ranks(to_collapse);
+    }
+    for (int i = 0; i < trick_card_count_; i++) {
+      s.trick_cards_[i] = Cards::collapse_rank(trick_cards_[i], to_collapse);
+    }
+    return s;
   }
+
+  Cards hands_[4];
+  Card  trick_cards_[4];
+  int   trick_card_count_;
+  Seat  trick_lead_seat_;
+  int   tricks_taken_by_ns_;
+  int   tricks_taken_by_ew_;
+  int   alpha_;
+  int   beta_;
+};
+
+void Solver::init_ttkey(
+    TTKey &k, const Game &g, int alpha, int beta, bool normalize
+) {
+  State s(g, alpha, beta, normalize);
 
   for (int i = 0; i < 4; i++) {
-    hands[i] = g.hand((Seat)i).collapse_ranks(to_collapse).bits();
+    k.hands_[i]       = s.hands_[i].bits();
+    Card c            = s.trick_cards_[i];
+    k.trick_cards_[i] = (uint8_t)((c.rank() << 4) | c.suit());
   }
-  if (!t.started()) {
-    trick_lead_seat = g.next_seat();
-  } else {
-    trick_lead_seat  = t.lead_seat();
-    trick_card_count = (uint8_t)t.card_count();
-    for (int i = 0; i < trick_card_count; i++) {
-      Card c   = Cards::collapse_rank(t.card(i), to_collapse);
-      trick[i] = (uint8_t)((c.rank() << 4) | c.suit());
-    }
-  }
+
+  assert(s.alpha_ >= INT8_MIN && s.alpha_ <= INT8_MAX);
+  assert(s.beta_ >= INT8_MIN && s.beta_ <= INT8_MAX);
+  assert(s.trick_card_count_ >= 0 && s.trick_card_count_ < 4);
+
+  k.alpha_            = (int8_t)s.alpha_;
+  k.beta_             = (int8_t)s.beta_;
+  k.trick_card_count_ = (uint8_t)s.trick_card_count_;
+  k.trick_lead_seat_  = s.trick_lead_seat_;
 }
 
-void State::sha256_hash(uint8_t digest[32]) const {
-  uint8_t *in_begin = (uint8_t *)this;
-  uint8_t *in_end   = in_begin + sizeof(State);
+static void sha256_hash(const Solver::TTKey &k, uint8_t digest[32]) {
+  uint8_t *in_begin = (uint8_t *)&k;
+  uint8_t *in_end   = in_begin + sizeof(Solver::TTKey);
   picosha2::hash256(in_begin, in_end, digest, digest + 32);
 }
 
@@ -66,23 +111,23 @@ public:
 
   void trace_table_lookup(
       const Game  &game,
-      const State &state,
+      const TTKey &ttkey,
       int          alpha,
       int          beta,
       int          best_tricks_by_ns
   ) {
-    trace_line(game, &state, alpha, beta, "lookup", best_tricks_by_ns);
+    trace_line(game, &ttkey, alpha, beta, "lookup", best_tricks_by_ns);
   }
 
   void trace_search_start(
-      const Game &game, const State &state, int alpha, int beta
+      const Game &game, const TTKey &ttkey, int alpha, int beta
   ) {
-    trace_line(game, &state, alpha, beta, "start", -1);
+    trace_line(game, &ttkey, alpha, beta, "start", -1);
   }
 
   void trace_search_end(
       const Game  &game,
-      const State &state,
+      const TTKey &ttkey,
       int          alpha,
       int          beta,
       bool         alpha_beta_pruned,
@@ -90,7 +135,7 @@ public:
   ) {
     trace_line(
         game,
-        &state,
+        &ttkey,
         alpha,
         beta,
         alpha_beta_pruned ? "end_pruned" : "end",
@@ -101,7 +146,7 @@ public:
 private:
   void trace_line(
       const Game  &game,
-      const State *state,
+      const TTKey *ttkey,
       int          alpha,
       int          beta,
       const char  *tag,
@@ -125,9 +170,9 @@ private:
 
     os_ << " ";
     constexpr int sha256_limit = 6;
-    if (state) {
+    if (ttkey) {
       uint8_t sha256[32];
-      state->sha256_hash(sha256);
+      sha256_hash(*ttkey, sha256);
       char old_fill = os_.fill();
       os_ << std::hex << std::setfill('0');
       for (int i = 0; i < sha256_limit; i++) {
@@ -182,14 +227,15 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
     return game_.tricks_taken_by_ns();
   }
 
-  State state(game_, alpha, beta, state_normalization_);
+  TTKey ttkey;
   if (!best_play && transposition_table_enabled_) {
-    auto it = transposition_table_.find(state);
+    init_ttkey(ttkey, game_, alpha, beta, state_normalization_);
+    auto it = transposition_table_.find(ttkey);
     if (it != transposition_table_.end()) {
       int best_tricks_by_ns = game_.tricks_taken_by_ns() + it->second;
       if (tracer_) {
         tracer_->trace_table_lookup(
-            game_, state, alpha, beta, best_tricks_by_ns
+            game_, ttkey, alpha, beta, best_tricks_by_ns
         );
       }
       return best_tricks_by_ns;
@@ -209,7 +255,7 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
   }
 
   if (tracer_) {
-    tracer_->trace_search_start(game_, state, alpha, beta);
+    tracer_->trace_search_start(game_, ttkey, alpha, beta);
   }
 
   bool prune = solve_internal_search_plays(
@@ -218,14 +264,14 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
 
   if (tracer_) {
     tracer_->trace_search_end(
-        game_, state, alpha, beta, prune, best_tricks_by_ns
+        game_, ttkey, alpha, beta, prune, best_tricks_by_ns
     );
   }
 
   if (!best_play && transposition_table_enabled_) {
     int tricks_takable_by_ns = best_tricks_by_ns - game_.tricks_taken_by_ns();
     assert(tricks_takable_by_ns >= 0);
-    transposition_table_[state] = (uint8_t)tricks_takable_by_ns;
+    transposition_table_[ttkey] = (uint8_t)tricks_takable_by_ns;
   }
 
   return best_tricks_by_ns;

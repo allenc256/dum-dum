@@ -5,22 +5,24 @@
 
 constexpr int DEAL_SIZE = 4;
 
-TEST(State, hash) {
+TEST(TTKey, hash) {
   std::default_random_engine      random(123);
   std::uniform_int_distribution<> d1(0, 3);
   std::uniform_int_distribution<> d2(0, 13);
-  std::vector<State>              states;
+  std::vector<Solver::TTKey>      ttkeys;
   for (int i = 0; i < 100; i++) {
     Game g      = Game::random_deal(random, 13);
     int  tricks = d1(random);
     for (int j = 0; j < tricks; j++) {
       g.play(g.valid_plays().first().card());
     }
-    int alpha = d2(random);
-    int beta  = d2(random);
-    states.push_back(State(g, alpha, beta, false));
+    int           alpha = d2(random);
+    int           beta  = d2(random);
+    Solver::TTKey ttkey;
+    Solver::init_ttkey(ttkey, g, alpha, beta, false);
+    ttkeys.push_back(ttkey);
   }
-  EXPECT_TRUE(absl::VerifyTypeImplementsAbslHashCorrectly(states));
+  EXPECT_TRUE(absl::VerifyTypeImplementsAbslHashCorrectly(ttkeys));
 }
 
 void validate_solvers(Solver &s1, Solver &s2) {
