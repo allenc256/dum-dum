@@ -7,6 +7,38 @@
 
 #include "game_model.h"
 
+struct State {
+  std::array<uint64_t, 4> hands;
+  std::array<uint8_t, 4>  trick;
+  uint8_t                 trick_card_count;
+  uint8_t                 trick_lead_seat;
+  int8_t                  alpha;
+  int8_t                  beta;
+
+  State(const Game &g, int alpha, int beta, bool normalize);
+
+  void sha256_hash(uint8_t digest[32]) const;
+
+  template <typename H> friend H AbslHashValue(H h, const State &s) {
+    return H::combine(
+        std::move(h),
+        s.hands,
+        s.trick,
+        s.trick_card_count,
+        s.trick_lead_seat,
+        s.alpha,
+        s.beta
+    );
+  }
+
+  friend bool operator==(const State &s1, const State &s2) {
+    return s1.hands == s2.hands && s1.trick == s2.trick &&
+           s1.trick_card_count == s2.trick_card_count &&
+           s1.trick_lead_seat == s2.trick_lead_seat && s1.alpha == s2.alpha &&
+           s1.beta == s2.beta;
+  }
+};
+
 class Solver {
 public:
   class Result {
@@ -24,34 +56,6 @@ public:
     int  tricks_taken_by_ns_;
     Card best_play_;
     int  states_explored_;
-  };
-
-  struct TTKey {
-    std::array<uint64_t, 4> hands_;
-    std::array<uint8_t, 4>  trick_cards_;
-    uint8_t                 trick_card_count_;
-    uint8_t                 trick_lead_seat_;
-    int8_t                  alpha_;
-    int8_t                  beta_;
-
-    template <typename H> friend H AbslHashValue(H h, const TTKey &s) {
-      return H::combine(
-          std::move(h),
-          s.hands_,
-          s.trick_cards_,
-          s.trick_card_count_,
-          s.trick_lead_seat_,
-          s.alpha_,
-          s.beta_
-      );
-    }
-
-    friend bool operator==(const TTKey &s1, const TTKey &s2) {
-      return s1.hands_ == s2.hands_ && s1.trick_cards_ == s2.trick_cards_ &&
-             s1.trick_card_count_ == s2.trick_card_count_ &&
-             s1.trick_lead_seat_ == s2.trick_lead_seat_ &&
-             s1.alpha_ == s2.alpha_ && s1.beta_ == s2.beta_;
-    }
   };
 
   Solver(Game g);
@@ -83,9 +87,6 @@ public:
 
   Result solve();
 
-  static void
-  init_ttkey(TTKey &k, const Game &g, int alpha, int beta, bool normalize);
-
 private:
   int  solve_internal(int alpha, int beta, Card *best_play);
   bool solve_internal_search_plays(
@@ -106,7 +107,7 @@ private:
 
   class Tracer;
 
-  typedef absl::flat_hash_map<TTKey, uint8_t> TranspositionTable;
+  typedef absl::flat_hash_map<State, uint8_t> TranspositionTable;
 
   Game                    game_;
   int                     states_explored_;
