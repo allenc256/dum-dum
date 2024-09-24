@@ -17,11 +17,3 @@ add_subdirectory(src)
 add_subdirectory(test)
 add_subdirectory(abseil-cpp)
 add_subdirectory(PicoSHA2)
-
-if (ENABLE_COVERAGE)
-  add_custom_target(clean_coverage
-    COMMAND rm -rf "${CMAKE_BINARY_DIR}/**/*.gcda"
-  )
-  add_dependencies(dumdum clean_coverage)
-  add_dependencies(dumdum_test clean_coverage)
-endif()

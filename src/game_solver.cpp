@@ -26,7 +26,7 @@ State::State(const Game &g, int alpha_, int beta_, bool normalize) {
   }
 
   for (int i = 0; i < 4; i++) {
-    hands[i] = g.hand((Seat)i).collapse_ranks(to_collapse).bits();
+    hands[i] = g.hand((Seat)i).collapse_ranks(to_collapse);
   }
   if (!t.started()) {
     trick_lead_seat = g.next_seat();
@@ -34,8 +34,7 @@ State::State(const Game &g, int alpha_, int beta_, bool normalize) {
     trick_lead_seat  = t.lead_seat();
     trick_card_count = (uint8_t)t.card_count();
     for (int i = 0; i < trick_card_count; i++) {
-      Card c   = Cards::collapse_rank(t.card(i), to_collapse);
-      trick[i] = (uint8_t)((c.rank() << 4) | c.suit());
+      trick_cards[i] = Cards::collapse_rank(t.card(i), to_collapse);
     }
   }
 }
@@ -184,22 +183,24 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
     return game_.tricks_taken_by_ns();
   }
 
-  bool maximizing = game_.next_seat() == NORTH || game_.next_seat() == SOUTH;
+  bool  maximizing = game_.next_seat() == NORTH || game_.next_seat() == SOUTH;
+  State state(game_, alpha, beta, state_normalization_);
   if (!best_play && alpha_beta_pruning_enabled_) {
+    int sure_tricks = count_sure_tricks(state.hands);
     if (maximizing) {
-      int worst_case = game_.tricks_taken_by_ns();
+      int worst_case = game_.tricks_taken_by_ns() + sure_tricks;
       if (worst_case >= beta) {
         return worst_case;
       }
     } else {
-      int best_case = game_.tricks_taken_by_ns() + game_.tricks_left();
+      int best_case =
+          game_.tricks_taken_by_ns() + game_.tricks_left() - sure_tricks;
       if (best_case <= alpha) {
         return best_case;
       }
     }
   }
 
-  State state(game_, alpha, beta, state_normalization_);
   if (!best_play && transposition_table_enabled_) {
     auto it = transposition_table_.find(state);
     if (it != transposition_table_.end()) {
@@ -309,4 +310,24 @@ bool Solver::solve_internal_search_single_play(
   }
 
   return prune;
+}
+
+int Solver::count_sure_tricks(Cards normalized_hands[4]) const {
+  if (game_.current_trick().started() || !state_normalization_) {
+    return 0;
+  }
+
+  Seat next_seat = game_.next_seat();
+  int  total     = 0;
+  for (int suit_i = 0; suit_i < 4; suit_i++) {
+    int count = normalized_hands[next_seat].top_ranks((Suit)suit_i);
+    for (int i = 1; i < 4; i++) {
+      Cards &h = normalized_hands[right_seat(next_seat, i)];
+      int    c = h.intersect_suit((Suit)suit_i).count();
+      count    = std::min(count, c);
+    }
+    total += count;
+  }
+
+  return total;
 }

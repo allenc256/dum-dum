@@ -1,5 +1,7 @@
 #pragma once
 
+#include <absl/container/flat_hash_map.h>
+
 #include <bit>
 #include <cassert>
 #include <cstdint>
@@ -11,7 +13,7 @@ public:
   using std::runtime_error::runtime_error;
 };
 
-enum Suit : uint8_t {
+enum Suit {
   CLUBS,
   DIAMONDS,
   HEARTS,
@@ -22,7 +24,7 @@ enum Suit : uint8_t {
 std::istream &operator>>(std::istream &is, Suit &s);
 std::ostream &operator<<(std::ostream &os, Suit s);
 
-enum Rank : uint8_t {
+enum Rank {
   RANK_2,
   RANK_3,
   RANK_4,
@@ -47,17 +49,21 @@ public:
   Card(Rank r, Suit s) : rank_(r), suit_(s) { assert(s != NO_TRUMP); }
   Card(std::string_view s);
 
-  Rank rank() const { return rank_; }
-  Suit suit() const { return suit_; }
+  Rank rank() const { return (Rank)rank_; }
+  Suit suit() const { return (Suit)suit_; }
 
   std::string to_string() const;
 
 private:
-  Rank rank_;
-  Suit suit_;
+  uint8_t rank_ : 4;
+  uint8_t suit_ : 4;
 
   friend std::istream &operator>>(std::istream &is, Card &c);
   friend std::ostream &operator<<(std::ostream &os, Card c);
+
+  template <typename H> friend H AbslHashValue(H h, const Card &c) {
+    return H::combine(std::move(h), c.rank_, c.suit_);
+  }
 };
 
 inline bool operator==(const Card &lhs, const Card &rhs) {
@@ -101,6 +107,10 @@ public:
   Cards with(Card c) { return Cards(bits_ | to_card_bit(c)); }
   Cards complement() const { return Cards(~bits_ & ALL_MASK); }
 
+  int top_ranks(Suit s) const {
+    return std::countl_one(bits_ << ((3 - s) * 13 + 12));
+  }
+
   Cards collapse_ranks(Cards to_collapse) const {
     if (!to_collapse.bits_) {
       return *this;
@@ -110,13 +120,13 @@ public:
     for (int suit_base = 0; suit_base < 52; suit_base += 13) {
       uint64_t s = SUIT_MASK << suit_base;
       uint64_t m = s;
-      for (int j = 0; j < 12; j++) {
+      for (int j = 12; j > 0; j--) {
         bool should_collapse =
             ((uint64_t)1 << (suit_base + j)) & to_collapse.bits_;
         if (should_collapse) {
-          bits = ((bits & m) >> 1) | (bits & ~m);
+          bits = ((bits & m) << 1) | (bits & ~m);
         } else {
-          m = (m << 1) & s;
+          m = (m >> 1) & s;
         }
       }
     }
@@ -127,11 +137,11 @@ public:
     assert(!to_collapse.contains(card));
     int suit_base = card.suit() * 13;
     int rank      = card.rank();
-    for (int j = 0; j < card.rank(); j++) {
+    for (int j = 12; j > card.rank(); j--) {
       bool should_collapse =
           ((uint64_t)1 << (suit_base + j)) & to_collapse.bits_;
       if (should_collapse) {
-        rank--;
+        rank++;
       }
     }
     return Card((Rank)rank, card.suit());
@@ -195,6 +205,10 @@ private:
       0b1111111111111111111111111111111111111111111111111111UL;
 
   friend bool operator==(Cards c1, Cards c2);
+
+  template <typename H> friend H AbslHashValue(H h, const Cards &c) {
+    return H::combine(std::move(h), c.bits_);
+  }
 };
 
 std::istream &operator>>(std::istream &is, Cards &c);

@@ -22,3 +22,11 @@ target_compile_options(dumdum_test_lib PRIVATE ${CXX_FLAGS} ${CXX_COVERAGE_FLAGS
 target_include_directories(dumdum_test_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(dumdum ${LINK_LIBS})
 target_link_libraries(dumdum_test_lib ${LINK_LIBS})
+
+if (ENABLE_COVERAGE)
+  add_custom_command(
+    TARGET dumdum_test_lib
+    PRE_BUILD
+    COMMAND rm -rf "${CMAKE_BINARY_DIR}/src/**/*.gcda"
+  )
+endif()

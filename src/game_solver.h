@@ -8,32 +8,34 @@
 #include "game_model.h"
 
 struct State {
-  std::array<uint64_t, 4> hands;
-  std::array<uint8_t, 4>  trick;
-  uint8_t                 trick_card_count;
-  uint8_t                 trick_lead_seat;
-  int8_t                  alpha;
-  int8_t                  beta;
+  Cards   hands[4];
+  Card    trick_cards[4];
+  uint8_t trick_card_count;
+  Seat    trick_lead_seat : 8;
+  int8_t  alpha;
+  int8_t  beta;
 
   State(const Game &g, int alpha, int beta, bool normalize);
 
   void sha256_hash(uint8_t digest[32]) const;
 
   template <typename H> friend H AbslHashValue(H h, const State &s) {
+    for (int i = 0; i < 4; i++) {
+      h = H::combine(std::move(h), s.hands[i], s.trick_cards[i]);
+    }
     return H::combine(
-        std::move(h),
-        s.hands,
-        s.trick,
-        s.trick_card_count,
-        s.trick_lead_seat,
-        s.alpha,
-        s.beta
+        std::move(h), s.trick_card_count, s.trick_lead_seat, s.alpha, s.beta
     );
   }
 
   friend bool operator==(const State &s1, const State &s2) {
-    return s1.hands == s2.hands && s1.trick == s2.trick &&
-           s1.trick_card_count == s2.trick_card_count &&
+    for (int i = 0; i < 4; i++) {
+      if (s1.hands[i] != s2.hands[i] ||
+          s1.trick_cards[i] != s2.trick_cards[i]) {
+        return false;
+      }
+    }
+    return s1.trick_card_count == s2.trick_card_count &&
            s1.trick_lead_seat == s2.trick_lead_seat && s1.alpha == s2.alpha &&
            s1.beta == s2.beta;
   }
@@ -107,6 +109,8 @@ private:
       int  &best_tricks_by_ns,
       Card *best_play
   );
+
+  int count_sure_tricks(Cards normalized_hands[4]) const;
 
   class Tracer;
 
