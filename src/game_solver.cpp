@@ -184,6 +184,21 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
     return game_.tricks_taken_by_ns();
   }
 
+  bool maximizing = game_.next_seat() == NORTH || game_.next_seat() == SOUTH;
+  if (!best_play && alpha_beta_pruning_enabled_) {
+    if (maximizing) {
+      int worst_case = game_.tricks_taken_by_ns();
+      if (worst_case >= beta) {
+        return worst_case;
+      }
+    } else {
+      int best_case = game_.tricks_taken_by_ns() + game_.tricks_left();
+      if (best_case <= alpha) {
+        return best_case;
+      }
+    }
+  }
+
   State state(game_, alpha, beta, state_normalization_);
   if (!best_play && transposition_table_enabled_) {
     auto it = transposition_table_.find(state);
@@ -198,17 +213,9 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
     }
   }
 
-  states_explored_++;
+  int best_tricks_by_ns = maximizing ? -1 : game_.tricks_max() + 1;
 
-  bool maximizing;
-  int  best_tricks_by_ns;
-  if (game_.next_seat() == NORTH || game_.next_seat() == SOUTH) {
-    maximizing        = true;
-    best_tricks_by_ns = -1;
-  } else {
-    maximizing        = false;
-    best_tricks_by_ns = game_.tricks_max() + 1;
-  }
+  states_explored_++;
 
   if (tracer_) {
     tracer_->trace_search_start(game_, state, alpha, beta);
@@ -264,34 +271,8 @@ bool Solver::solve_internal_search_single_play(
     tracer_->trace_play(c);
   }
 
-  int  child_tricks_by_ns = -1;
+  int  child_tricks_by_ns = solve_internal(alpha, beta, nullptr);
   bool prune              = false;
-
-  if (alpha_beta_pruning_enabled_) {
-    if (maximizing) {
-      int worst_case = game_.tricks_taken_by_ns();
-      if (worst_case >= beta) {
-        best_tricks_by_ns = worst_case;
-        if (best_play) {
-          *best_play = c;
-        }
-        prune = true;
-        goto unplay;
-      }
-    } else {
-      int best_case = game_.tricks_taken_by_ns() + game_.tricks_left();
-      if (best_case <= alpha) {
-        best_tricks_by_ns = best_case;
-        if (best_play) {
-          *best_play = c;
-        }
-        prune = true;
-        goto unplay;
-      }
-    }
-  }
-
-  child_tricks_by_ns = solve_internal(alpha, beta, nullptr);
   if (maximizing) {
     if (child_tricks_by_ns > best_tricks_by_ns) {
       best_tricks_by_ns = child_tricks_by_ns;
@@ -322,7 +303,6 @@ bool Solver::solve_internal_search_single_play(
     }
   }
 
-unplay:
   game_.unplay();
   if (tracer_) {
     tracer_->trace_unplay();
