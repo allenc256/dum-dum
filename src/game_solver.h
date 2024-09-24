@@ -81,6 +81,7 @@ public:
 
   void enable_tracing(std::ostream &os);
   void enable_tracing(std::ostream &os, int trace_depth);
+  void disable_tracing();
 
   Game       &game() { return game_; }
   const Game &game() const { return game_; }
@@ -88,7 +89,8 @@ public:
   Result solve();
 
 private:
-  int  solve_internal(int alpha, int beta, Card *best_play);
+  int solve_internal(int alpha, int beta, Card *best_play);
+
   bool solve_internal_search_plays(
       bool  maximizing,
       int  &alpha,
@@ -96,6 +98,7 @@ private:
       int  &best_tricks_by_ns,
       Card *best_play
   );
+
   bool solve_internal_search_single_play(
       Card  play,
       bool  maximizing,

@@ -10,15 +10,14 @@ void show_line(const Game &g, std::string line) {
   std::istringstream is(line);
   Game               copy(g);
 
-  std::cout << "playing: ";
+  std::cout << copy << std::endl;
   while (is.peek() != EOF) {
     Card c;
     is >> c;
-    std::cout << c;
+    std::cout << g.next_seat() << " plays " << c << std::endl << std::endl;
     copy.play(c);
+    std::cout << copy << std::endl;
   }
-  std::cout << std::endl;
-  std::cout << copy;
 }
 
 int main() {

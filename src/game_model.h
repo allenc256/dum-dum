@@ -27,27 +27,6 @@ inline Seat right_seat(Seat s, int i) {
 std::ostream &operator<<(std::ostream &os, Seat s);
 std::istream &operator>>(std::istream &is, Seat &s);
 
-class Contract {
-public:
-  Contract(int level, Suit suit, Seat declarer)
-      : level_(level),
-        suit_(suit),
-        declarer_(declarer) {
-    assert(level > 0 && level <= 7);
-  }
-
-  int  level() const { return level_; }
-  Suit suit() const { return suit_; }
-  Seat declarer() const { return declarer_; }
-
-private:
-  int  level_;
-  Suit suit_;
-  Seat declarer_;
-};
-
-std::ostream &operator<<(std::ostream &os, Contract c);
-
 class Trick {
 public:
   Trick()
@@ -82,6 +61,7 @@ public:
   }
 
   Seat next_seat() const {
+    assert(started());
     if (finished()) {
       return right_seat(lead_seat_, winner_);
     } else {
@@ -159,11 +139,12 @@ public:
   static Game
   random_deal(std::default_random_engine &random, int cards_per_hand);
 
-  Game(Contract contract, Cards hands[4]);
+  Game(Suit trump_suit, Seat declarer, Cards hands[4]);
 
-  Contract contract() const { return contract_; }
-  Cards    hand(Seat seat) const { return hands_[seat]; }
-  Seat     next_seat() const { return next_seat_; }
+  Suit  trump_suit() const { return trump_suit_; }
+  Seat  declarer() const { return declarer_; }
+  Cards hand(Seat seat) const { return hands_[seat]; }
+  Seat  next_seat() const { return next_seat_; }
 
   Trick       &current_trick() { return tricks_[tricks_taken_]; }
   const Trick &current_trick() const { return tricks_[tricks_taken_]; }
@@ -191,13 +172,14 @@ public:
   Cards valid_plays() const;
 
 private:
-  Cards    hands_[4];
-  Contract contract_;
-  Seat     next_seat_;
-  Trick    tricks_[14];
-  int      tricks_taken_;
-  int      tricks_max_;
-  int      tricks_taken_by_ns_;
+  Cards hands_[4];
+  Suit  trump_suit_;
+  Seat  declarer_;
+  Seat  next_seat_;
+  Trick tricks_[14];
+  int   tricks_taken_;
+  int   tricks_max_;
+  int   tricks_taken_by_ns_;
 
   friend std::ostream &operator<<(std::ostream &os, const Game &g);
 };

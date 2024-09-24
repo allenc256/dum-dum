@@ -93,7 +93,7 @@ public:
         &state,
         alpha,
         beta,
-        alpha_beta_pruned ? "end_pruned" : "end",
+        alpha_beta_pruned ? "pruned" : "end",
         best_tricks_by_ns
     );
   }
@@ -163,6 +163,8 @@ void Solver::enable_tracing(std::ostream &os) { enable_tracing(os, 52); }
 void Solver::enable_tracing(std::ostream &os, int trace_depth) {
   tracer_ = std::make_unique<Tracer>(os, trace_depth);
 }
+
+void Solver::disable_tracing() { tracer_.reset(); }
 
 Solver::Result Solver::solve() {
   states_explored_ = 0;

@@ -32,11 +32,6 @@ std::istream &operator>>(std::istream &is, Seat &s) {
   throw ParseFailure("bad seat");
 }
 
-std::ostream &operator<<(std::ostream &os, Contract c) {
-  os << (int)c.level() << c.suit() << " by " << c.declarer();
-  return os;
-}
-
 std::ostream &operator<<(std::ostream &os, const Trick &t) {
   if (!t.started()) {
     os << "-";
@@ -78,7 +73,8 @@ std::ostream &operator<<(std::ostream &os, const Game &g) {
 
   print_chars(os, spacing * 3, '-');
   os << std::endl;
-  os << "contract:           " << g.contract_ << std::endl;
+  os << "trump_suit:         " << g.trump_suit_ << std::endl;
+  os << "declarer:           " << g.declarer_ << std::endl;
   os << "trick:              ";
   if (g.current_trick().started()) {
     os << g.current_trick() << std::endl;
@@ -111,19 +107,18 @@ Game Game::random_deal(std::default_random_engine &random, int cards_per_hand) {
     }
   }
 
-  std::uniform_int_distribution<> cd(1, 7);
   std::uniform_int_distribution<> sd(0, 4);
   std::uniform_int_distribution<> dd(0, 3);
-  int                             level    = cd(random);
-  Suit                            suit     = (Suit)sd(random);
-  Seat                            declarer = (Seat)dd(random);
+  Suit                            trump_suit = (Suit)sd(random);
+  Seat                            declarer   = (Seat)dd(random);
 
-  return Game(Contract(level, suit, declarer), c);
+  return Game(trump_suit, declarer, c);
 }
 
-Game::Game(Contract contract, Cards hands[4])
-    : contract_(contract),
-      next_seat_(left_seat(contract.declarer())),
+Game::Game(Suit trump_suit, Seat declarer, Cards hands[4])
+    : trump_suit_(trump_suit),
+      declarer_(declarer),
+      next_seat_(left_seat(declarer)),
       tricks_taken_(0),
       tricks_taken_by_ns_(0) {
   tricks_max_ = hands[0].count();
@@ -169,7 +164,7 @@ void Game::play(Card c) {
   if (t.started()) {
     t.play_continue(c);
   } else {
-    t.play_start(contract_.suit(), next_seat_, c);
+    t.play_start(trump_suit_, next_seat_, c);
   }
 
   hands_[next_seat_].remove(c);
@@ -188,8 +183,14 @@ void Game::unplay() {
   Trick &t = current_trick();
   if (t.started()) {
     assert(!t.finished());
-    Card c     = t.unplay();
-    next_seat_ = t.next_seat();
+    Card c = t.unplay();
+    if (t.started()) {
+      next_seat_ = t.next_seat();
+    } else if (tricks_taken_ > 0) {
+      next_seat_ = tricks_[tricks_taken_ - 1].next_seat();
+    } else {
+      next_seat_ = left_seat(declarer_);
+    }
     hands_[next_seat_].add(c);
   } else {
     if (tricks_taken_ > 0) {

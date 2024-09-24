@@ -94,14 +94,13 @@ TEST(Game, random_deal) {
 }
 
 TEST(Game, play_unplay) {
-  Contract contract = Contract(1, HEARTS, NORTH);
-  Cards    hands[4] = {
+  Cards hands[4] = {
       Cards("S A2 H - D - C -"),
       Cards("S 93 H - D - C -"),
       Cards("S 5  H 2 D - C -"),
       Cards("S 6  H 3 D - C -")
   };
-  Game g(contract, hands);
+  Game g(HEARTS, NORTH, hands);
 
   EXPECT_EQ(g.tricks_taken(), 0);
   EXPECT_EQ(g.next_seat(), WEST);
@@ -172,14 +171,13 @@ TEST(Game, play_unplay) {
 }
 
 TEST(Game, valid_plays) {
-  Contract contract = Contract(1, HEARTS, NORTH);
-  Cards    hands[4] = {
+  Cards hands[4] = {
       Cards("S A2 H - D - C -"),
       Cards("S 93 H - D - C -"),
       Cards("S 5  H 2 D - C -"),
       Cards("S 6  H 3 D - C -")
   };
-  Game g(contract, hands);
+  Game g(HEARTS, NORTH, hands);
 
   EXPECT_EQ(g.valid_plays(), Cards("S A2 H - D - C -"));
   g.play(Card("2S"));
