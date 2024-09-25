@@ -20,7 +20,7 @@ TEST(Rank, ostream) {
   EXPECT_EQ(to_string(ACE), "A");
 }
 
-TEST(Card, sizeof) { EXPECT_EQ(sizeof(Card), 1); }
+TEST(Card, sizeof) { EXPECT_EQ(sizeof(Card), 2); }
 
 TEST(Suit, istream) {
   EXPECT_EQ(from_string<Suit>("C"), CLUBS);

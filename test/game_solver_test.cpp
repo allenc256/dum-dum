@@ -7,18 +7,13 @@ constexpr int DEAL_SIZE = 4;
 
 TEST(State, hash) {
   std::default_random_engine      random(123);
-  std::uniform_int_distribution<> d1(0, 3);
-  std::uniform_int_distribution<> d2(0, 13);
-  std::vector<State>              states;
+  std::uniform_int_distribution<> dist(0, 13);
+  std::vector<Solver::State>      states;
   for (int i = 0; i < 100; i++) {
-    Game g      = Game::random_deal(random, 13);
-    int  tricks = d1(random);
-    for (int j = 0; j < tricks; j++) {
-      g.play(g.valid_plays().first().card());
-    }
-    int alpha = d2(random);
-    int beta  = d2(random);
-    states.push_back(State(g, alpha, beta, false));
+    Game          g = Game::random_deal(random, 13);
+    Solver::State s;
+    s.init(g, dist(random), dist(random), false);
+    states.push_back(s);
   }
   EXPECT_TRUE(absl::VerifyTypeImplementsAbslHashCorrectly(states));
 }

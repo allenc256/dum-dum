@@ -13,7 +13,7 @@ public:
   using std::runtime_error::runtime_error;
 };
 
-enum Suit {
+enum Suit : uint8_t {
   CLUBS,
   DIAMONDS,
   HEARTS,
@@ -24,7 +24,7 @@ enum Suit {
 std::istream &operator>>(std::istream &is, Suit &s);
 std::ostream &operator<<(std::ostream &os, Suit s);
 
-enum Rank {
+enum Rank : uint8_t {
   RANK_2,
   RANK_3,
   RANK_4,
@@ -55,15 +55,11 @@ public:
   std::string to_string() const;
 
 private:
-  uint8_t rank_ : 4;
-  uint8_t suit_ : 4;
+  Rank rank_;
+  Suit suit_;
 
   friend std::istream &operator>>(std::istream &is, Card &c);
   friend std::ostream &operator<<(std::ostream &os, Card c);
-
-  template <typename H> friend H AbslHashValue(H h, const Card &c) {
-    return H::combine(std::move(h), c.rank_, c.suit_);
-  }
 };
 
 inline bool operator==(const Card &lhs, const Card &rhs) {

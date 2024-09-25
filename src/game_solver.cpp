@@ -2,261 +2,134 @@
 
 #include <picosha2.h>
 
-State::State(const Game &g, int alpha_, int beta_, bool normalize) {
-  assert(alpha_ >= 0 && beta_ >= 0);
+void Solver::State::init(
+    const Game &g, int alpha_param, int beta_param, bool normalize
+) {
+  assert(!g.current_trick().started());
 
-  memset(this, 0, sizeof(State));
-
-  alpha = (int8_t)(alpha_ - g.tricks_taken_by_ns());
-  beta  = (int8_t)(beta_ - g.tricks_taken_by_ns());
-
-  const Trick &t = g.current_trick();
-
-  Cards to_collapse;
   if (normalize) {
+    Cards to_collapse;
     for (int i = 0; i < 4; i++) {
       to_collapse.add_all(g.hand((Seat)i));
     }
-    if (t.started()) {
-      for (int i = 0; i < t.card_count(); i++) {
-        to_collapse.add(t.card(i));
-      }
-    }
     to_collapse = to_collapse.complement();
-  }
-
-  for (int i = 0; i < 4; i++) {
-    hands[i] = g.hand((Seat)i).collapse_ranks(to_collapse);
-  }
-  if (!t.started()) {
-    trick_lead_seat = g.next_seat();
+    for (int i = 0; i < 4; i++) {
+      hands[i] = g.hand((Seat)i).collapse_ranks(to_collapse);
+    }
   } else {
-    trick_lead_seat  = t.lead_seat();
-    trick_card_count = (uint8_t)t.card_count();
-    for (int i = 0; i < trick_card_count; i++) {
-      trick_cards[i] = Cards::collapse_rank(t.card(i), to_collapse);
+    for (int i = 0; i < 4; i++) {
+      hands[i] = g.hand((Seat)i);
     }
   }
+
+  next_seat = g.next_seat();
+  alpha     = (uint8_t)std::max(0, alpha_param - g.tricks_taken_by_ns());
+  beta      = (uint8_t)std::max(0, beta_param - g.tricks_taken_by_ns());
 }
 
-void State::sha256_hash(uint8_t digest[32]) const {
-  uint8_t *in_begin = (uint8_t *)this;
-  uint8_t *in_end   = in_begin + sizeof(State);
-  picosha2::hash256(in_begin, in_end, digest, digest + 32);
-}
-
-class Solver::Tracer {
-public:
-  Tracer(std::ostream &os, int trace_depth)
-      : os_(os),
-        trace_depth_(trace_depth) {}
-  ~Tracer() {}
-
-  void trace_game(const Game &game) { os_ << game << std::endl; }
-
-  void trace_play(Card card) { line_.push_back(card); }
-  void trace_unplay() { line_.pop_back(); }
-
-  void trace_terminal(const Game &game, int alpha, int beta) {
-    trace_line(
-        game, nullptr, alpha, beta, "terminal", game.tricks_taken_by_ns()
-    );
-  }
-
-  void trace_table_lookup(
-      const Game  &game,
-      const State &state,
-      int          alpha,
-      int          beta,
-      int          best_tricks_by_ns
-  ) {
-    trace_line(game, &state, alpha, beta, "lookup", best_tricks_by_ns);
-  }
-
-  void trace_search_start(
-      const Game &game, const State &state, int alpha, int beta
-  ) {
-    trace_line(game, &state, alpha, beta, "start", -1);
-  }
-
-  void trace_search_end(
-      const Game  &game,
-      const State &state,
-      int          alpha,
-      int          beta,
-      bool         alpha_beta_pruned,
-      int          best_tricks_by_ns
-  ) {
-    trace_line(
-        game,
-        &state,
-        alpha,
-        beta,
-        alpha_beta_pruned ? "pruned" : "end",
-        best_tricks_by_ns
-    );
-  }
-
-private:
-  void trace_line(
-      const Game  &game,
-      const State *state,
-      int          alpha,
-      int          beta,
-      const char  *tag,
-      int          best_tricks_by_ns
-  ) {
-    int depth = (int)line_.size();
-    if (depth > trace_depth_) {
-      return;
-    }
-    bool maximizing = game.next_seat() == NORTH || game.next_seat() == SOUTH;
-    os_ << std::setw(2) << line_.size();
-    os_ << " " << (maximizing ? "max" : "min");
-    os_ << " " << std::setw(2) << alpha;
-    os_ << " " << std::setw(2) << beta;
-    if (best_tricks_by_ns >= 0) {
-      os_ << " " << std::setw(2) << best_tricks_by_ns;
-    } else {
-      os_ << "   ";
-    }
-    os_ << " " << std::setw(10) << tag;
-
-    os_ << " ";
-    constexpr int sha256_limit = 6;
-    if (state) {
-      uint8_t sha256[32];
-      state->sha256_hash(sha256);
-      char old_fill = os_.fill();
-      os_ << std::hex << std::setfill('0');
-      for (int i = 0; i < sha256_limit; i++) {
-        os_ << std::setw(2) << (int)sha256[i];
-      }
-      os_ << std::dec << std::setfill(old_fill);
-    } else {
-      for (int i = 0; i < sha256_limit; i++) {
-        os_ << "  ";
-      }
-    }
-
-    os_ << " ";
-    for (auto c : line_) {
-      os_ << c;
-    }
-    os_ << std::endl;
-  }
-
-  std::ostream     &os_;
-  std::vector<Card> line_;
-  int               trace_depth_;
-};
-
-Solver::Solver(Game g) : game_(g), states_explored_(0) {
+Solver::Solver(Game g)
+    : game_(g),
+      states_explored_(0),
+      trace_ostream_(nullptr),
+      trace_lineno_(0) {
   enable_all_optimizations(true);
 }
 
 Solver::~Solver() {}
 
-void Solver::enable_tracing(std::ostream &os) { enable_tracing(os, 52); }
-
-void Solver::enable_tracing(std::ostream &os, int trace_depth) {
-  tracer_ = std::make_unique<Tracer>(os, trace_depth);
-}
-
-void Solver::disable_tracing() { tracer_.reset(); }
-
 Solver::Result Solver::solve() {
   states_explored_ = 0;
   Card best_play;
-  if (tracer_) {
-    tracer_->trace_game(game_);
-  }
-  int tricks_taken_by_ns = solve_internal(0, game_.tricks_max(), &best_play);
-  return Solver::Result(tricks_taken_by_ns, best_play, states_explored_);
+  int  tricks_taken_by_ns = solve_internal(0, game_.tricks_max(), &best_play);
+  return Solver::Result(
+      tricks_taken_by_ns,
+      best_play,
+      states_explored_,
+      (int)transposition_table_.size()
+  );
 }
+
+#define TRACE(tag, state, alpha, beta, tricks_taken_by_ns)                     \
+  if (trace_ostream_) {                                                        \
+    trace(tag, state, alpha, beta, tricks_taken_by_ns);                        \
+  }
 
 int Solver::solve_internal(int alpha, int beta, Card *best_play) {
   if (game_.finished()) {
-    if (tracer_) {
-      tracer_->trace_terminal(game_, alpha, beta);
-    }
+    TRACE("terminal", nullptr, alpha, beta, game_.tricks_taken_by_ns());
     return game_.tricks_taken_by_ns();
   }
 
   bool  maximizing = game_.next_seat() == NORTH || game_.next_seat() == SOUTH;
-  State state(game_, alpha, beta, state_normalization_);
-  if (!best_play && alpha_beta_pruning_enabled_) {
-    int sure_tricks = count_sure_tricks(state.hands);
-    if (maximizing) {
-      int worst_case = game_.tricks_taken_by_ns() + sure_tricks;
-      if (worst_case >= beta) {
-        return worst_case;
+  bool  start_of_trick = !game_.current_trick().started();
+  State state;
+
+  if (start_of_trick) {
+    state.init(game_, alpha, beta, state_normalization_enabled_);
+
+    if (!best_play) {
+      if (alpha_beta_pruning_enabled_) {
+        int sure_tricks = count_sure_tricks(state);
+        if (maximizing) {
+          int worst_case = game_.tricks_taken_by_ns() + sure_tricks;
+          if (worst_case >= beta) {
+            TRACE("prune", &state, alpha, beta, worst_case);
+            return worst_case;
+          }
+        } else {
+          int best_case =
+              game_.tricks_taken_by_ns() + game_.tricks_left() - sure_tricks;
+          if (best_case <= alpha) {
+            TRACE("prune", &state, alpha, beta, best_case);
+            return best_case;
+          }
+        }
       }
-    } else {
-      int best_case =
-          game_.tricks_taken_by_ns() + game_.tricks_left() - sure_tricks;
-      if (best_case <= alpha) {
-        return best_case;
+
+      if (transposition_table_enabled_) {
+        auto it = transposition_table_.find(state);
+        if (it != transposition_table_.end()) {
+          int tricks_taken_by_ns = game_.tricks_taken_by_ns() + it->second;
+          TRACE("lookup", &state, alpha, beta, tricks_taken_by_ns);
+          return tricks_taken_by_ns;
+        }
       }
     }
+
+    TRACE("start", &state, alpha, beta, -1);
   }
 
-  if (!best_play && transposition_table_enabled_) {
-    auto it = transposition_table_.find(state);
-    if (it != transposition_table_.end()) {
-      int best_tricks_by_ns = game_.tricks_taken_by_ns() + it->second;
-      if (tracer_) {
-        tracer_->trace_table_lookup(
-            game_, state, alpha, beta, best_tricks_by_ns
-        );
-      }
-      return best_tricks_by_ns;
+  int best_tricks_by_ns =
+      solve_internal_search_plays(maximizing, alpha, beta, best_play);
+
+  if (start_of_trick) {
+    TRACE("end", &state, alpha, beta, best_tricks_by_ns);
+
+    if (transposition_table_enabled_) {
+      int tricks_takable_by_ns = best_tricks_by_ns - game_.tricks_taken_by_ns();
+      assert(tricks_takable_by_ns >= 0);
+      transposition_table_[state] = (uint8_t)tricks_takable_by_ns;
     }
-  }
-
-  int best_tricks_by_ns = maximizing ? -1 : game_.tricks_max() + 1;
-
-  states_explored_++;
-
-  if (tracer_) {
-    tracer_->trace_search_start(game_, state, alpha, beta);
-  }
-
-  bool prune = solve_internal_search_plays(
-      maximizing, alpha, beta, best_tricks_by_ns, best_play
-  );
-
-  if (tracer_) {
-    tracer_->trace_search_end(
-        game_, state, alpha, beta, prune, best_tricks_by_ns
-    );
-  }
-
-  if (!best_play && transposition_table_enabled_) {
-    int tricks_takable_by_ns = best_tricks_by_ns - game_.tricks_taken_by_ns();
-    assert(tricks_takable_by_ns >= 0);
-    transposition_table_[state] = (uint8_t)tricks_takable_by_ns;
   }
 
   return best_tricks_by_ns;
 }
 
-bool Solver::solve_internal_search_plays(
-    bool  maximizing,
-    int  &alpha,
-    int  &beta,
-    int  &best_tricks_by_ns,
-    Card *best_play
+int Solver::solve_internal_search_plays(
+    bool maximizing, int &alpha, int &beta, Card *best_play
 ) {
-  Cards valid_plays = game_.valid_plays().remove_equivalent_ranks();
+  states_explored_++;
+
+  int   best_tricks_by_ns = maximizing ? -1 : game_.tricks_max() + 1;
+  Cards valid_plays       = game_.valid_plays().remove_equivalent_ranks();
   for (auto i = valid_plays.first(); i.valid(); i = valid_plays.next(i)) {
     if (solve_internal_search_single_play(
             i.card(), maximizing, alpha, beta, best_tricks_by_ns, best_play
         )) {
-      return true;
+      break;
     }
   }
-  return false;
+  return best_tricks_by_ns;
 }
 
 bool Solver::solve_internal_search_single_play(
@@ -268,9 +141,6 @@ bool Solver::solve_internal_search_single_play(
     Card *best_play
 ) {
   game_.play(c);
-  if (tracer_) {
-    tracer_->trace_play(c);
-  }
 
   int  child_tricks_by_ns = solve_internal(alpha, beta, nullptr);
   bool prune              = false;
@@ -305,29 +175,73 @@ bool Solver::solve_internal_search_single_play(
   }
 
   game_.unplay();
-  if (tracer_) {
-    tracer_->trace_unplay();
-  }
-
   return prune;
 }
 
-int Solver::count_sure_tricks(Cards normalized_hands[4]) const {
-  if (game_.current_trick().started() || !state_normalization_) {
+int Solver::count_sure_tricks(const State &state) const {
+  if (game_.current_trick().started() || !state_normalization_enabled_) {
     return 0;
   }
 
   Seat next_seat = game_.next_seat();
   int  total     = 0;
   for (int suit_i = 0; suit_i < 4; suit_i++) {
-    int count = normalized_hands[next_seat].top_ranks((Suit)suit_i);
+    int count = state.hands[next_seat].top_ranks((Suit)suit_i);
     for (int i = 1; i < 4; i++) {
-      Cards &h = normalized_hands[right_seat(next_seat, i)];
-      int    c = h.intersect_suit((Suit)suit_i).count();
-      count    = std::min(count, c);
+      Cards h = state.hands[right_seat(next_seat, i)];
+      int   c = h.intersect_suit((Suit)suit_i).count();
+      count   = std::min(count, c);
     }
     total += count;
   }
 
   return total;
+}
+
+static void sha256_hash(const Solver::State *state, char *buf, size_t buflen) {
+  if (!state) {
+    buf[0] = 0;
+    return;
+  }
+  uint8_t  digest[32];
+  uint8_t *in_begin = (uint8_t *)state;
+  uint8_t *in_end   = in_begin + sizeof(Solver::State);
+  picosha2::hash256(in_begin, in_end, digest, digest + 32);
+  std::snprintf(
+      buf, buflen, "%08x%08x", *(uint32_t *)&digest[0], *(uint32_t *)&digest[4]
+  );
+}
+
+void Solver::trace(
+    const char  *tag,
+    const State *state,
+    int          alpha,
+    int          beta,
+    int          tricks_taken_by_ns
+) {
+  char line_buf[121], tricks_buf[3], hash_buf[17];
+  sha256_hash(state, hash_buf, sizeof(hash_buf));
+  if (tricks_taken_by_ns >= 0) {
+    std::snprintf(tricks_buf, sizeof(tricks_buf), "%2d", tricks_taken_by_ns);
+  } else {
+    std::strcpy(tricks_buf, "  ");
+  }
+  std::snprintf(
+      line_buf,
+      sizeof(line_buf),
+      "%-7d %-8s %16s %2d %2d %2d %s",
+      trace_lineno_,
+      tag,
+      hash_buf,
+      alpha,
+      beta,
+      game_.tricks_taken_by_ns(),
+      tricks_buf
+  );
+  *trace_ostream_ << line_buf;
+  for (int i = 0; i < game_.tricks_taken(); i++) {
+    *trace_ostream_ << " " << game_.trick(i);
+  }
+  *trace_ostream_ << std::endl;
+  trace_lineno_++;
 }

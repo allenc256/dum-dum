@@ -35,16 +35,17 @@ int main() {
   std::cout << g << std::endl;
   std::cout << "best_tricks_by_ns:  " << r.tricks_taken_by_ns() << std::endl
             << "states_explored:    " << r.states_explored() << std::endl
-            << "elapsed_ms:         " << elapsed_ms << std::endl
-            << std::endl;
+            << "states_memoized:    " << r.states_memoized() << std::endl
+            << "elapsed_ms:         " << elapsed_ms << std::endl;
 
   while (!s.game().finished()) {
     s.game().play(r.best_play());
     r = s.solve();
   }
-
+  std::cout << std::left;
   for (int i = 0; i < s.game().tricks_taken(); i++) {
-    std::cout << s.game().trick(i) << std::endl;
+    std::cout << std::setw(20) << std::format("trick_{}:", i)
+              << s.game().trick(i) << std::endl;
   }
 
   return 0;

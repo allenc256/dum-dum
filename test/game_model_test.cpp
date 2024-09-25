@@ -27,7 +27,7 @@ void test_trick(
 
 TEST(Trick, ostream) {
   EXPECT_EQ(to_string(Trick()), "-");
-  EXPECT_EQ(to_string(make_trick(NO_TRUMP, WEST, {"2C", "3C"})), "W:2♣ N:3♣");
+  EXPECT_EQ(to_string(make_trick(NO_TRUMP, WEST, {"2C", "3C"})), "2♣3♣");
 }
 
 TEST(Trick, no_trump) {
