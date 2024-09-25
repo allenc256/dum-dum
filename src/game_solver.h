@@ -73,6 +73,8 @@ public:
     state_normalization_enabled_ = enabled;
   }
 
+  void enable_tracing(std::ostream *os) { tracing_ostream_ = os; }
+
   Game       &game() { return game_; }
   const Game &game() const { return game_; }
 
@@ -96,6 +98,14 @@ private:
 
   int count_sure_tricks(const State &s) const;
 
+  void trace(
+      const char  *tag,
+      const State *state,
+      int          alpha,
+      int          beta,
+      int          tricks_taken_by_ns
+  ) const;
+
   typedef absl::flat_hash_map<State, uint8_t> TranspositionTable;
 
   Game               game_;
@@ -104,4 +114,5 @@ private:
   bool               alpha_beta_pruning_enabled_;
   bool               transposition_table_enabled_;
   bool               state_normalization_enabled_;
+  std::ostream      *tracing_ostream_;
 };

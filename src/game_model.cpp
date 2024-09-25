@@ -22,14 +22,15 @@ std::ostream &operator<<(std::ostream &os, Seat s) {
 
 std::istream &operator>>(std::istream &is, Seat &s) {
   char ch;
-  is >> ch;
+  is >> std::ws >> ch;
   switch (ch) {
   case 'W': s = WEST; break;
   case 'N': s = NORTH; break;
   case 'E': s = EAST; break;
   case 'S': s = SOUTH; break;
+  default: throw ParseFailure("bad seat");
   }
-  throw ParseFailure("bad seat");
+  return is;
 }
 
 std::ostream &operator<<(std::ostream &os, const Trick &t) {
@@ -37,13 +38,10 @@ std::ostream &operator<<(std::ostream &os, const Trick &t) {
     os << "-";
   } else {
     for (int i = 0; i < t.card_count(); i++) {
-      if (i > 0) {
-        os << " ";
-      }
-      os << t.seat(i) << ":" << t.card(i);
+      os << t.card(i);
     }
     if (t.finished()) {
-      os << " (won by " << t.next_seat() << ")";
+      os << " " << t.next_seat();
     }
   }
   return os;
