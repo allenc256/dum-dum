@@ -55,15 +55,11 @@ public:
   std::string to_string() const;
 
 private:
-  uint8_t rank_ : 4;
-  uint8_t suit_ : 4;
+  uint8_t rank_;
+  uint8_t suit_;
 
   friend std::istream &operator>>(std::istream &is, Card &c);
   friend std::ostream &operator<<(std::ostream &os, Card c);
-
-  template <typename H> friend H AbslHashValue(H h, const Card &c) {
-    return H::combine(std::move(h), c.rank_, c.suit_);
-  }
 };
 
 inline bool operator==(const Card &lhs, const Card &rhs) {

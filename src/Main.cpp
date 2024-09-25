@@ -35,6 +35,8 @@ int main() {
   std::cout << g << std::endl;
   std::cout << "best_tricks_by_ns:  " << r.tricks_taken_by_ns() << std::endl
             << "states_explored:    " << r.states_explored() << std::endl
+            << "table_size:         " << r.transposition_table_size()
+            << std::endl
             << "elapsed_ms:         " << elapsed_ms << std::endl
             << std::endl;
 
