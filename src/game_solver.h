@@ -80,9 +80,20 @@ public:
 private:
   int solve_internal(int alpha, int beta, Card *best_play);
 
-  int solve_internal_search(
-      bool maximizing, int &alpha, int &beta, Card *best_play
-  );
+  struct SearchState {
+    Cards already_searched;
+    bool  maximizing;
+    int   alpha;
+    int   beta;
+    int   best_tricks_by_ns;
+    Card *best_play;
+  };
+
+  enum Order { LOW_TO_HIGH, HIGH_TO_LOW };
+
+  bool search_cards(SearchState &s);
+  bool search_cards(SearchState &s, Cards c, Order o);
+  bool search_card(SearchState &s, Card c);
 
   int count_sure_tricks(const State &s) const;
 

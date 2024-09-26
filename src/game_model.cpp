@@ -41,7 +41,7 @@ std::ostream &operator<<(std::ostream &os, const Trick &t) {
       os << t.card(i);
     }
     if (t.finished()) {
-      os << " " << t.next_seat();
+      os << " " << t.winning_seat();
     }
   }
   return os;
