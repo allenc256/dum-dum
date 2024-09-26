@@ -167,13 +167,14 @@ void Game::play(Card c) {
 
   hands_[next_seat_].remove(c);
 
-  next_seat_ = t.next_seat();
-
   if (t.finished()) {
+    next_seat_ = t.winning_seat();
     if (next_seat_ == NORTH || next_seat_ == SOUTH) {
       tricks_taken_by_ns_++;
     }
     tricks_taken_++;
+  } else {
+    next_seat_ = t.next_seat();
   }
 }
 
@@ -185,7 +186,7 @@ void Game::unplay() {
     if (t.started()) {
       next_seat_ = t.next_seat();
     } else if (tricks_taken_ > 0) {
-      next_seat_ = tricks_[tricks_taken_ - 1].next_seat();
+      next_seat_ = tricks_[tricks_taken_ - 1].winning_seat();
     } else {
       next_seat_ = left_seat(declarer_);
     }
@@ -195,7 +196,7 @@ void Game::unplay() {
       tricks_taken_--;
       Trick &t = current_trick();
       assert(t.finished());
-      Seat winner = t.next_seat();
+      Seat winner = t.winning_seat();
       if (winner == NORTH || winner == SOUTH) {
         tricks_taken_by_ns_--;
       }

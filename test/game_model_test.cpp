@@ -22,7 +22,7 @@ void test_trick(
   Trick t = make_trick(trump_suit, lead, cards);
   EXPECT_TRUE(t.started());
   EXPECT_TRUE(t.finished());
-  EXPECT_EQ(t.next_seat(), expected_winner);
+  EXPECT_EQ(t.winning_seat(), expected_winner);
 }
 
 TEST(Trick, ostream) {
@@ -62,6 +62,7 @@ TEST(Trick, unplay) {
   Trick t = make_trick(HEARTS, WEST, {"2C", "2H", "3C", "TC"});
   EXPECT_TRUE(t.finished());
   EXPECT_EQ(t.card_count(), 4);
+  EXPECT_EQ(t.winning_seat(), NORTH);
   t.unplay();
   EXPECT_TRUE(t.started());
   EXPECT_FALSE(t.finished());
@@ -72,6 +73,26 @@ TEST(Trick, unplay) {
   EXPECT_FALSE(t.started());
   EXPECT_FALSE(t.finished());
   EXPECT_EQ(t.card_count(), 0);
+}
+
+TEST(Trick, winner) {
+  Trick t = Trick();
+  t.play_start(HEARTS, WEST, Card("2C"));
+  EXPECT_EQ(t.winning_index(), 0);
+  t.play_continue(Card("3C"));
+  EXPECT_EQ(t.winning_index(), 1);
+  t.play_continue(Card("2H"));
+  EXPECT_EQ(t.winning_index(), 2);
+  t.play_continue(Card("AC"));
+  EXPECT_EQ(t.winning_index(), 2);
+  EXPECT_EQ(t.winning_seat(), EAST);
+  EXPECT_EQ(t.winning_card(), Card("2H"));
+  t.unplay();
+  EXPECT_EQ(t.winning_index(), 2);
+  t.unplay();
+  EXPECT_EQ(t.winning_index(), 1);
+  t.unplay();
+  EXPECT_EQ(t.winning_index(), 0);
 }
 
 TEST(Game, random_deal) {

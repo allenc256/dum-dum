@@ -33,8 +33,7 @@ public:
       : trump_suit_(NO_TRUMP),
         lead_seat_(WEST),
         lead_suit_(NO_TRUMP),
-        card_count_(0),
-        winner_(0) {}
+        card_count_(0) {}
 
   Card card(int index) const {
     assert(index >= 0 && index < 4);
@@ -61,12 +60,23 @@ public:
   }
 
   Seat next_seat() const {
+    assert(started() && !finished());
+    return right_seat(lead_seat_, card_count_);
+  }
+
+  Seat winning_seat() const {
     assert(started());
-    if (finished()) {
-      return right_seat(lead_seat_, winner_);
-    } else {
-      return right_seat(lead_seat_, card_count_);
-    }
+    return right_seat(lead_seat_, winning_index());
+  }
+
+  Card winning_card() const {
+    assert(started());
+    return cards_[winning_index()];
+  }
+
+  int winning_index() const {
+    assert(started());
+    return winner_[card_count_ - 1];
   }
 
   void play_start(Suit trump_suit, Seat lead_seat, Card c) {
@@ -76,38 +86,27 @@ public:
     lead_suit_  = c.suit();
     cards_[0]   = c;
     card_count_ = 1;
-    winner_     = 0;
+    winner_[0]  = 0;
   }
 
   void play_continue(Card c) {
     assert(card_count_ > 0 && card_count_ < 4);
-    cards_[card_count_++] = c;
-    if (finished()) {
-      compute_winner();
+    if (better_card(c, winning_card())) {
+      winner_[card_count_] = card_count_;
+    } else {
+      winner_[card_count_] = winner_[card_count_ - 1];
     }
+    cards_[card_count_] = c;
+    card_count_++;
   }
 
   Card unplay() {
     assert(card_count_ > 0);
-    winner_ = 0;
     card_count_--;
     return cards_[card_count_];
   }
 
 private:
-  void compute_winner() {
-    assert(finished());
-    Card best   = cards_[0];
-    int  winner = 0;
-    for (int i = 1; i < 4; i++) {
-      if (better_card(cards_[i], best)) {
-        best   = cards_[i];
-        winner = i;
-      }
-    }
-    winner_ = winner;
-  }
-
   bool better_card(Card c, Card winner) {
     if (trump_suit_ == NO_TRUMP) {
       return c.suit() == lead_suit_ && c.rank() > winner.rank();
@@ -129,7 +128,7 @@ private:
   Suit lead_suit_;
   Card cards_[4];
   int  card_count_;
-  int  winner_;
+  int  winner_[4];
 };
 
 std::ostream &operator<<(std::ostream &os, const Trick &t);
