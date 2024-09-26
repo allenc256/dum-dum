@@ -95,6 +95,7 @@ public:
   void     add(Card c) { bits_ |= to_card_bit(c); }
   void     add_all(Cards c) { bits_ |= c.bits_; }
   void     remove(Card c) { bits_ &= ~to_card_bit(c); }
+  void     remove_all(Cards c) { bits_ &= ~c.bits_; }
   void     add(int card_index) { bits_ |= to_card_bit(card_index); }
   void     remove(int card_index) { bits_ &= ~to_card_bit(card_index); }
   void     clear() { bits_ = 0; }
@@ -105,9 +106,18 @@ public:
   Cards    complement() const { return Cards(~bits_ & ALL_MASK); }
   bool     disjoint(Cards c) const { return intersect(c).empty(); }
   Cards    intersect(Cards c) const { return Cards(bits_ & c.bits_); }
+  Cards    subtract(Cards c) const { return Cards(bits_ & ~c.bits_); }
+
+  Cards intersect_suit(Suit s) const { return Cards(bits_ & (SUIT_MASK << s)); }
 
   int top_ranks(Suit s) const {
-    return std::countl_one(bits_ << ((3 - s) * 13 + 12));
+    uint64_t bit   = 1ull << (48 + s);
+    int      count = 0;
+    while (bits_ & bit) {
+      bit >>= 4;
+      count++;
+    }
+    return count;
   }
 
   Cards collapse_ranks(Cards to_collapse) const {
@@ -116,41 +126,37 @@ public:
     }
     assert(disjoint(to_collapse));
     uint64_t bits = bits_;
-    for (int suit_base = 0; suit_base < 52; suit_base += 13) {
-      uint64_t s = SUIT_MASK << suit_base;
-      uint64_t m = s;
-      for (int j = 12; j > 0; j--) {
-        bool should_collapse =
-            ((uint64_t)1 << (suit_base + j)) & to_collapse.bits_;
-        if (should_collapse) {
-          bits = ((bits & m) << 1) | (bits & ~m);
-        } else {
-          m = (m >> 1) & s;
-        }
-      }
+    for (int i = 1; i < 13; i++) {
+      uint64_t keep_new = (0b1111ull << (i * 4)) & to_collapse.bits_;
+      keep_new          = keep_new | (keep_new >> 4);
+      keep_new          = keep_new | (keep_new >> 8);
+      keep_new          = keep_new | (keep_new >> 16);
+      keep_new          = keep_new | (keep_new >> 32);
+      uint64_t keep_old = ~keep_new;
+      bits              = (bits & keep_old) | (((bits << 4)) & keep_new);
     }
     return Cards(bits);
   }
 
   Cards remove_equivalent_ranks() const {
     uint64_t bits = 0;
-    uint64_t m1   = 0b0000000000001000000000000100000000000010000000000001UL;
-    uint64_t m2   = 0b0000000000010000000000001000000000000100000000000010UL;
+    uint64_t m1   = 0b1111;
+    uint64_t m2   = 0b11110000;
     for (int i = 0; i < 12; i++) {
-      bits |= (bits_ & m1) & ~((bits_ & m2) >> 1);
-      m1 <<= 1;
-      m2 <<= 1;
+      bits |= (bits_ & m1) & ~((bits_ & m2) >> 4);
+      m1 <<= 4;
+      m2 <<= 4;
     }
     bits |= bits_ & m1;
     return Cards(bits);
   }
 
-  Iter first() const {
+  Iter iter_high() const {
     int k = std::countl_zero(bits_ << 12);
     return k < 64 ? Cards::Iter(51 - k) : Cards::Iter();
   }
 
-  Iter next(Iter i) const {
+  Iter iter_lower(Iter i) const {
     assert(i.valid());
     if (i.card_index_ <= 0) {
       // Beware! Shifting by > 63 bits is undefined behavior (and will not
@@ -162,46 +168,38 @@ public:
     return k < 64 ? Cards::Iter(i.card_index_ - k - 1) : Cards::Iter();
   }
 
-  Cards intersect_suit(Suit s) const {
-    return Cards(bits_ & (SUIT_MASK << ((uint64_t)s * 13)));
+  Iter iter_low() const {
+    int k = std::countr_zero(bits_);
+    return k < 64 ? Cards::Iter(k) : Cards::Iter();
   }
 
-  static Card collapse_rank(Card card, Cards to_collapse) {
-    assert(!to_collapse.contains(card));
-    int suit_base = card.suit() * 13;
-    int rank      = card.rank();
-    for (int j = 12; j > card.rank(); j--) {
-      bool should_collapse =
-          ((uint64_t)1 << (suit_base + j)) & to_collapse.bits_;
-      if (should_collapse) {
-        rank++;
-      }
-    }
-    return Card((Rank)rank, card.suit());
+  Iter iter_higher(Iter i) const {
+    assert(i.valid());
+    int k = std::countr_zero(bits_ >> (i.card_index_ + 1));
+    return k < 64 ? Cards::Iter(i.card_index_ + k + 1) : Cards::Iter();
   }
 
   static Cards all() { return Cards(ALL_MASK); }
-  static Cards all(Suit s) { return Cards(SUIT_MASK << (s * 13)); }
+  static Cards all(Suit s) { return Cards(SUIT_MASK << s); }
 
   static Cards higher_ranks(Card card) {
-    uint64_t rank_bits = (SUIT_MASK << (card.rank() + 1)) & SUIT_MASK;
-    return Cards(rank_bits << (card.suit() * 13));
+    uint64_t rank_bits = (SUIT_MASK << ((card.rank() + 1) * 4)) & ALL_MASK;
+    return Cards(rank_bits << card.suit());
   }
 
 private:
   uint64_t bits_;
 
-  static int      to_card_index(Card c) { return c.rank() + c.suit() * 13; }
+  static int      to_card_index(Card c) { return c.rank() * 4 + c.suit(); }
   static uint64_t to_card_bit(Card c) { return to_card_bit(to_card_index(c)); }
-  static uint64_t to_card_bit(int card_index) {
-    return ((uint64_t)1) << card_index;
-  }
+  static uint64_t to_card_bit(int card_index) { return 1ull << card_index; }
 
   static Card from_card_index(int card_index) {
-    return Card((Rank)(card_index % 13), (Suit)(card_index / 13));
+    return Card((Rank)(card_index / 4), (Suit)(card_index % 4));
   }
 
-  static const uint64_t SUIT_MASK = 0b1111111111111UL;
+  static const uint64_t SUIT_MASK =
+      0b0001000100010001000100010001000100010001000100010001UL;
   static const uint64_t ALL_MASK =
       0b1111111111111111111111111111111111111111111111111111UL;
 

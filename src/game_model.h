@@ -90,7 +90,7 @@ public:
 
   Cards winning_cards() const {
     assert(!finished());
-    return winning_cards_[card_count_ - 1];
+    return card_count_ > 0 ? winning_cards_[card_count_ - 1] : Cards::all();
   }
 
   void play_start(Suit trump_suit, Seat lead_seat, Card c) {

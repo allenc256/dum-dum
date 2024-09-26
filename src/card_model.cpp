@@ -115,7 +115,7 @@ int print_cards_in_suit(std::ostream &os, Cards c, Suit s) {
   c = c.intersect_suit(s);
   os << s << " ";
   int count = 0;
-  for (auto i = c.first(); i.valid(); i = c.next(i)) {
+  for (auto i = c.iter_high(); i.valid(); i = c.iter_lower(i)) {
     os << i.card().rank();
     count++;
   }

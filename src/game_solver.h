@@ -59,11 +59,13 @@ public:
     ab_pruning_enabled_    = enabled;
     tp_table_enabled_      = enabled;
     tp_table_norm_enabled_ = enabled;
+    move_ordering_enabled_ = enabled;
   }
 
   void enable_ab_pruning(bool enabled) { ab_pruning_enabled_ = enabled; }
   void enable_tp_table(bool enabled) { tp_table_enabled_ = enabled; }
   void enable_tp_table_norm(bool enabled) { tp_table_norm_enabled_ = enabled; }
+  void enable_move_ordering(bool enabled) { move_ordering_enabled_ = enabled; }
 
   void enable_tracing(std::ostream *os) {
     trace_ostream_ = os;
@@ -78,17 +80,8 @@ public:
 private:
   int solve_internal(int alpha, int beta, Card *best_play);
 
-  int solve_internal_search_plays(
+  int solve_internal_search(
       bool maximizing, int &alpha, int &beta, Card *best_play
-  );
-
-  bool solve_internal_search_single_play(
-      Card  play,
-      bool  maximizing,
-      int  &alpha,
-      int  &beta,
-      int  &best_tricks_by_ns,
-      Card *best_play
   );
 
   int count_sure_tricks(const State &s) const;
@@ -103,12 +96,15 @@ private:
 
   typedef absl::flat_hash_map<State, uint8_t> TranspositionTable;
 
+  friend class Searcher;
+
   Game               game_;
   int                states_explored_;
   TranspositionTable tp_table_;
   bool               ab_pruning_enabled_;
   bool               tp_table_enabled_;
   bool               tp_table_norm_enabled_;
+  bool               move_ordering_enabled_;
   std::ostream      *trace_ostream_;
   int                trace_lineno_;
 };

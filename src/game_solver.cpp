@@ -97,7 +97,7 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
   }
 
   int best_tricks_by_ns =
-      solve_internal_search_plays(maximizing, alpha, beta, best_play);
+      solve_internal_search(maximizing, alpha, beta, best_play);
 
   if (start_of_trick) {
     TRACE("end", &state, alpha, beta, best_tricks_by_ns);
@@ -112,67 +112,150 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
   return best_tricks_by_ns;
 }
 
-int Solver::solve_internal_search_plays(
+enum Order { HIGH_TO_LOW, LOW_TO_HIGH };
+
+class Searcher {
+public:
+  Searcher(
+      Solver &solver, bool maximizing, int &alpha, int &beta, Card *best_play
+  )
+      : solver_(solver),
+        maximizing_(maximizing),
+        alpha_(alpha),
+        beta_(beta),
+        best_play_(best_play) {
+    best_tricks_by_ns_ = maximizing ? -1 : solver_.game().tricks_max() + 1;
+  }
+
+  int best_tricks_by_ns() const { return best_tricks_by_ns_; }
+
+  bool search_cards(Cards cards, Order order) {
+    cards = cards.subtract(searched_cards_);
+    searched_cards_.add_all(cards);
+    if (cards.empty()) {
+      return false;
+    }
+    cards = cards.remove_equivalent_ranks();
+    if (order == HIGH_TO_LOW) {
+      for (auto i = cards.iter_high(); i.valid(); i = cards.iter_lower(i)) {
+        if (search_card(i.card())) {
+          return true;
+        }
+      }
+    } else {
+      for (auto i = cards.iter_low(); i.valid(); i = cards.iter_higher(i)) {
+        if (search_card(i.card())) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+private:
+  bool search_card(Card c) {
+    solver_.game().play(c);
+
+    int  child_tricks_by_ns = solver_.solve_internal(alpha_, beta_, nullptr);
+    bool prune              = false;
+    if (maximizing_) {
+      if (child_tricks_by_ns > best_tricks_by_ns_) {
+        best_tricks_by_ns_ = child_tricks_by_ns;
+        if (best_play_) {
+          *best_play_ = c;
+        }
+      }
+      if (solver_.ab_pruning_enabled_) {
+        if (best_tricks_by_ns_ >= beta_) {
+          prune = true;
+        } else {
+          alpha_ = std::max(alpha_, best_tricks_by_ns_);
+        }
+      }
+    } else {
+      if (child_tricks_by_ns < best_tricks_by_ns_) {
+        best_tricks_by_ns_ = child_tricks_by_ns;
+        if (best_play_) {
+          *best_play_ = c;
+        }
+      }
+      if (solver_.ab_pruning_enabled_) {
+        if (best_tricks_by_ns_ <= alpha_) {
+          prune = true;
+        } else {
+          beta_ = std::min(beta_, best_tricks_by_ns_);
+        }
+      }
+    }
+
+    solver_.game().unplay();
+    searched_cards_.add(c);
+    return prune;
+  }
+
+  Solver &solver_;
+  Cards   searched_cards_;
+  bool    maximizing_;
+  int     alpha_;
+  int     beta_;
+  int     best_tricks_by_ns_;
+  Card   *best_play_;
+};
+
+int Solver::solve_internal_search(
     bool maximizing, int &alpha, int &beta, Card *best_play
 ) {
   states_explored_++;
 
-  int   best_tricks_by_ns = maximizing ? -1 : game_.tricks_max() + 1;
-  Cards valid_plays       = game_.valid_plays().remove_equivalent_ranks();
-  for (auto i = valid_plays.first(); i.valid(); i = valid_plays.next(i)) {
-    if (solve_internal_search_single_play(
-            i.card(), maximizing, alpha, beta, best_tricks_by_ns, best_play
-        )) {
-      break;
-    }
-  }
-  return best_tricks_by_ns;
-}
+  Searcher     searcher(*this, maximizing, alpha, beta, best_play);
+  const Trick &t        = game_.current_trick();
+  Cards        my_plays = game_.valid_plays();
 
-bool Solver::solve_internal_search_single_play(
-    Card  c,
-    bool  maximizing,
-    int  &alpha,
-    int  &beta,
-    int  &best_tricks_by_ns,
-    Card *best_play
-) {
-  game_.play(c);
+  if (move_ordering_enabled_) {
+    Cards my_winners = my_plays.intersect(t.winning_cards());
+    Cards my_losers  = my_plays.subtract(my_winners);
 
-  int  child_tricks_by_ns = solve_internal(alpha, beta, nullptr);
-  bool prune              = false;
-  if (maximizing) {
-    if (child_tricks_by_ns > best_tricks_by_ns) {
-      best_tricks_by_ns = child_tricks_by_ns;
-      if (best_play) {
-        *best_play = c;
-      }
-    }
-    if (ab_pruning_enabled_) {
-      if (best_tricks_by_ns >= beta) {
-        prune = true;
+    if (t.card_count() == 1) {
+      Cards partner_plays   = t.valid_plays(game_.hand(t.seat(3)));
+      Cards partner_winners = partner_plays.intersect(t.winning_cards());
+      if (partner_winners.empty()) {
+        if (searcher.search_cards(my_winners, HIGH_TO_LOW)) {
+          return searcher.best_tricks_by_ns();
+        }
       } else {
-        alpha = std::max(alpha, best_tricks_by_ns);
+        if (searcher.search_cards(my_losers, LOW_TO_HIGH)) {
+          return searcher.best_tricks_by_ns();
+        }
       }
-    }
-  } else {
-    if (child_tricks_by_ns < best_tricks_by_ns) {
-      best_tricks_by_ns = child_tricks_by_ns;
-      if (best_play) {
-        *best_play = c;
-      }
-    }
-    if (ab_pruning_enabled_) {
-      if (best_tricks_by_ns <= alpha) {
-        prune = true;
+    } else if (t.card_count() == 2) {
+      Cards opp_plays   = t.valid_plays(game_.hand(t.seat(3)));
+      Cards opp_winners = opp_plays.intersect(t.winning_cards());
+      if (opp_winners.empty()) {
+        if (searcher.search_cards(my_losers, LOW_TO_HIGH)) {
+          return searcher.best_tricks_by_ns();
+        }
       } else {
-        beta = std::min(beta, best_tricks_by_ns);
+        if (searcher.search_cards(my_winners, HIGH_TO_LOW)) {
+          return searcher.best_tricks_by_ns();
+        }
+      }
+    } else if (t.card_count() == 3) {
+      bool partner_winning = t.winning_index() == 1;
+      if (partner_winning) {
+        if (searcher.search_cards(my_losers, LOW_TO_HIGH)) {
+          return searcher.best_tricks_by_ns();
+        }
+      } else {
+        if (searcher.search_cards(my_winners, LOW_TO_HIGH)) {
+          return searcher.best_tricks_by_ns();
+        }
       }
     }
   }
 
-  game_.unplay();
-  return prune;
+  searcher.search_cards(my_plays, LOW_TO_HIGH);
+
+  return searcher.best_tricks_by_ns();
 }
 
 int Solver::count_sure_tricks(const State &state) const {

@@ -18,7 +18,9 @@ TEST(State, hash) {
   EXPECT_TRUE(absl::VerifyTypeImplementsAbslHashCorrectly(states));
 }
 
-void validate_solvers(Solver &s1, Solver &s2) {
+void validate_solver(Solver &s1) {
+  Solver s2 = Solver(s1.game());
+  s2.enable_all_optimizations(false);
   auto r1 = s1.solve();
   auto r2 = s2.solve();
   ASSERT_EQ(r1.tricks_taken_by_ns(), r2.tricks_taken_by_ns());
@@ -37,15 +39,13 @@ TEST(Solver, ab_pruning) {
   std::default_random_engine random(123);
 
   for (int i = 0; i < 100; i++) {
-    Game   g  = Game::random_deal(random, DEAL_SIZE);
-    Solver s1 = Solver(g);
-    Solver s2 = Solver(g);
-    s1.enable_all_optimizations(false);
-    s1.enable_ab_pruning(true);
-    s2.enable_all_optimizations(false);
+    Game   g = Game::random_deal(random, DEAL_SIZE);
+    Solver s = Solver(g);
+    s.enable_all_optimizations(false);
+    s.enable_ab_pruning(true);
     ASSERT_NO_FATAL_FAILURE({
       SCOPED_TRACE(::testing::Message() << "iteration " << i);
-      validate_solvers(s1, s2);
+      validate_solver(s);
     });
   }
 }
@@ -54,15 +54,13 @@ TEST(Solver, tp_table) {
   std::default_random_engine random(123);
 
   for (int i = 0; i < 100; i++) {
-    Game   g  = Game::random_deal(random, DEAL_SIZE);
-    Solver s1 = Solver(g);
-    Solver s2 = Solver(g);
-    s1.enable_all_optimizations(false);
-    s1.enable_tp_table(true);
-    s2.enable_all_optimizations(false);
+    Game   g = Game::random_deal(random, DEAL_SIZE);
+    Solver s = Solver(g);
+    s.enable_all_optimizations(false);
+    s.enable_tp_table(true);
     ASSERT_NO_FATAL_FAILURE({
       SCOPED_TRACE(::testing::Message() << "iteration " << i);
-      validate_solvers(s1, s2);
+      validate_solver(s);
     });
   }
 }
@@ -71,17 +69,29 @@ TEST(Solver, tp_table_norm) {
   std::default_random_engine random(123);
 
   for (int i = 0; i < 100; i++) {
-    Game   g  = Game::random_deal(random, DEAL_SIZE);
-    Solver s1 = Solver(g);
-    Solver s2 = Solver(g);
-    s1.enable_all_optimizations(false);
-    s1.enable_tp_table(true);
-    s1.enable_tp_table_norm(true);
-    s2.enable_all_optimizations(false);
-    s2.enable_tp_table(true);
+    Game   g = Game::random_deal(random, DEAL_SIZE);
+    Solver s = Solver(g);
+    s.enable_all_optimizations(false);
+    s.enable_tp_table(true);
+    s.enable_tp_table_norm(true);
     ASSERT_NO_FATAL_FAILURE({
       SCOPED_TRACE(::testing::Message() << "iteration " << i);
-      validate_solvers(s1, s2);
+      validate_solver(s);
+    });
+  }
+}
+
+TEST(Solver, move_ordering) {
+  std::default_random_engine random(123);
+
+  for (int i = 0; i < 100; i++) {
+    Game   g = Game::random_deal(random, DEAL_SIZE);
+    Solver s = Solver(g);
+    s.enable_all_optimizations(false);
+    s.enable_move_ordering(true);
+    ASSERT_NO_FATAL_FAILURE({
+      SCOPED_TRACE(::testing::Message() << "iteration " << i);
+      validate_solver(s);
     });
   }
 }
@@ -90,14 +100,12 @@ TEST(Solver, all_optimizations) {
   std::default_random_engine random(123);
 
   for (int i = 0; i < 100; i++) {
-    Game   g  = Game::random_deal(random, DEAL_SIZE);
-    Solver s1 = Solver(g);
-    Solver s2 = Solver(g);
-    s1.enable_all_optimizations(true);
-    s2.enable_all_optimizations(false);
+    Game   g = Game::random_deal(random, DEAL_SIZE);
+    Solver s = Solver(g);
+    s.enable_all_optimizations(true);
     ASSERT_NO_FATAL_FAILURE({
       SCOPED_TRACE(::testing::Message() << "iteration " << i);
-      validate_solvers(s1, s2);
+      validate_solver(s);
     });
   }
 }

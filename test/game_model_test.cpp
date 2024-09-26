@@ -231,7 +231,7 @@ void test_play_unplay_dfs(Game &g) {
   }
 
   Cards p = g.valid_plays();
-  for (auto i = p.first(); i.valid(); i = p.next(i)) {
+  for (auto i = p.iter_high(); i.valid(); i = p.iter_lower(i)) {
     g.play(i.card());
     test_play_unplay_dfs(g);
     g.unplay();

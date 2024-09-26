@@ -212,7 +212,15 @@ void Game::unplay() {
 Cards Game::valid_plays() const {
   if (finished()) {
     return Cards();
-  } else {
-    return current_trick().valid_plays(hands_[next_seat_]);
   }
+
+  Cards        c = hands_[next_seat_];
+  const Trick &t = current_trick();
+  if (t.started()) {
+    Cards cs = c.intersect_suit(t.lead_suit());
+    if (!cs.empty()) {
+      return cs;
+    }
+  }
+  return c;
 }
