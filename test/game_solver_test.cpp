@@ -33,7 +33,7 @@ void validate_solvers(Solver &s1, Solver &s2) {
   ASSERT_EQ(s1.game().tricks_taken_by_ns(), r1.tricks_taken_by_ns());
 }
 
-TEST(Solver, alpha_beta_pruning) {
+TEST(Solver, ab_pruning) {
   std::default_random_engine random(123);
 
   for (int i = 0; i < 100; i++) {
@@ -41,7 +41,7 @@ TEST(Solver, alpha_beta_pruning) {
     Solver s1 = Solver(g);
     Solver s2 = Solver(g);
     s1.enable_all_optimizations(false);
-    s1.enable_alpha_beta_pruning(true);
+    s1.enable_ab_pruning(true);
     s2.enable_all_optimizations(false);
     ASSERT_NO_FATAL_FAILURE({
       SCOPED_TRACE(::testing::Message() << "iteration " << i);
@@ -50,7 +50,7 @@ TEST(Solver, alpha_beta_pruning) {
   }
 }
 
-TEST(Solver, transposition_table) {
+TEST(Solver, tp_table) {
   std::default_random_engine random(123);
 
   for (int i = 0; i < 100; i++) {
@@ -58,7 +58,7 @@ TEST(Solver, transposition_table) {
     Solver s1 = Solver(g);
     Solver s2 = Solver(g);
     s1.enable_all_optimizations(false);
-    s1.enable_transposition_table(true);
+    s1.enable_tp_table(true);
     s2.enable_all_optimizations(false);
     ASSERT_NO_FATAL_FAILURE({
       SCOPED_TRACE(::testing::Message() << "iteration " << i);
@@ -67,7 +67,7 @@ TEST(Solver, transposition_table) {
   }
 }
 
-TEST(Solver, state_normalization) {
+TEST(Solver, tp_table_norm) {
   std::default_random_engine random(123);
 
   for (int i = 0; i < 100; i++) {
@@ -75,10 +75,10 @@ TEST(Solver, state_normalization) {
     Solver s1 = Solver(g);
     Solver s2 = Solver(g);
     s1.enable_all_optimizations(false);
-    s1.enable_transposition_table(true);
-    s1.enable_state_normalization(true);
+    s1.enable_tp_table(true);
+    s1.enable_tp_table_norm(true);
     s2.enable_all_optimizations(false);
-    s2.enable_transposition_table(true);
+    s2.enable_tp_table(true);
     ASSERT_NO_FATAL_FAILURE({
       SCOPED_TRACE(::testing::Message() << "iteration " << i);
       validate_solvers(s1, s2);

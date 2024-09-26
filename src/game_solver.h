@@ -20,18 +20,18 @@ public:
         : tricks_taken_by_ns_(tricks_taken_by_ns),
           best_play_(best_play),
           states_explored_(states_explored),
-          transposition_table_size_(transposition_table_size) {}
+          states_memoized_(transposition_table_size) {}
 
     int  tricks_taken_by_ns() const { return tricks_taken_by_ns_; }
     Card best_play() const { return best_play_; }
     int  states_explored() const { return states_explored_; }
-    int  states_memoized() const { return transposition_table_size_; }
+    int  states_memoized() const { return states_memoized_; }
 
   private:
     int  tricks_taken_by_ns_;
     Card best_play_;
     int  states_explored_;
-    int  transposition_table_size_;
+    int  states_memoized_;
   };
 
   struct State {
@@ -56,22 +56,14 @@ public:
   ~Solver();
 
   void enable_all_optimizations(bool enabled) {
-    alpha_beta_pruning_enabled_  = enabled;
-    transposition_table_enabled_ = enabled;
-    state_normalization_enabled_ = enabled;
+    ab_pruning_enabled_    = enabled;
+    tp_table_enabled_      = enabled;
+    tp_table_norm_enabled_ = enabled;
   }
 
-  void enable_alpha_beta_pruning(bool enabled) {
-    alpha_beta_pruning_enabled_ = enabled;
-  }
-
-  void enable_transposition_table(bool enabled) {
-    transposition_table_enabled_ = enabled;
-  }
-
-  void enable_state_normalization(bool enabled) {
-    state_normalization_enabled_ = enabled;
-  }
+  void enable_ab_pruning(bool enabled) { ab_pruning_enabled_ = enabled; }
+  void enable_tp_table(bool enabled) { tp_table_enabled_ = enabled; }
+  void enable_tp_table_norm(bool enabled) { tp_table_norm_enabled_ = enabled; }
 
   void enable_tracing(std::ostream *os) {
     trace_ostream_ = os;
@@ -113,10 +105,10 @@ private:
 
   Game               game_;
   int                states_explored_;
-  TranspositionTable transposition_table_;
-  bool               alpha_beta_pruning_enabled_;
-  bool               transposition_table_enabled_;
-  bool               state_normalization_enabled_;
+  TranspositionTable tp_table_;
+  bool               ab_pruning_enabled_;
+  bool               tp_table_enabled_;
+  bool               tp_table_norm_enabled_;
   std::ostream      *trace_ostream_;
   int                trace_lineno_;
 };

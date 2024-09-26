@@ -42,10 +42,7 @@ Solver::Result Solver::solve() {
   Card best_play;
   int  tricks_taken_by_ns = solve_internal(0, game_.tricks_max(), &best_play);
   return Solver::Result(
-      tricks_taken_by_ns,
-      best_play,
-      states_explored_,
-      (int)transposition_table_.size()
+      tricks_taken_by_ns, best_play, states_explored_, (int)tp_table_.size()
   );
 }
 
@@ -65,10 +62,10 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
   State state;
 
   if (start_of_trick) {
-    state.init(game_, alpha, beta, state_normalization_enabled_);
+    state.init(game_, alpha, beta, tp_table_norm_enabled_);
 
     if (!best_play) {
-      if (alpha_beta_pruning_enabled_) {
+      if (ab_pruning_enabled_) {
         int sure_tricks = count_sure_tricks(state);
         if (maximizing) {
           int worst_case = game_.tricks_taken_by_ns() + sure_tricks;
@@ -86,9 +83,9 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
         }
       }
 
-      if (transposition_table_enabled_) {
-        auto it = transposition_table_.find(state);
-        if (it != transposition_table_.end()) {
+      if (tp_table_enabled_) {
+        auto it = tp_table_.find(state);
+        if (it != tp_table_.end()) {
           int tricks_taken_by_ns = game_.tricks_taken_by_ns() + it->second;
           TRACE("lookup", &state, alpha, beta, tricks_taken_by_ns);
           return tricks_taken_by_ns;
@@ -105,10 +102,10 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
   if (start_of_trick) {
     TRACE("end", &state, alpha, beta, best_tricks_by_ns);
 
-    if (transposition_table_enabled_) {
+    if (tp_table_enabled_) {
       int tricks_takable_by_ns = best_tricks_by_ns - game_.tricks_taken_by_ns();
       assert(tricks_takable_by_ns >= 0);
-      transposition_table_[state] = (uint8_t)tricks_takable_by_ns;
+      tp_table_[state] = (uint8_t)tricks_takable_by_ns;
     }
   }
 
@@ -151,7 +148,7 @@ bool Solver::solve_internal_search_single_play(
         *best_play = c;
       }
     }
-    if (alpha_beta_pruning_enabled_) {
+    if (ab_pruning_enabled_) {
       if (best_tricks_by_ns >= beta) {
         prune = true;
       } else {
@@ -165,7 +162,7 @@ bool Solver::solve_internal_search_single_play(
         *best_play = c;
       }
     }
-    if (alpha_beta_pruning_enabled_) {
+    if (ab_pruning_enabled_) {
       if (best_tricks_by_ns <= alpha) {
         prune = true;
       } else {
@@ -179,7 +176,7 @@ bool Solver::solve_internal_search_single_play(
 }
 
 int Solver::count_sure_tricks(const State &state) const {
-  if (game_.current_trick().started() || !state_normalization_enabled_) {
+  if (game_.current_trick().started() || !tp_table_norm_enabled_) {
     return 0;
   }
 
