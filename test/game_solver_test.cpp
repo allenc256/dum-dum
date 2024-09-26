@@ -5,13 +5,13 @@
 
 constexpr int DEAL_SIZE = 4;
 
-TEST(State, hash) {
+TEST(GameState, hash) {
   std::default_random_engine      random(123);
   std::uniform_int_distribution<> dist(0, 13);
-  std::vector<Solver::State>      states;
+  std::vector<Solver::GameState>  states;
   for (int i = 0; i < 100; i++) {
-    Game          g = Game::random_deal(random, 13);
-    Solver::State s;
+    Game              g = Game::random_deal(random, 13);
+    Solver::GameState s;
     s.init(g, dist(random), dist(random), false);
     states.push_back(s);
   }

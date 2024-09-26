@@ -34,7 +34,7 @@ public:
     int  states_memoized_;
   };
 
-  struct State {
+  struct GameState {
     std::array<Cards, 4> hands;
     Seat                 next_seat;
     uint8_t              alpha;
@@ -42,11 +42,11 @@ public:
 
     void init(const Game &g, int alpha, int beta, bool normalize);
 
-    template <typename H> friend H AbslHashValue(H h, const State &s) {
+    template <typename H> friend H AbslHashValue(H h, const GameState &s) {
       return H::combine(std::move(h), s.hands, s.next_seat, s.alpha, s.beta);
     }
 
-    friend bool operator==(const State &s1, const State &s2) {
+    friend bool operator==(const GameState &s1, const GameState &s2) {
       return s1.hands == s2.hands && s1.next_seat == s2.next_seat &&
              s1.alpha == s2.alpha && s1.beta == s2.beta;
     }
@@ -95,17 +95,17 @@ private:
   bool search_cards(SearchState &s, Cards c, Order o);
   bool search_card(SearchState &s, Card c);
 
-  int count_sure_tricks(const State &s) const;
+  int count_sure_tricks(const GameState &s) const;
 
   void trace(
-      const char  *tag,
-      const State *state,
-      int          alpha,
-      int          beta,
-      int          tricks_taken_by_ns
+      const char      *tag,
+      const GameState *state,
+      int              alpha,
+      int              beta,
+      int              tricks_taken_by_ns
   );
 
-  typedef absl::flat_hash_map<State, uint8_t> TranspositionTable;
+  typedef absl::flat_hash_map<GameState, uint8_t> TranspositionTable;
 
   friend class Searcher;
 
