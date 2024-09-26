@@ -76,25 +76,42 @@ public:
 
   int winning_index() const {
     assert(started());
-    return winner_[card_count_ - 1];
+    return winning_index_[card_count_ - 1];
+  }
+
+  Cards valid_plays(Cards hand) const {
+    assert(!finished());
+    if (!started()) {
+      return hand;
+    }
+    Cards c = hand.intersect_suit(lead_suit_);
+    return c.empty() ? hand : c;
+  }
+
+  Cards winning_cards() const {
+    assert(!finished());
+    return winning_cards_[card_count_ - 1];
   }
 
   void play_start(Suit trump_suit, Seat lead_seat, Card c) {
     assert(card_count_ == 0);
-    trump_suit_ = trump_suit;
-    lead_seat_  = lead_seat;
-    lead_suit_  = c.suit();
-    cards_[0]   = c;
-    card_count_ = 1;
-    winner_[0]  = 0;
+    trump_suit_       = trump_suit;
+    lead_seat_        = lead_seat;
+    lead_suit_        = c.suit();
+    cards_[0]         = c;
+    card_count_       = 1;
+    winning_cards_[0] = compute_winning_cards(c);
+    winning_index_[0] = 0;
   }
 
   void play_continue(Card c) {
     assert(card_count_ > 0 && card_count_ < 4);
-    if (better_card(c, winning_card())) {
-      winner_[card_count_] = card_count_;
+    if (winning_cards().contains(c)) {
+      winning_index_[card_count_] = card_count_;
+      winning_cards_[card_count_] = compute_winning_cards(c);
     } else {
-      winner_[card_count_] = winner_[card_count_ - 1];
+      winning_index_[card_count_] = winning_index();
+      winning_cards_[card_count_] = winning_cards();
     }
     cards_[card_count_] = c;
     card_count_++;
@@ -107,28 +124,21 @@ public:
   }
 
 private:
-  bool better_card(Card c, Card winner) {
-    if (trump_suit_ == NO_TRUMP) {
-      return c.suit() == lead_suit_ && c.rank() > winner.rank();
+  Cards compute_winning_cards(Card w) const {
+    if (trump_suit_ == NO_TRUMP || w.suit() == trump_suit_) {
+      return Cards::higher_ranks(w);
+    } else {
+      return Cards::higher_ranks(w).union_with(Cards::all(trump_suit_));
     }
-    if (winner.suit() == trump_suit_) {
-      return c.suit() == trump_suit_ && c.rank() > winner.rank();
-    }
-    if (c.suit() == trump_suit_) {
-      return true;
-    }
-    if (c.suit() == lead_suit_) {
-      return c.rank() > winner.rank();
-    }
-    return false;
   }
 
-  Suit trump_suit_;
-  Seat lead_seat_;
-  Suit lead_suit_;
-  Card cards_[4];
-  int  card_count_;
-  int  winner_[4];
+  Suit  trump_suit_;
+  Seat  lead_seat_;
+  Suit  lead_suit_;
+  Card  cards_[4];
+  int   card_count_;
+  int   winning_index_[4];
+  Cards winning_cards_[4];
 };
 
 std::ostream &operator<<(std::ostream &os, const Trick &t);
