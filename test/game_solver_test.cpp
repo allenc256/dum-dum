@@ -231,6 +231,30 @@ const ManualTestCase MANUAL_TESTS[] = {
         .tricks_taken_by_ns = 7,
         .best_plays         = Cards({"A♦", "K♦"}),
     },
+    {
+        // https://en.wikipedia.org/wiki/Trump_coup
+        .name               = "trump_coup_endplay",
+        .west               = Cards("♠ JT87  ♥ - ♦ J8 ♣ -"),
+        .north              = Cards("♠ 95432 ♥ T ♦ -  ♣ -"),
+        .east               = Cards("♠ Q6    ♥ J ♦ -  ♣ 983"),
+        .south              = Cards("♠ AK    ♥ - ♦ -  ♣ J765"),
+        .trump_suit         = CLUBS,
+        .declarer           = EAST,
+        .tricks_taken_by_ns = 5,
+        .best_plays         = Cards({"T♥"}),
+    },
+    {
+        // https://en.wikipedia.org/wiki/Uppercut_(bridge)
+        .name               = "uppercut",
+        .west               = Cards("♠ Q6    ♥ 6 ♦ 54 ♣ 8"),
+        .north              = Cards("♠ T975  ♥ A ♦ 6  ♣ -"),
+        .east               = Cards("♠ J2    ♥ - ♦ 32 ♣ 95"),
+        .south              = Cards("♠ AK843 ♥ - ♦ A  ♣ -"),
+        .trump_suit         = SPADES,
+        .declarer           = NORTH,
+        .tricks_taken_by_ns = 5,
+        .best_plays         = Cards({"6♥"}),
+    },
 };
 
 INSTANTIATE_TEST_SUITE_P(
