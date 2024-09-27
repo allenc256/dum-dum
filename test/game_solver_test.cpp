@@ -50,6 +50,22 @@ TEST(Solver, ab_pruning) {
   }
 }
 
+TEST(Solver, sure_tricks) {
+  std::default_random_engine random(123);
+
+  for (int i = 0; i < 100; i++) {
+    Game   g = Game::random_deal(random, DEAL_SIZE);
+    Solver s = Solver(g);
+    s.enable_all_optimizations(false);
+    s.enable_ab_pruning(true);
+    s.enable_sure_tricks(true);
+    ASSERT_NO_FATAL_FAILURE({
+      SCOPED_TRACE(::testing::Message() << "iteration " << i);
+      validate_solver(s);
+    });
+  }
+}
+
 TEST(Solver, tp_table) {
   std::default_random_engine random(123);
 

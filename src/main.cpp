@@ -21,7 +21,7 @@ void show_line(const Game &g, std::string line) {
 }
 
 int main() {
-  std::default_random_engine random(123);
+  std::default_random_engine random(2);
   Game                       g = Game::random_deal(random, 13);
   Solver                     s(g);
 

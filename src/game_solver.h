@@ -97,8 +97,8 @@ private:
   bool search_specific_cards(SearchState &s, Cards c, Order o);
   bool search_specific_card(SearchState &s, Card c);
 
-  int prune_sure_tricks(
-      const GameState &s, bool maximizing, int alpha, int beta
+  int search_sure_tricks(
+      const GameState &s, bool maximizing, int &alpha, int &beta
   );
   int count_sure_tricks(const GameState &s) const;
 

@@ -66,7 +66,7 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
 
     if (!best_play) {
       if (sure_tricks_enabled_) {
-        int result = prune_sure_tricks(game_state, maximizing, alpha, beta);
+        int result = search_sure_tricks(game_state, maximizing, alpha, beta);
         if (result >= 0) {
           return result;
         }
@@ -221,8 +221,8 @@ bool Solver::search_specific_card(SearchState &s, Card c) {
   return prune;
 }
 
-int Solver::prune_sure_tricks(
-    const GameState &state, bool maximizing, int alpha, int beta
+int Solver::search_sure_tricks(
+    const GameState &state, bool maximizing, int &alpha, int &beta
 ) {
   assert(sure_tricks_enabled_);
   int sure_tricks = count_sure_tricks(state);
@@ -232,6 +232,7 @@ int Solver::prune_sure_tricks(
       TRACE("prune", &state, alpha, beta, worst_case);
       return worst_case;
     }
+    alpha = std::max(alpha, worst_case);
   } else {
     int best_case =
         game_.tricks_taken_by_ns() + game_.tricks_left() - sure_tricks;
@@ -239,6 +240,7 @@ int Solver::prune_sure_tricks(
       TRACE("prune", &state, alpha, beta, best_case);
       return best_case;
     }
+    beta = std::min(beta, best_case);
   }
   return -1;
 }
