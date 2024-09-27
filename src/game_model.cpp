@@ -72,7 +72,7 @@ std::ostream &operator<<(std::ostream &os, const Game &g) {
   print_chars(os, spacing * 3, '-');
   os << std::endl;
   os << "trump_suit:         " << g.trump_suit_ << std::endl;
-  os << "declarer:           " << g.declarer_ << std::endl;
+  os << "lead_seat:          " << g.lead_seat_ << std::endl;
   os << "trick:              ";
   if (g.current_trick().started()) {
     os << g.current_trick() << std::endl;
@@ -113,10 +113,10 @@ Game Game::random_deal(std::default_random_engine &random, int cards_per_hand) {
   return Game(trump_suit, declarer, c);
 }
 
-Game::Game(Suit trump_suit, Seat declarer, Cards hands[4])
+Game::Game(Suit trump_suit, Seat lead_seat, Cards hands[4])
     : trump_suit_(trump_suit),
-      declarer_(declarer),
-      next_seat_(left_seat(declarer)),
+      lead_seat_(lead_seat),
+      next_seat_(lead_seat),
       tricks_taken_(0),
       tricks_taken_by_ns_(0) {
   tricks_max_ = hands[0].count();
@@ -188,7 +188,7 @@ void Game::unplay() {
     } else if (tricks_taken_ > 0) {
       next_seat_ = tricks_[tricks_taken_ - 1].winning_seat();
     } else {
-      next_seat_ = left_seat(declarer_);
+      next_seat_ = lead_seat_;
     }
     hands_[next_seat_].add(c);
   } else {

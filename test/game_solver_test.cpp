@@ -117,7 +117,7 @@ struct ManualTestCase {
   Cards       east;
   Cards       south;
   Suit        trump_suit;
-  Seat        declarer;
+  Seat        lead_seat;
   int         tricks_taken_by_ns;
   Cards       best_plays;
 };
@@ -127,7 +127,7 @@ class ManualTest : public testing::TestWithParam<ManualTestCase> {};
 TEST_P(ManualTest, manual_test) {
   const ManualTestCase &p        = GetParam();
   Cards                 hands[4] = {p.west, p.north, p.east, p.south};
-  Game                  g(p.trump_suit, p.declarer, hands);
+  Game                  g(p.trump_suit, p.lead_seat, hands);
   Solver                s(g);
   auto                  r = s.solve();
   EXPECT_EQ(r.tricks_taken_by_ns(), p.tricks_taken_by_ns);
@@ -143,7 +143,7 @@ const ManualTestCase MANUAL_TESTS[] = {
         .east               = Cards("♠ -  ♥ QJT ♦ - ♣ -"),
         .south              = Cards("♠ 4  ♥ 2   ♦ - ♣ A"),
         .trump_suit         = NO_TRUMP,
-        .declarer           = WEST,
+        .lead_seat          = SOUTH,
         .tricks_taken_by_ns = 3,
         .best_plays         = Cards({"A♣"}),
     },
@@ -155,7 +155,7 @@ const ManualTestCase MANUAL_TESTS[] = {
         .east               = Cards("♠ -  ♥ QJT ♦ - ♣ -"),
         .south              = Cards("♠ J2 ♥ -   ♦ - ♣ A"),
         .trump_suit         = NO_TRUMP,
-        .declarer           = WEST,
+        .lead_seat          = SOUTH,
         .tricks_taken_by_ns = 3,
         .best_plays         = Cards({"A♣"}),
     },
@@ -167,7 +167,7 @@ const ManualTestCase MANUAL_TESTS[] = {
         .east               = Cards("♠ K3 ♥ K3 ♦ - ♣ -"),
         .south              = Cards("♠ Q2 ♥ A  ♦ - ♣ A"),
         .trump_suit         = NO_TRUMP,
-        .declarer           = WEST,
+        .lead_seat          = SOUTH,
         .tricks_taken_by_ns = 4,
         .best_plays         = Cards({"A♣"}),
     },
@@ -179,7 +179,7 @@ const ManualTestCase MANUAL_TESTS[] = {
         .east               = Cards("♠ KQ ♥ K3 ♦ - ♣ -"),
         .south              = Cards("♠ 2  ♥ Q2 ♦ A ♣ -"),
         .trump_suit         = NO_TRUMP,
-        .declarer           = WEST,
+        .lead_seat          = SOUTH,
         .tricks_taken_by_ns = 4,
         .best_plays         = Cards({"2♥"}),
     },
@@ -191,7 +191,7 @@ const ManualTestCase MANUAL_TESTS[] = {
         .east               = Cards("♠ Q9  ♥ - ♦ -     ♣ J98"),
         .south              = Cards("♠ T83 ♥ 2 ♦ -     ♣ 3"),
         .trump_suit         = HEARTS,
-        .declarer           = EAST,
+        .lead_seat          = NORTH,
         .tricks_taken_by_ns = 5,
         .best_plays         = Cards({"A♦", "K♣"}),
     },
@@ -203,7 +203,7 @@ const ManualTestCase MANUAL_TESTS[] = {
         .east               = Cards("♠ J96 ♥ -  ♦ J9 ♣ -"),
         .south              = Cards("♠ AK8 ♥ -  ♦ QT ♣ -"),
         .trump_suit         = HEARTS,
-        .declarer           = EAST,
+        .lead_seat          = NORTH,
         .tricks_taken_by_ns = 5,
         .best_plays         = Cards({"A♥", "T♥"}),
     },
@@ -215,7 +215,7 @@ const ManualTestCase MANUAL_TESTS[] = {
         .east               = Cards("♠ -  ♥ KT  ♦ JT2 ♣ K"),
         .south              = Cards("♠ 53 ♥ 4   ♦ A7  ♣ J"),
         .trump_suit         = SPADES,
-        .declarer           = WEST,
+        .lead_seat          = SOUTH,
         .tricks_taken_by_ns = 6,
         .best_plays         = Cards({"5♠", "3♠"}),
     },
@@ -227,7 +227,7 @@ const ManualTestCase MANUAL_TESTS[] = {
         .east               = Cards("♠ K ♥ J97 ♦ QJT ♣ -"),
         .south              = Cards("♠ - ♥ AK2 ♦ 2   ♣ K53"),
         .trump_suit         = NO_TRUMP,
-        .declarer           = EAST,
+        .lead_seat          = NORTH,
         .tricks_taken_by_ns = 7,
         .best_plays         = Cards({"A♦", "K♦"}),
     },
@@ -239,7 +239,7 @@ const ManualTestCase MANUAL_TESTS[] = {
         .east               = Cards("♠ Q6    ♥ J ♦ -  ♣ 983"),
         .south              = Cards("♠ AK    ♥ - ♦ -  ♣ J765"),
         .trump_suit         = CLUBS,
-        .declarer           = EAST,
+        .lead_seat          = NORTH,
         .tricks_taken_by_ns = 5,
         .best_plays         = Cards({"T♥"}),
     },
@@ -251,7 +251,7 @@ const ManualTestCase MANUAL_TESTS[] = {
         .east               = Cards("♠ J2    ♥ - ♦ 32 ♣ 95"),
         .south              = Cards("♠ AK843 ♥ - ♦ A  ♣ -"),
         .trump_suit         = SPADES,
-        .declarer           = NORTH,
+        .lead_seat          = WEST,
         .tricks_taken_by_ns = 5,
         .best_plays         = Cards({"6♥"}),
     },

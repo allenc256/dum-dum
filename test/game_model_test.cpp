@@ -121,7 +121,7 @@ TEST(Game, play_unplay) {
       Cards("S 5  H 2 D - C -"),
       Cards("S 6  H 3 D - C -")
   };
-  Game g(HEARTS, NORTH, hands);
+  Game g(HEARTS, WEST, hands);
 
   EXPECT_EQ(g.tricks_taken(), 0);
   EXPECT_EQ(g.next_seat(), WEST);
@@ -198,7 +198,7 @@ TEST(Game, valid_plays) {
       Cards("S 5  H 2 D - C -"),
       Cards("S 6  H 3 D - C -")
   };
-  Game g(HEARTS, NORTH, hands);
+  Game g(HEARTS, WEST, hands);
 
   EXPECT_EQ(g.valid_plays(), Cards("S A2 H - D - C -"));
   g.play(Card("2S"));

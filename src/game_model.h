@@ -148,10 +148,10 @@ public:
   static Game
   random_deal(std::default_random_engine &random, int cards_per_hand);
 
-  Game(Suit trump_suit, Seat declarer, Cards hands[4]);
+  Game(Suit trump_suit, Seat first_lead_seat, Cards hands[4]);
 
   Suit  trump_suit() const { return trump_suit_; }
-  Seat  declarer() const { return declarer_; }
+  Seat  lead_seat() const { return lead_seat_; }
   Cards hand(Seat seat) const { return hands_[seat]; }
   Seat  next_seat() const { return next_seat_; }
 
@@ -183,7 +183,7 @@ public:
 private:
   Cards hands_[4];
   Suit  trump_suit_;
-  Seat  declarer_;
+  Seat  lead_seat_;
   Seat  next_seat_;
   Trick tricks_[14];
   int   tricks_taken_;
