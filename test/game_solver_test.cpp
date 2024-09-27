@@ -109,3 +109,133 @@ TEST(Solver, all_optimizations) {
     });
   }
 }
+
+struct ManualTestCase {
+  const char *name;
+  Cards       west;
+  Cards       north;
+  Cards       east;
+  Cards       south;
+  Suit        trump_suit;
+  Seat        declarer;
+  int         tricks_taken_by_ns;
+  Cards       best_plays;
+};
+
+class ManualTest : public testing::TestWithParam<ManualTestCase> {};
+
+TEST_P(ManualTest, manual_test) {
+  const ManualTestCase &p        = GetParam();
+  Cards                 hands[4] = {p.west, p.north, p.east, p.south};
+  Game                  g(p.trump_suit, p.declarer, hands);
+  Solver                s(g);
+  auto                  r = s.solve();
+  EXPECT_EQ(r.tricks_taken_by_ns(), p.tricks_taken_by_ns);
+  EXPECT_TRUE(p.best_plays.contains(r.best_play()));
+}
+
+const ManualTestCase MANUAL_TESTS[] = {
+    {
+        // https://en.wikipedia.org/wiki/Simple_squeeze
+        .name               = "simple_squeeze",
+        .west               = Cards("♠ KQ ♥ A   ♦ - ♣ -"),
+        .north              = Cards("♠ AJ ♥ K   ♦ - ♣ -"),
+        .east               = Cards("♠ -  ♥ QJT ♦ - ♣ -"),
+        .south              = Cards("♠ 4  ♥ 2   ♦ - ♣ A"),
+        .trump_suit         = NO_TRUMP,
+        .declarer           = WEST,
+        .tricks_taken_by_ns = 3,
+        .best_plays         = Cards({"A♣"}),
+    },
+    {
+        // https://en.wikipedia.org/wiki/Simple_squeeze
+        .name               = "split_two_card_threat_squeeze",
+        .west               = Cards("♠ KQ ♥ A   ♦ - ♣ -"),
+        .north              = Cards("♠ A3 ♥ K   ♦ - ♣ -"),
+        .east               = Cards("♠ -  ♥ QJT ♦ - ♣ -"),
+        .south              = Cards("♠ J2 ♥ -   ♦ - ♣ A"),
+        .trump_suit         = NO_TRUMP,
+        .declarer           = WEST,
+        .tricks_taken_by_ns = 3,
+        .best_plays         = Cards({"A♣"}),
+    },
+    {
+        // https://en.wikipedia.org/wiki/Simple_squeeze
+        .name               = "criss_cross_squeeze",
+        .west               = Cards("♠ -  ♥ -  ♦ - ♣ 6543"),
+        .north              = Cards("♠ A  ♥ Q2 ♦ - ♣ 2"),
+        .east               = Cards("♠ K3 ♥ K3 ♦ - ♣ -"),
+        .south              = Cards("♠ Q2 ♥ A  ♦ - ♣ A"),
+        .trump_suit         = NO_TRUMP,
+        .declarer           = WEST,
+        .tricks_taken_by_ns = 4,
+        .best_plays         = Cards({"A♣"}),
+    },
+    {
+        // https://en.wikipedia.org/wiki/Simple_squeeze
+        .name               = "vienna_coup",
+        .west               = Cards("♠ -  ♥ -  ♦ - ♣ 5432"),
+        .north              = Cards("♠ AJ ♥ A  ♦ 2 ♣ -"),
+        .east               = Cards("♠ KQ ♥ K3 ♦ - ♣ -"),
+        .south              = Cards("♠ 2  ♥ Q2 ♦ A ♣ -"),
+        .trump_suit         = NO_TRUMP,
+        .declarer           = WEST,
+        .tricks_taken_by_ns = 4,
+        .best_plays         = Cards({"2♥"}),
+    },
+    {
+        // https://en.wikipedia.org/wiki/Trump_squeeze
+        .name               = "trump_squeeze",
+        .west               = Cards("♠ -   ♥ - ♦ 65432 ♣ -"),
+        .north              = Cards("♠ A   ♥ - ♦ A     ♣ KT7"),
+        .east               = Cards("♠ Q9  ♥ - ♦ -     ♣ J98"),
+        .south              = Cards("♠ T83 ♥ 2 ♦ -     ♣ 3"),
+        .trump_suit         = HEARTS,
+        .declarer           = EAST,
+        .tricks_taken_by_ns = 5,
+        .best_plays         = Cards({"A♦", "K♣"}),
+    },
+    {
+        // https://en.wikipedia.org/wiki/Trump_squeeze
+        .name               = "double_trump_squeeze",
+        .west               = Cards("♠ Q42 ♥ -  ♦ K7 ♣ -"),
+        .north              = Cards("♠ T73 ♥ AT ♦ -  ♣ -"),
+        .east               = Cards("♠ J96 ♥ -  ♦ J9 ♣ -"),
+        .south              = Cards("♠ AK8 ♥ -  ♦ QT ♣ -"),
+        .trump_suit         = HEARTS,
+        .declarer           = EAST,
+        .tricks_taken_by_ns = 5,
+        .best_plays         = Cards({"A♥", "T♥"}),
+    },
+    {
+        // https://en.wikipedia.org/wiki/Compound_squeeze
+        .name               = "compound_squeeze",
+        .west               = Cards("♠ -  ♥ Q76 ♦ Q95 ♣ -"),
+        .north              = Cards("♠ -  ♥ AJ  ♦ K86 ♣ 7"),
+        .east               = Cards("♠ -  ♥ KT  ♦ JT2 ♣ K"),
+        .south              = Cards("♠ 53 ♥ 4   ♦ A7  ♣ J"),
+        .trump_suit         = SPADES,
+        .declarer           = WEST,
+        .tricks_taken_by_ns = 6,
+        .best_plays         = Cards({"5♠", "3♠"}),
+    },
+    {
+        // https://en.wikipedia.org/wiki/Saturated_squeeze
+        .name               = "saturated_squeeze",
+        .west               = Cards("♠ A ♥ QT8 ♦ -   ♣ QJT"),
+        .north              = Cards("♠ 2 ♥ -   ♦ AK9 ♣ A42"),
+        .east               = Cards("♠ K ♥ J97 ♦ QJT ♣ -"),
+        .south              = Cards("♠ - ♥ AK2 ♦ 2   ♣ K53"),
+        .trump_suit         = NO_TRUMP,
+        .declarer           = EAST,
+        .tricks_taken_by_ns = 7,
+        .best_plays         = Cards({"A♦", "K♦"}),
+    },
+};
+
+INSTANTIATE_TEST_SUITE_P(
+    Solver,
+    ManualTest,
+    testing::ValuesIn(MANUAL_TESTS),
+    [](const auto &info) { return info.param.name; }
+);

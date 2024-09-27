@@ -90,6 +90,12 @@ public:
   Cards(uint64_t bits) : bits_(bits) { assert(!(bits & ~ALL_MASK)); }
   Cards(std::string_view s);
 
+  Cards(std::initializer_list<std::string_view> cards) : bits_(0) {
+    for (auto c : cards) {
+      add(Card(c));
+    }
+  }
+
   uint64_t bits() const { return bits_; }
   bool     empty() const { return !bits_; }
   void     add(Card c) { bits_ |= to_card_bit(c); }
