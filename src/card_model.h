@@ -107,6 +107,7 @@ public:
   bool     disjoint(Cards c) const { return intersect(c).empty(); }
   Cards    intersect(Cards c) const { return Cards(bits_ & c.bits_); }
   Cards    subtract(Cards c) const { return Cards(bits_ & ~c.bits_); }
+  Cards    honors() const { return Cards(bits_ & HONORS_MASK); }
 
   Cards intersect_suit(Suit s) const { return Cards(bits_ & (SUIT_MASK << s)); }
 
@@ -198,10 +199,12 @@ private:
     return Card((Rank)(card_index / 4), (Suit)(card_index % 4));
   }
 
+  static const uint64_t HONORS_MASK =
+      0b1111111111111111000000000000000000000000000000000000ull;
   static const uint64_t SUIT_MASK =
-      0b0001000100010001000100010001000100010001000100010001UL;
+      0b0001000100010001000100010001000100010001000100010001ull;
   static const uint64_t ALL_MASK =
-      0b1111111111111111111111111111111111111111111111111111UL;
+      0b1111111111111111111111111111111111111111111111111111ull;
 
   friend bool operator==(Cards c1, Cards c2);
 

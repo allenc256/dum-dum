@@ -65,21 +65,10 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
     game_state.init(game_, alpha, beta, tp_table_norm_enabled_);
 
     if (!best_play) {
-      if (ab_pruning_enabled_) {
-        int sure_tricks = count_sure_tricks(game_state);
-        if (maximizing) {
-          int worst_case = game_.tricks_taken_by_ns() + sure_tricks;
-          if (worst_case >= beta) {
-            TRACE("prune", &game_state, alpha, beta, worst_case);
-            return worst_case;
-          }
-        } else {
-          int best_case =
-              game_.tricks_taken_by_ns() + game_.tricks_left() - sure_tricks;
-          if (best_case <= alpha) {
-            TRACE("prune", &game_state, alpha, beta, best_case);
-            return best_case;
-          }
+      if (sure_tricks_enabled_) {
+        int result = prune_sure_tricks(game_state, maximizing, alpha, beta);
+        if (result >= 0) {
+          return result;
         }
       }
 
@@ -103,7 +92,7 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
       .best_tricks_by_ns = maximizing ? -1 : game_.tricks_max() + 1,
       .best_play         = best_play,
   };
-  search_cards(search_state);
+  search_all_cards(search_state);
 
   if (start_of_trick) {
     TRACE("end", &game_state, alpha, beta, search_state.best_tricks_by_ns);
@@ -119,7 +108,7 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
   return search_state.best_tricks_by_ns;
 }
 
-bool Solver::search_cards(SearchState &s) {
+bool Solver::search_all_cards(SearchState &s) {
   states_explored_++;
 
   const Trick &t        = game_.current_trick();
@@ -133,11 +122,11 @@ bool Solver::search_cards(SearchState &s) {
       Cards partner_plays   = t.valid_plays(game_.hand(t.seat(3)));
       Cards partner_winners = partner_plays.intersect(t.winning_cards());
       if (partner_winners.empty()) {
-        if (search_cards(s, my_winners, HIGH_TO_LOW)) {
+        if (search_specific_cards(s, my_winners, HIGH_TO_LOW)) {
           return true;
         }
       } else {
-        if (search_cards(s, my_losers, LOW_TO_HIGH)) {
+        if (search_specific_cards(s, my_losers, LOW_TO_HIGH)) {
           return true;
         }
       }
@@ -145,47 +134,47 @@ bool Solver::search_cards(SearchState &s) {
       Cards opp_plays   = t.valid_plays(game_.hand(t.seat(3)));
       Cards opp_winners = opp_plays.intersect(t.winning_cards());
       if (opp_winners.empty()) {
-        if (search_cards(s, my_losers, LOW_TO_HIGH)) {
+        if (search_specific_cards(s, my_losers, LOW_TO_HIGH)) {
           return true;
         }
       } else {
-        if (search_cards(s, my_winners, HIGH_TO_LOW)) {
+        if (search_specific_cards(s, my_winners, HIGH_TO_LOW)) {
           return true;
         }
       }
     } else if (t.card_count() == 3) {
       bool partner_winning = t.winning_index() == 1;
       if (partner_winning) {
-        if (search_cards(s, my_losers, LOW_TO_HIGH)) {
+        if (search_specific_cards(s, my_losers, LOW_TO_HIGH)) {
           return true;
         }
       } else {
-        if (search_cards(s, my_winners, LOW_TO_HIGH)) {
+        if (search_specific_cards(s, my_winners, LOW_TO_HIGH)) {
           return true;
         }
       }
     }
   }
 
-  return search_cards(s, my_plays, LOW_TO_HIGH);
+  return search_specific_cards(s, my_plays, LOW_TO_HIGH);
 }
 
-bool Solver::search_cards(SearchState &s, Cards c, Order o) {
+bool Solver::search_specific_cards(SearchState &s, Cards c, Order o) {
   c = c.subtract(s.already_searched);
-  s.already_searched.add_all(c);
   if (c.empty()) {
     return false;
   }
+  s.already_searched.add_all(c);
   c = c.remove_equivalent_ranks();
   if (o == HIGH_TO_LOW) {
     for (auto i = c.iter_high(); i.valid(); i = c.iter_lower(i)) {
-      if (search_card(s, i.card())) {
+      if (search_specific_card(s, i.card())) {
         return true;
       }
     }
   } else {
     for (auto i = c.iter_low(); i.valid(); i = c.iter_higher(i)) {
-      if (search_card(s, i.card())) {
+      if (search_specific_card(s, i.card())) {
         return true;
       }
     }
@@ -193,7 +182,7 @@ bool Solver::search_cards(SearchState &s, Cards c, Order o) {
   return false;
 }
 
-bool Solver::search_card(SearchState &s, Card c) {
+bool Solver::search_specific_card(SearchState &s, Card c) {
   game_.play(c);
 
   int  child_tricks_by_ns = solve_internal(s.alpha, s.beta, nullptr);
@@ -229,8 +218,29 @@ bool Solver::search_card(SearchState &s, Card c) {
   }
 
   game_.unplay();
-  s.already_searched.add(c);
   return prune;
+}
+
+int Solver::prune_sure_tricks(
+    const GameState &state, bool maximizing, int alpha, int beta
+) {
+  assert(sure_tricks_enabled_);
+  int sure_tricks = count_sure_tricks(state);
+  if (maximizing) {
+    int worst_case = game_.tricks_taken_by_ns() + sure_tricks;
+    if (worst_case >= beta) {
+      TRACE("prune", &state, alpha, beta, worst_case);
+      return worst_case;
+    }
+  } else {
+    int best_case =
+        game_.tricks_taken_by_ns() + game_.tricks_left() - sure_tricks;
+    if (best_case <= alpha) {
+      TRACE("prune", &state, alpha, beta, best_case);
+      return best_case;
+    }
+  }
+  return -1;
 }
 
 int Solver::count_sure_tricks(const GameState &state) const {

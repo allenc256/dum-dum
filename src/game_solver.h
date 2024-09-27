@@ -60,12 +60,14 @@ public:
     tp_table_enabled_      = enabled;
     tp_table_norm_enabled_ = enabled;
     move_ordering_enabled_ = enabled;
+    sure_tricks_enabled_   = enabled;
   }
 
   void enable_ab_pruning(bool enabled) { ab_pruning_enabled_ = enabled; }
   void enable_tp_table(bool enabled) { tp_table_enabled_ = enabled; }
   void enable_tp_table_norm(bool enabled) { tp_table_norm_enabled_ = enabled; }
   void enable_move_ordering(bool enabled) { move_ordering_enabled_ = enabled; }
+  void enable_sure_tricks(bool enabled) { sure_tricks_enabled_ = enabled; }
 
   void enable_tracing(std::ostream *os) {
     trace_ostream_ = os;
@@ -91,10 +93,13 @@ private:
 
   enum Order { LOW_TO_HIGH, HIGH_TO_LOW };
 
-  bool search_cards(SearchState &s);
-  bool search_cards(SearchState &s, Cards c, Order o);
-  bool search_card(SearchState &s, Card c);
+  bool search_all_cards(SearchState &s);
+  bool search_specific_cards(SearchState &s, Cards c, Order o);
+  bool search_specific_card(SearchState &s, Card c);
 
+  int prune_sure_tricks(
+      const GameState &s, bool maximizing, int alpha, int beta
+  );
   int count_sure_tricks(const GameState &s) const;
 
   void trace(
@@ -116,6 +121,7 @@ private:
   bool               tp_table_enabled_;
   bool               tp_table_norm_enabled_;
   bool               move_ordering_enabled_;
+  bool               sure_tricks_enabled_;
   std::ostream      *trace_ostream_;
   int                trace_lineno_;
 };
