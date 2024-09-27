@@ -255,6 +255,18 @@ const ManualTestCase MANUAL_TESTS[] = {
         .tricks_taken_by_ns = 5,
         .best_plays         = Cards({"6♥"}),
     },
+    {
+        // https://en.wikipedia.org/wiki/Trump_coup
+        .name               = "grand_coup",
+        .west               = Cards("♠ T73   ♥ J83  ♦ T9   ♣ J974"),
+        .north              = Cards("♠ 8     ♥ 65   ♦ K32  ♣ KQT853"),
+        .east               = Cards("♠ 9642  ♥ QT9  ♦ 8654 ♣ 6"),
+        .south              = Cards("♠ AKQJ5 ♥ AK7  ♦ Q7   ♣ A2"),
+        .trump_suit         = CLUBS,
+        .lead_seat          = EAST,
+        .tricks_taken_by_ns = 12,
+        .best_plays         = Cards::all(),
+    },
 };
 
 INSTANTIATE_TEST_SUITE_P(
