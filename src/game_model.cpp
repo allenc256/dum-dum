@@ -35,10 +35,14 @@ std::istream &operator>>(std::istream &is, Seat &s) {
 
 std::ostream &operator<<(std::ostream &os, const Trick &t) {
   if (!t.started()) {
-    os << "-";
+    os << '-';
   } else {
     for (int i = 0; i < t.card_count(); i++) {
-      os << t.card(i);
+      if (t.skipped(i)) {
+        os << "??";
+      } else {
+        os << t.card(i);
+      }
     }
     if (t.finished()) {
       os << " " << t.winning_seat();

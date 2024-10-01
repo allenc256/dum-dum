@@ -58,21 +58,35 @@ TEST(Trick, trump_ruff_discard) {
   test_trick(HEARTS, WEST, {"2C", "2H", "3C", "TC"}, NORTH);
 }
 
+struct CheckTrickArgs {
+  int  card_count;
+  Seat winning_seat;
+  bool skipped[4];
+};
+
+static void check_trick(const Trick &t, CheckTrickArgs args) {
+  EXPECT_EQ(t.started(), args.card_count > 0);
+  EXPECT_EQ(t.finished(), args.card_count == 4);
+  EXPECT_EQ(t.card_count(), args.card_count);
+  if (t.started()) {
+    EXPECT_EQ(t.winning_seat(), args.winning_seat);
+  }
+  for (int i = 0; i < t.card_count(); i++) {
+    EXPECT_EQ(t.skipped(i), args.skipped[i]);
+  }
+}
+
 TEST(Trick, unplay) {
   Trick t = make_trick(HEARTS, WEST, {"2C", "2H", "3C", "TC"});
-  EXPECT_TRUE(t.finished());
-  EXPECT_EQ(t.card_count(), 4);
-  EXPECT_EQ(t.winning_seat(), NORTH);
+  check_trick(t, {.card_count = 4, .winning_seat = NORTH, .skipped = {false}});
   t.unplay();
-  EXPECT_TRUE(t.started());
-  EXPECT_FALSE(t.finished());
-  EXPECT_EQ(t.card_count(), 3);
+  check_trick(t, {.card_count = 3, .winning_seat = NORTH, .skipped = {false}});
   t.unplay();
+  check_trick(t, {.card_count = 2, .winning_seat = NORTH, .skipped = {false}});
   t.unplay();
+  check_trick(t, {.card_count = 1, .winning_seat = WEST, .skipped = {false}});
   t.unplay();
-  EXPECT_FALSE(t.started());
-  EXPECT_FALSE(t.finished());
-  EXPECT_EQ(t.card_count(), 0);
+  check_trick(t, {.card_count = 0});
 }
 
 TEST(Trick, winner) {
@@ -93,6 +107,38 @@ TEST(Trick, winner) {
   EXPECT_EQ(t.winning_index(), 1);
   t.unplay();
   EXPECT_EQ(t.winning_index(), 0);
+}
+
+TEST(Trick, skip) {
+  Trick t;
+
+  t.play_start(HEARTS, WEST, Card("2C"));
+  check_trick(t, {.card_count = 1, .winning_seat = WEST, .skipped = {false}});
+  t.skip_continue();
+  check_trick(
+      t, {.card_count = 2, .winning_seat = WEST, .skipped = {false, true}}
+  );
+  t.play_continue(Card("3C"));
+  check_trick(
+      t, {.card_count = 3, .winning_seat = EAST, .skipped = {false, true}}
+  );
+  t.skip_continue();
+  check_trick(
+      t,
+      {.card_count   = 4,
+       .winning_seat = EAST,
+       .skipped      = {false, true, false, true}}
+  );
+  t.unskip();
+  check_trick(
+      t, {.card_count = 3, .winning_seat = EAST, .skipped = {false, true}}
+  );
+  t.unplay();
+  check_trick(
+      t, {.card_count = 2, .winning_seat = WEST, .skipped = {false, true}}
+  );
+  t.unskip();
+  check_trick(t, {.card_count = 1, .winning_seat = WEST, .skipped = {false}});
 }
 
 TEST(Game, random_deal) {
