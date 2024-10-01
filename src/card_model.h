@@ -116,8 +116,8 @@ public:
   void     clear() { bits_ = 0; }
   bool     contains(Card c) const { return bits_ & to_card_bit(c); }
   int      count() const { return std::popcount(bits_); }
-  Cards    with(Card c) { return Cards(bits_ | to_card_bit(c)); }
-  Cards    union_with(Cards c) { return Cards(bits_ | c.bits_); }
+  Cards    with(Card c) const { return Cards(bits_ | to_card_bit(c)); }
+  Cards    union_with(Cards c) const { return Cards(bits_ | c.bits_); }
   Cards    complement() const { return Cards(~bits_ & ALL_MASK); }
   bool     disjoint(Cards c) const { return intersect(c).empty(); }
   Cards    intersect(Cards c) const { return Cards(bits_ & c.bits_); }
@@ -136,14 +136,14 @@ public:
     return count;
   }
 
-  Cards collapse_ranks(Cards to_collapse) const {
-    if (!to_collapse.bits_) {
+  Cards collapse(Cards ignorable) const {
+    if (!ignorable.bits_) {
       return *this;
     }
-    assert(disjoint(to_collapse));
+    assert(disjoint(ignorable));
     uint64_t bits = bits_;
     for (int i = 1; i < 13; i++) {
-      uint64_t keep_new = (0b1111ull << (i * 4)) & to_collapse.bits_;
+      uint64_t keep_new = (0b1111ull << (i * 4)) & ignorable.bits_;
       keep_new          = keep_new | (keep_new >> 4);
       keep_new          = keep_new | (keep_new >> 8);
       keep_new          = keep_new | (keep_new >> 16);
@@ -154,16 +154,24 @@ public:
     return Cards(bits);
   }
 
-  Cards remove_equivalent_ranks() const {
-    uint64_t bits = 0;
-    uint64_t m1   = 0b1111;
-    uint64_t m2   = 0b11110000;
+  Cards prune_equivalent(Cards ignorable) const {
+    assert(disjoint(ignorable));
+
+    constexpr uint64_t init_mask =
+        0b1111000000000000000000000000000000000000000000000000ull;
+
+    uint64_t bits      = bits_ & init_mask;
+    uint64_t next_mask = init_mask >> 4;
+    uint64_t prev      = (init_mask & bits_) >> 4;
+
     for (int i = 0; i < 12; i++) {
-      bits |= (bits_ & m1) & ~((bits_ & m2) >> 4);
-      m1 <<= 4;
-      m2 <<= 4;
+      uint64_t next   = next_mask & bits_;
+      uint64_t ignore = next_mask & ignorable.bits_;
+      bits |= ~prev & next;
+      next_mask >>= 4;
+      prev = (next | (prev & ignore)) >> 4;
     }
-    bits |= bits_ & m1;
+
     return Cards(bits);
   }
 

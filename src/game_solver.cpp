@@ -3,23 +3,12 @@
 #include <picosha2.h>
 
 void Solver::GameState::init(
-    const Game &g, int alpha_param, int beta_param, bool normalize
+    const Game &g, int alpha_param, int beta_param, Cards ignorable
 ) {
   assert(!g.current_trick().started());
 
-  if (normalize) {
-    Cards to_collapse;
-    for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
-      to_collapse.add_all(g.hand(seat));
-    }
-    to_collapse = to_collapse.complement();
-    for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
-      hands[seat] = g.hand(seat).collapse_ranks(to_collapse);
-    }
-  } else {
-    for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
-      hands[seat] = g.hand(seat);
-    }
+  for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
+    hands[seat] = g.hand(seat).collapse(ignorable);
   }
 
   next_seat = g.next_seat();
@@ -51,18 +40,29 @@ Solver::Result Solver::solve() {
     trace(tag, state, alpha, beta, tricks_taken_by_ns);                        \
   }
 
+static Cards ignorable_cards(const Game &g) {
+  Cards in_play_cards = g.current_trick().all_cards();
+  for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
+    in_play_cards.add_all(g.hand(seat));
+  }
+  return in_play_cards.complement();
+}
+
 int Solver::solve_internal(int alpha, int beta, Card *best_play) {
   if (game_.finished()) {
     TRACE("terminal", nullptr, alpha, beta, game_.tricks_taken_by_ns());
     return game_.tricks_taken_by_ns();
   }
 
-  bool maximizing = game_.next_seat() == NORTH || game_.next_seat() == SOUTH;
-  bool start_of_trick = !game_.current_trick().started();
+  bool  maximizing = game_.next_seat() == NORTH || game_.next_seat() == SOUTH;
+  bool  start_of_trick = !game_.current_trick().started();
+  Cards ignorable      = ignorable_cards(game_);
   GameState game_state;
 
   if (start_of_trick) {
-    game_state.init(game_, alpha, beta, tp_table_norm_enabled_);
+    game_state.init(
+        game_, alpha, beta, tp_table_norm_enabled_ ? ignorable : Cards()
+    );
 
     if (!best_play) {
       if (sure_tricks_enabled_) {
@@ -86,6 +86,7 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
   }
 
   SearchState search_state = {
+      .ignorable         = ignorable,
       .maximizing        = maximizing,
       .alpha             = alpha,
       .beta              = beta,
@@ -165,7 +166,7 @@ bool Solver::search_specific_cards(SearchState &s, Cards c, Order o) {
     return false;
   }
   s.already_searched.add_all(c);
-  c = c.remove_equivalent_ranks();
+  c = c.prune_equivalent(s.ignorable);
   if (o == HIGH_TO_LOW) {
     for (auto i = c.iter_high(); i.valid(); i = c.iter_lower(i)) {
       if (search_specific_card(s, i.card())) {

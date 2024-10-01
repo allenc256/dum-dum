@@ -40,7 +40,7 @@ public:
     uint8_t              alpha;
     uint8_t              beta;
 
-    void init(const Game &g, int alpha, int beta, bool normalize);
+    void init(const Game &g, int alpha, int beta, Cards ignorable);
 
     template <typename H> friend H AbslHashValue(H h, const GameState &s) {
       return H::combine(std::move(h), s.hands, s.next_seat, s.alpha, s.beta);
@@ -83,6 +83,7 @@ private:
   int solve_internal(int alpha, int beta, Card *best_play);
 
   struct SearchState {
+    Cards ignorable;
     Cards already_searched;
     bool  maximizing;
     int   alpha;

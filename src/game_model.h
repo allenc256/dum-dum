@@ -85,6 +85,14 @@ public:
     return winning_index_[card_count_ - 1];
   }
 
+  Cards all_cards() const {
+    Cards c;
+    for (int i = 0; i < card_count_; i++) {
+      c.add(cards_[i]);
+    }
+    return c;
+  }
+
   Cards valid_plays(Cards hand) const {
     assert(!finished());
     if (!started()) {

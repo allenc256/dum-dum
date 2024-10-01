@@ -145,33 +145,39 @@ TEST(Cards, disjoint) {
   EXPECT_TRUE(c1.disjoint(c3));
 }
 
-TEST(Cards, collapse_ranks) {
+TEST(Cards, collapse) {
   EXPECT_EQ(
-      Cards("♠ - ♥ - ♦ - ♣ K").collapse_ranks(Cards("♠ - ♥ - ♦ - ♣ A")),
+      Cards("♠ - ♥ - ♦ - ♣ K").collapse(Cards("♠ - ♥ - ♦ - ♣ A")),
       Cards("♠ - ♥ - ♦ - ♣ A")
   );
   EXPECT_EQ(
-      Cards("♠ - ♥ - ♦ - ♣ Q").collapse_ranks(Cards("♠ - ♥ - ♦ - ♣ A")),
+      Cards("♠ - ♥ - ♦ - ♣ Q").collapse(Cards("♠ - ♥ - ♦ - ♣ A")),
       Cards("♠ - ♥ - ♦ - ♣ K")
   );
   EXPECT_EQ(
-      Cards("♠ J8 ♥ - ♦ T3 ♣ -").collapse_ranks(Cards("♠ KT9 ♥ - ♦ 74 ♣ -")),
+      Cards("♠ J8 ♥ - ♦ T3 ♣ -").collapse(Cards("♠ KT9 ♥ - ♦ 74 ♣ -")),
       Cards("♠ QJ ♥ - ♦ T5 ♣ -")
   );
   Cards c = Cards("♠ KJ76 ♥ A ♦ 543 ♣ 2");
-  EXPECT_EQ(c.collapse_ranks(c.complement()), Cards("♠ AKQJ ♥ A ♦ AKQ ♣ A"));
-  EXPECT_EQ(c.collapse_ranks(Cards()), c);
+  EXPECT_EQ(c.collapse(c.complement()), Cards("♠ AKQJ ♥ A ♦ AKQ ♣ A"));
+  EXPECT_EQ(c.collapse(Cards()), c);
 }
 
-TEST(Cards, remove_equivalent_ranks) {
+TEST(Cards, prune_equivalent) {
   EXPECT_EQ(
-      Cards("♠ - ♥ - ♦ - ♣ 432").remove_equivalent_ranks(),
-      Cards("♠ - ♥ - ♦ - ♣ 4")
+      Cards("♠ - ♥ - ♦ - ♣ AK").prune_equivalent(Cards()),
+      Cards("♠ - ♥ - ♦ - ♣ A")
   );
   EXPECT_EQ(
-      Cards("♠ AKT98543 ♥ AQT953 ♦ - ♣ 432").remove_equivalent_ranks(),
+      Cards("♠ AKT98543 ♥ AQT953 ♦ - ♣ 432").prune_equivalent(Cards()),
       Cards("♠ AT5      ♥ AQT53 ♦ - ♣ 4")
   );
+  EXPECT_EQ(
+      Cards("♠ - ♥ - ♦ - ♣ 542").prune_equivalent(Cards({"3♣", "6♣"})),
+      Cards("♠ - ♥ - ♦ - ♣ 5")
+  );
+  Cards c = Cards("♠ KJ983 ♥ 5 ♦ - ♣ 732");
+  EXPECT_EQ(c.prune_equivalent(c.complement()), Cards("♠ K ♥ 5 ♦ - ♣ 7"));
 }
 
 TEST(Cards, top_ranks) {
