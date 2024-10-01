@@ -50,22 +50,22 @@ std::ostream &operator<<(std::ostream &os, const Trick &t) {
 std::ostream &operator<<(std::ostream &os, const Game &g) {
   constexpr int spacing = 15;
 
-  for (int i = 3; i >= 0; i--) {
+  for (Suit suit = LAST_SUIT; suit >= FIRST_SUIT; suit--) {
     print_chars(os, spacing, ' ');
-    print_cards_in_suit(os, g.hands_[NORTH], (Suit)i);
+    print_cards_in_suit(os, g.hands_[NORTH], suit);
     os << std::endl;
   }
 
-  for (int i = 3; i >= 0; i--) {
-    int count = print_cards_in_suit(os, g.hands_[WEST], (Suit)i);
+  for (Suit suit = LAST_SUIT; suit >= FIRST_SUIT; suit--) {
+    int count = print_cards_in_suit(os, g.hands_[WEST], suit);
     print_chars(os, 2 * spacing - count, ' ');
-    print_cards_in_suit(os, g.hands_[EAST], (Suit)i);
+    print_cards_in_suit(os, g.hands_[EAST], suit);
     os << std::endl;
   }
 
-  for (int i = 3; i >= 0; i--) {
+  for (Suit suit = LAST_SUIT; suit >= FIRST_SUIT; suit--) {
     print_chars(os, spacing, ' ');
-    print_cards_in_suit(os, g.hands_[SOUTH], (Suit)i);
+    print_cards_in_suit(os, g.hands_[SOUTH], suit);
     os << std::endl;
   }
 
@@ -100,8 +100,8 @@ Game Game::random_deal(std::default_random_engine &random, int cards_per_hand) {
 
   Cards c[4];
   for (int i = 0; i < cards_per_hand; i++) {
-    for (int j = 0; j < 4; j++) {
-      c[j].add(indexes[i + 13 * j]);
+    for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
+      c[seat].add(indexes[i + 13 * seat]);
     }
   }
 

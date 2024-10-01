@@ -13,7 +13,7 @@ public:
   using std::runtime_error::runtime_error;
 };
 
-enum Suit : uint8_t {
+enum Suit : int8_t {
   CLUBS,
   DIAMONDS,
   HEARTS,
@@ -21,10 +21,16 @@ enum Suit : uint8_t {
   NO_TRUMP,
 };
 
+constexpr Suit FIRST_SUIT = CLUBS;
+constexpr Suit LAST_SUIT  = SPADES;
+
+inline Suit operator++(Suit &s, int) { return (Suit)((int8_t &)s)++; }
+inline Suit operator--(Suit &s, int) { return (Suit)((int8_t &)s)--; }
+
 std::istream &operator>>(std::istream &is, Suit &s);
 std::ostream &operator<<(std::ostream &os, Suit s);
 
-enum Rank : uint8_t {
+enum Rank : int8_t {
   RANK_2,
   RANK_3,
   RANK_4,
@@ -39,6 +45,9 @@ enum Rank : uint8_t {
   KING,
   ACE
 };
+
+inline Rank operator++(Rank &r, int) { return (Rank)((int8_t &)r)++; }
+inline Rank operator--(Rank &r, int) { return (Rank)((int8_t &)r)--; }
 
 std::istream &operator>>(std::istream &is, Rank &r);
 std::ostream &operator<<(std::ostream &os, Rank r);

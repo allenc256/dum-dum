@@ -9,16 +9,16 @@ void Solver::GameState::init(
 
   if (normalize) {
     Cards to_collapse;
-    for (int i = 0; i < 4; i++) {
-      to_collapse.add_all(g.hand((Seat)i));
+    for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
+      to_collapse.add_all(g.hand(seat));
     }
     to_collapse = to_collapse.complement();
-    for (int i = 0; i < 4; i++) {
-      hands[i] = g.hand((Seat)i).collapse_ranks(to_collapse);
+    for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
+      hands[seat] = g.hand(seat).collapse_ranks(to_collapse);
     }
   } else {
-    for (int i = 0; i < 4; i++) {
-      hands[i] = g.hand((Seat)i);
+    for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
+      hands[seat] = g.hand(seat);
     }
   }
 
@@ -252,11 +252,11 @@ int Solver::count_sure_tricks(const GameState &state) const {
 
   Seat next_seat = game_.next_seat();
   int  total     = 0;
-  for (int suit_i = 0; suit_i < 4; suit_i++) {
-    int count = state.hands[next_seat].top_ranks((Suit)suit_i);
+  for (Suit suit = FIRST_SUIT; suit <= LAST_SUIT; suit++) {
+    int count = state.hands[next_seat].top_ranks(suit);
     for (int i = 1; i < 4; i++) {
       Cards h = state.hands[right_seat(next_seat, i)];
-      int   c = h.intersect_suit((Suit)suit_i).count();
+      int   c = h.intersect_suit(suit).count();
       count   = std::min(count, c);
     }
     total += count;

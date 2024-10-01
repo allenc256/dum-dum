@@ -113,25 +113,25 @@ std::string Card::to_string() const {
 int print_cards_in_suit(std::ostream &os, Cards c, Suit s) {
   assert(s != NO_TRUMP);
   c = c.intersect_suit(s);
-  os << s << " ";
+  os << s << ' ';
   int count = 0;
   for (auto i = c.iter_high(); i.valid(); i = c.iter_lower(i)) {
     os << i.card().rank();
     count++;
   }
   if (count <= 0) {
-    os << "-";
+    os << '-';
     count++;
   }
   return count + 2;
 }
 
 std::ostream &operator<<(std::ostream &os, Cards c) {
-  for (int s = 3; s >= 0; s--) {
-    if (s < 3) {
-      os << " ";
+  for (Suit s = LAST_SUIT; s >= FIRST_SUIT; s--) {
+    if (s != LAST_SUIT) {
+      os << ' ';
     }
-    print_cards_in_suit(os, c, (Suit)s);
+    print_cards_in_suit(os, c, s);
   }
   return os;
 }
@@ -188,10 +188,10 @@ static void parse_cards_ranks(std::istream &is, Suit s, Cards &cs) {
 
 std::istream &operator>>(std::istream &is, Cards &c) {
   c.clear();
-  for (int i = 3; i >= 0; i--) {
+  for (Suit suit = LAST_SUIT; suit >= FIRST_SUIT; suit--) {
     Suit s;
     is >> s;
-    if (s != (Suit)i) {
+    if (s != suit) {
       throw ParseFailure("bad suit");
     }
     parse_cards_ranks(is, s, c);

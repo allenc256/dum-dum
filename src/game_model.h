@@ -4,12 +4,18 @@
 
 #include "card_model.h"
 
-enum Seat {
+enum Seat : int {
   WEST,
   NORTH,
   EAST,
   SOUTH,
 };
+
+constexpr Seat FIRST_SEAT = WEST;
+constexpr Seat LAST_SEAT  = SOUTH;
+
+inline Seat operator++(Seat &s, int) { return (Seat)((int &)s)++; }
+inline Seat operator--(Seat &s, int) { return (Seat)((int &)s)--; }
 
 inline Seat left_seat(Seat s) { return (Seat)((s + 3) & 3); }
 inline Seat right_seat(Seat s) { return (Seat)((s + 1) & 3); }
