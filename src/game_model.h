@@ -194,6 +194,14 @@ public:
   bool  valid_play(Card c) const;
   Cards valid_plays() const;
 
+  Cards ignorable_cards() const {
+    Cards in_play_cards = current_trick().all_cards();
+    for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
+      in_play_cards.add_all(hands_[seat]);
+    }
+    return in_play_cards.complement();
+  }
+
 private:
   Cards hands_[4];
   Suit  trump_suit_;

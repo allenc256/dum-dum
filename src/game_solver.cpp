@@ -40,14 +40,6 @@ Solver::Result Solver::solve() {
     trace(tag, state, alpha, beta, tricks_taken_by_ns);                        \
   }
 
-static Cards ignorable_cards(const Game &g) {
-  Cards in_play_cards = g.current_trick().all_cards();
-  for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
-    in_play_cards.add_all(g.hand(seat));
-  }
-  return in_play_cards.complement();
-}
-
 int Solver::solve_internal(int alpha, int beta, Card *best_play) {
   if (game_.finished()) {
     TRACE("terminal", nullptr, alpha, beta, game_.tricks_taken_by_ns());
@@ -56,7 +48,7 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
 
   bool  maximizing = game_.next_seat() == NORTH || game_.next_seat() == SOUTH;
   bool  start_of_trick = !game_.current_trick().started();
-  Cards ignorable      = ignorable_cards(game_);
+  Cards ignorable      = game_.ignorable_cards();
   GameState game_state;
 
   if (start_of_trick) {
