@@ -35,10 +35,14 @@ std::istream &operator>>(std::istream &is, Seat &s) {
 
 std::ostream &operator<<(std::ostream &os, const Trick &t) {
   if (!t.started()) {
-    os << "-";
+    os << '-';
   } else {
     for (int i = 0; i < t.card_count(); i++) {
-      os << t.card(i);
+      if (t.skipped(i)) {
+        os << "??";
+      } else {
+        os << t.card(i);
+      }
     }
     if (t.finished()) {
       os << " " << t.winning_seat();
@@ -151,7 +155,7 @@ bool Game::valid_play(Card c) const {
   if (!t.started()) {
     return true;
   }
-  return c.suit() == t.lead_suit() || cs.intersect_suit(t.lead_suit()).empty();
+  return c.suit() == t.lead_suit() || cs.intersect(t.lead_suit()).empty();
 }
 
 void Game::play(Card c) {
@@ -178,11 +182,27 @@ void Game::play(Card c) {
   }
 }
 
+void Game::skip() {
+  Trick &t = current_trick();
+  assert(t.started());
+  t.skip_continue();
+
+  if (t.finished()) {
+    next_seat_ = t.winning_seat();
+    if (next_seat_ == NORTH || next_seat_ == SOUTH) {
+      tricks_taken_by_ns_++;
+    }
+    tricks_taken_++;
+  } else {
+    next_seat_ = t.next_seat();
+  }
+}
+
 void Game::unplay() {
   Trick &t = current_trick();
   if (t.started()) {
     assert(!t.finished());
-    Card c = t.unplay();
+    Trick::Unplay u = t.unplay();
     if (t.started()) {
       next_seat_ = t.next_seat();
     } else if (tricks_taken_ > 0) {
@@ -190,7 +210,9 @@ void Game::unplay() {
     } else {
       next_seat_ = lead_seat_;
     }
-    hands_[next_seat_].add(c);
+    if (!u.skipped) {
+      hands_[next_seat_].add(u.card);
+    }
   } else {
     if (tricks_taken_ > 0) {
       tricks_taken_--;
@@ -200,9 +222,11 @@ void Game::unplay() {
       if (winner == NORTH || winner == SOUTH) {
         tricks_taken_by_ns_--;
       }
-      Card c     = t.unplay();
-      next_seat_ = t.next_seat();
-      hands_[next_seat_].add(c);
+      Trick::Unplay u = t.unplay();
+      next_seat_      = t.next_seat();
+      if (!u.skipped) {
+        hands_[next_seat_].add(u.card);
+      }
     } else {
       throw std::runtime_error("no cards played");
     }
@@ -217,7 +241,7 @@ Cards Game::valid_plays() const {
   Cards        c = hands_[next_seat_];
   const Trick &t = current_trick();
   if (t.started()) {
-    Cards cs = c.intersect_suit(t.lead_suit());
+    Cards cs = c.intersect(t.lead_suit());
     if (!cs.empty()) {
       return cs;
     }

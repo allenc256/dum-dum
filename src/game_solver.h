@@ -1,37 +1,21 @@
 #pragma once
 
-#include <absl/container/flat_hash_map.h>
+#include "game_mini_solver.h"
+#include "game_model.h"
 
+#include <absl/container/flat_hash_map.h>
 #include <array>
 #include <vector>
 
-#include "game_model.h"
-
 class Solver {
 public:
-  class Result {
-  public:
-    Result(
-        int  tricks_taken_by_ns,
-        Card best_play,
-        int  states_explored,
-        int  transposition_table_size
-    )
-        : tricks_taken_by_ns_(tricks_taken_by_ns),
-          best_play_(best_play),
-          states_explored_(states_explored),
-          states_memoized_(transposition_table_size) {}
-
-    int  tricks_taken_by_ns() const { return tricks_taken_by_ns_; }
-    Card best_play() const { return best_play_; }
-    int  states_explored() const { return states_explored_; }
-    int  states_memoized() const { return states_memoized_; }
-
-  private:
-    int  tricks_taken_by_ns_;
-    Card best_play_;
-    int  states_explored_;
-    int  states_memoized_;
+  struct Result {
+    int     tricks_taken_by_ns;
+    int     tricks_taken_by_ew;
+    Card    best_play;
+    int64_t states_explored;
+    int64_t states_memoized;
+    int64_t ms_states_memoized;
   };
 
   struct GameState {
@@ -60,14 +44,14 @@ public:
     tp_table_enabled_      = enabled;
     tp_table_norm_enabled_ = enabled;
     move_ordering_enabled_ = enabled;
-    sure_tricks_enabled_   = enabled;
+    mini_solver_enabled_   = enabled;
   }
 
   void enable_ab_pruning(bool enabled) { ab_pruning_enabled_ = enabled; }
   void enable_tp_table(bool enabled) { tp_table_enabled_ = enabled; }
   void enable_tp_table_norm(bool enabled) { tp_table_norm_enabled_ = enabled; }
   void enable_move_ordering(bool enabled) { move_ordering_enabled_ = enabled; }
-  void enable_sure_tricks(bool enabled) { sure_tricks_enabled_ = enabled; }
+  void enable_mini_solver(bool enabled) { mini_solver_enabled_ = enabled; }
 
   void enable_tracing(std::ostream *os) {
     trace_ostream_ = os;
@@ -97,11 +81,7 @@ private:
   bool search_all_cards(SearchState &s);
   bool search_specific_cards(SearchState &s, Cards c, Order o);
   bool search_specific_card(SearchState &s, Card c);
-
-  int search_sure_tricks(
-      const GameState &s, bool maximizing, int &alpha, int &beta
-  );
-  int count_sure_tricks(const GameState &s) const;
+  int  search_forced_tricks(bool maximizing, int &alpha, int &beta);
 
   void trace(
       const char      *tag,
@@ -113,16 +93,15 @@ private:
 
   typedef absl::flat_hash_map<GameState, uint8_t> TranspositionTable;
 
-  friend class Searcher;
-
   Game               game_;
-  int                states_explored_;
+  int64_t            states_explored_;
   TranspositionTable tp_table_;
+  MiniSolver         mini_solver_;
   bool               ab_pruning_enabled_;
   bool               tp_table_enabled_;
   bool               tp_table_norm_enabled_;
   bool               move_ordering_enabled_;
-  bool               sure_tricks_enabled_;
+  bool               mini_solver_enabled_;
   std::ostream      *trace_ostream_;
-  int                trace_lineno_;
+  int64_t            trace_lineno_;
 };

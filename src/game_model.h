@@ -50,6 +50,11 @@ public:
   bool started() const { return card_count_ > 0; }
   bool finished() const { return card_count_ >= 4; }
 
+  bool skipped(int index) const {
+    assert(index >= 0 && index < card_count_);
+    return skipped_[index];
+  }
+
   Seat lead_seat() const {
     assert(started());
     return lead_seat_;
@@ -98,7 +103,7 @@ public:
     if (!started()) {
       return hand;
     }
-    Cards c = hand.intersect_suit(lead_suit_);
+    Cards c = hand.intersect(lead_suit_);
     return c.empty() ? hand : c;
   }
 
@@ -116,6 +121,7 @@ public:
     card_count_       = 1;
     winning_cards_[0] = compute_winning_cards(c);
     winning_index_[0] = 0;
+    skipped_[0]       = false;
   }
 
   void play_continue(Card c) {
@@ -127,22 +133,37 @@ public:
       winning_index_[card_count_] = winning_index();
       winning_cards_[card_count_] = winning_cards();
     }
-    cards_[card_count_] = c;
+    cards_[card_count_]   = c;
+    skipped_[card_count_] = false;
     card_count_++;
   }
 
-  Card unplay() {
+  void skip_continue() {
+    assert(card_count_ > 0 && card_count_ < 4);
+    winning_index_[card_count_] = winning_index();
+    winning_cards_[card_count_] = winning_cards();
+    cards_[card_count_]         = Card();
+    skipped_[card_count_]       = true;
+    card_count_++;
+  }
+
+  struct Unplay {
+    bool skipped;
+    Card card;
+  };
+
+  Unplay unplay() {
     assert(card_count_ > 0);
     card_count_--;
-    return cards_[card_count_];
+    return {.skipped = skipped_[card_count_], .card = cards_[card_count_]};
   }
 
 private:
   Cards compute_winning_cards(Card w) const {
     if (trump_suit_ == NO_TRUMP || w.suit() == trump_suit_) {
-      return Cards::higher_ranks(w);
+      return Cards::higher_ranking(w);
     } else {
-      return Cards::higher_ranks(w).union_with(Cards::all(trump_suit_));
+      return Cards::higher_ranking(w).union_with(Cards::all(trump_suit_));
     }
   }
 
@@ -153,6 +174,7 @@ private:
   int   card_count_;
   int   winning_index_[4];
   Cards winning_cards_[4];
+  bool  skipped_[4];
 };
 
 std::ostream &operator<<(std::ostream &os, const Trick &t);
@@ -168,6 +190,7 @@ public:
   Seat  lead_seat() const { return lead_seat_; }
   Cards hand(Seat seat) const { return hands_[seat]; }
   Seat  next_seat() const { return next_seat_; }
+  Seat  next_seat(int i) const { return right_seat(next_seat_, i); }
 
   Trick       &current_trick() { return tricks_[tricks_taken_]; }
   const Trick &current_trick() const { return tricks_[tricks_taken_]; }
@@ -187,8 +210,10 @@ public:
   int tricks_taken_by_ns() const { return tricks_taken_by_ns_; }
   int tricks_taken_by_ew() const { return tricks_taken_ - tricks_taken_by_ns_; }
   bool finished() const { return tricks_taken_ == tricks_max_; }
+  bool start_of_trick() const { return !current_trick().started(); }
 
   void play(Card card);
+  void skip();
   void unplay();
 
   bool  valid_play(Card c) const;

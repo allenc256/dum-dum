@@ -112,10 +112,10 @@ std::string Card::to_string() const {
 
 int print_cards_in_suit(std::ostream &os, Cards c, Suit s) {
   assert(s != NO_TRUMP);
-  c = c.intersect_suit(s);
+  c = c.intersect(s);
   os << s << ' ';
   int count = 0;
-  for (auto i = c.iter_high(); i.valid(); i = c.iter_lower(i)) {
+  for (auto i = c.iter_highest(); i.valid(); i = c.iter_lower(i)) {
     os << i.card().rank();
     count++;
   }

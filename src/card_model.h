@@ -122,7 +122,7 @@ public:
   Cards    subtract(Cards c) const { return Cards(bits_ & ~c.bits_); }
   Cards    honors() const { return Cards(bits_ & HONORS_MASK); }
 
-  Cards intersect_suit(Suit s) const { return Cards(bits_ & (SUIT_MASK << s)); }
+  Cards intersect(Suit s) const { return Cards(bits_ & (SUIT_MASK << s)); }
 
   int top_ranks(Suit s) const {
     uint64_t bit   = 1ull << (48 + s);
@@ -173,7 +173,7 @@ public:
     return Cards(bits);
   }
 
-  Iter iter_high() const {
+  Iter iter_highest() const {
     int k = std::countl_zero(bits_ << 12);
     return k < 64 ? Cards::Iter(51 - k) : Cards::Iter();
   }
@@ -190,7 +190,7 @@ public:
     return k < 64 ? Cards::Iter(i.card_index_ - k - 1) : Cards::Iter();
   }
 
-  Iter iter_low() const {
+  Iter iter_lowest() const {
     int k = std::countr_zero(bits_);
     return k < 64 ? Cards::Iter(k) : Cards::Iter();
   }
@@ -204,8 +204,13 @@ public:
   static Cards all() { return Cards(ALL_MASK); }
   static Cards all(Suit s) { return Cards(SUIT_MASK << s); }
 
-  static Cards higher_ranks(Card card) {
+  static Cards higher_ranking(Card card) {
     uint64_t rank_bits = (SUIT_MASK << ((card.rank() + 1) * 4)) & ALL_MASK;
+    return Cards(rank_bits << card.suit());
+  }
+
+  static Cards lower_ranking(Card card) {
+    uint64_t rank_bits = (SUIT_MASK >> ((13 - card.rank()) * 4)) & ALL_MASK;
     return Cards(rank_bits << card.suit());
   }
 

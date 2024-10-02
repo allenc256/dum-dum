@@ -77,11 +77,11 @@ std::vector<Card> iterate_cards(std::string s, bool high_to_low) {
   Cards             c = Cards(s);
   std::vector<Card> result;
   if (high_to_low) {
-    for (auto it = c.iter_high(); it.valid(); it = c.iter_lower(it)) {
+    for (auto it = c.iter_highest(); it.valid(); it = c.iter_lower(it)) {
       result.push_back(it.card());
     }
   } else {
-    for (auto it = c.iter_low(); it.valid(); it = c.iter_higher(it)) {
+    for (auto it = c.iter_lowest(); it.valid(); it = c.iter_higher(it)) {
       result.push_back(it.card());
     }
   }
