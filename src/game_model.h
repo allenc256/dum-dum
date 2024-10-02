@@ -103,7 +103,7 @@ public:
     if (!started()) {
       return hand;
     }
-    Cards c = hand.intersect_suit(lead_suit_);
+    Cards c = hand.intersect(lead_suit_);
     return c.empty() ? hand : c;
   }
 
@@ -161,9 +161,9 @@ public:
 private:
   Cards compute_winning_cards(Card w) const {
     if (trump_suit_ == NO_TRUMP || w.suit() == trump_suit_) {
-      return Cards::higher_ranks(w);
+      return Cards::higher_ranking(w);
     } else {
-      return Cards::higher_ranks(w).union_with(Cards::all(trump_suit_));
+      return Cards::higher_ranking(w).union_with(Cards::all(trump_suit_));
     }
   }
 
@@ -190,6 +190,7 @@ public:
   Seat  lead_seat() const { return lead_seat_; }
   Cards hand(Seat seat) const { return hands_[seat]; }
   Seat  next_seat() const { return next_seat_; }
+  Seat  next_seat(int i) const { return right_seat(next_seat_, i); }
 
   Trick       &current_trick() { return tricks_[tricks_taken_]; }
   const Trick &current_trick() const { return tricks_[tricks_taken_]; }
@@ -209,11 +210,11 @@ public:
   int tricks_taken_by_ns() const { return tricks_taken_by_ns_; }
   int tricks_taken_by_ew() const { return tricks_taken_ - tricks_taken_by_ns_; }
   bool finished() const { return tricks_taken_ == tricks_max_; }
+  bool start_of_trick() const { return !current_trick().started(); }
 
   void play(Card card);
   void skip();
   void unplay();
-  void unskip();
 
   bool  valid_play(Card c) const;
   Cards valid_plays() const;

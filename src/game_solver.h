@@ -1,11 +1,10 @@
 #pragma once
 
-#include <absl/container/flat_hash_map.h>
+#include "game_model.h"
 
+#include <absl/container/flat_hash_map.h>
 #include <array>
 #include <vector>
-
-#include "game_model.h"
 
 class Solver {
 public:
@@ -13,22 +12,26 @@ public:
   public:
     Result(
         int  tricks_taken_by_ns,
+        int  tricks_taken_by_ew,
         Card best_play,
         int  states_explored,
         int  transposition_table_size
     )
         : tricks_taken_by_ns_(tricks_taken_by_ns),
+          tricks_taken_by_ew_(tricks_taken_by_ew),
           best_play_(best_play),
           states_explored_(states_explored),
           states_memoized_(transposition_table_size) {}
 
     int  tricks_taken_by_ns() const { return tricks_taken_by_ns_; }
+    int  tricks_taken_by_ew() const { return tricks_taken_by_ew_; }
     Card best_play() const { return best_play_; }
     int  states_explored() const { return states_explored_; }
     int  states_memoized() const { return states_memoized_; }
 
   private:
     int  tricks_taken_by_ns_;
+    int  tricks_taken_by_ew_;
     Card best_play_;
     int  states_explored_;
     int  states_memoized_;
@@ -112,8 +115,6 @@ private:
   );
 
   typedef absl::flat_hash_map<GameState, uint8_t> TranspositionTable;
-
-  friend class Searcher;
 
   Game               game_;
   int                states_explored_;

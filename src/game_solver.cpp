@@ -30,8 +30,13 @@ Solver::Result Solver::solve() {
   states_explored_ = 0;
   Card best_play;
   int  tricks_taken_by_ns = solve_internal(0, game_.tricks_max(), &best_play);
+  int  tricks_taken_by_ew = game_.tricks_max() - tricks_taken_by_ns;
   return Solver::Result(
-      tricks_taken_by_ns, best_play, states_explored_, (int)tp_table_.size()
+      tricks_taken_by_ns,
+      tricks_taken_by_ew,
+      best_play,
+      states_explored_,
+      (int)tp_table_.size()
   );
 }
 
@@ -160,13 +165,13 @@ bool Solver::search_specific_cards(SearchState &s, Cards c, Order o) {
   s.already_searched.add_all(c);
   c = c.prune_equivalent(s.ignorable);
   if (o == HIGH_TO_LOW) {
-    for (auto i = c.iter_high(); i.valid(); i = c.iter_lower(i)) {
+    for (auto i = c.iter_highest(); i.valid(); i = c.iter_lower(i)) {
       if (search_specific_card(s, i.card())) {
         return true;
       }
     }
   } else {
-    for (auto i = c.iter_low(); i.valid(); i = c.iter_higher(i)) {
+    for (auto i = c.iter_lowest(); i.valid(); i = c.iter_higher(i)) {
       if (search_specific_card(s, i.card())) {
         return true;
       }
@@ -249,7 +254,7 @@ int Solver::count_sure_tricks(const GameState &state) const {
     int count = state.hands[next_seat].top_ranks(suit);
     for (int i = 1; i < 4; i++) {
       Cards h = state.hands[right_seat(next_seat, i)];
-      int   c = h.intersect_suit(suit).count();
+      int   c = h.intersect(suit).count();
       count   = std::min(count, c);
     }
     total += count;

@@ -155,7 +155,7 @@ bool Game::valid_play(Card c) const {
   if (!t.started()) {
     return true;
   }
-  return c.suit() == t.lead_suit() || cs.intersect_suit(t.lead_suit()).empty();
+  return c.suit() == t.lead_suit() || cs.intersect(t.lead_suit()).empty();
 }
 
 void Game::play(Card c) {
@@ -241,7 +241,7 @@ Cards Game::valid_plays() const {
   Cards        c = hands_[next_seat_];
   const Trick &t = current_trick();
   if (t.started()) {
-    Cards cs = c.intersect_suit(t.lead_suit());
+    Cards cs = c.intersect(t.lead_suit());
     if (!cs.empty()) {
       return cs;
     }
