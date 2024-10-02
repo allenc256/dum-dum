@@ -129,7 +129,7 @@ TEST(Trick, skip) {
        .winning_seat = EAST,
        .skipped      = {false, true, false, true}}
   );
-  t.unskip();
+  t.unplay();
   check_trick(
       t, {.card_count = 3, .winning_seat = EAST, .skipped = {false, true}}
   );
@@ -137,7 +137,7 @@ TEST(Trick, skip) {
   check_trick(
       t, {.card_count = 2, .winning_seat = WEST, .skipped = {false, true}}
   );
-  t.unskip();
+  t.unplay();
   check_trick(t, {.card_count = 1, .winning_seat = WEST, .skipped = {false}});
 }
 
@@ -302,4 +302,39 @@ TEST(Game, play_unplay_random) {
   for (int i = 0; i < 500; i++) {
     test_play_unplay_dfs(g);
   }
+}
+
+TEST(Game, skip) {
+  Cards hands[4];
+  hands[WEST]  = Cards("S 2 H - D - C -");
+  hands[NORTH] = Cards("S - H 2 D - C -");
+  hands[EAST]  = Cards("S A H - D - C -");
+  hands[SOUTH] = Cards("S - H - D 2 C -");
+  Game game(NO_TRUMP, WEST, hands);
+
+  game.play(Card("2S"));
+  game.skip();
+  game.play(Card("AS"));
+  game.skip();
+
+  EXPECT_EQ(game.next_seat(), EAST);
+  EXPECT_EQ(game.tricks_taken_by_ns(), 0);
+  EXPECT_EQ(game.tricks_taken_by_ew(), 1);
+  EXPECT_TRUE(game.finished());
+
+  game.unplay();
+
+  EXPECT_EQ(game.next_seat(), SOUTH);
+  EXPECT_EQ(game.tricks_taken_by_ns(), 0);
+  EXPECT_EQ(game.tricks_taken_by_ew(), 0);
+  EXPECT_FALSE(game.finished());
+
+  game.unplay();
+  game.unplay();
+  game.unplay();
+
+  EXPECT_EQ(game.next_seat(), WEST);
+  EXPECT_EQ(game.tricks_taken_by_ns(), 0);
+  EXPECT_EQ(game.tricks_taken_by_ew(), 0);
+  EXPECT_FALSE(game.finished());
 }

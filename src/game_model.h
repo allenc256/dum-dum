@@ -140,23 +140,22 @@ public:
 
   void skip_continue() {
     assert(card_count_ > 0 && card_count_ < 4);
-    skipped_[card_count_]       = true;
     winning_index_[card_count_] = winning_index();
     winning_cards_[card_count_] = winning_cards();
+    cards_[card_count_]         = Card();
+    skipped_[card_count_]       = true;
     card_count_++;
   }
 
-  Card unplay() {
-    assert(card_count_ > 0);
-    assert(!skipped_[card_count_ - 1]);
-    card_count_--;
-    return cards_[card_count_];
-  }
+  struct Unplay {
+    bool skipped;
+    Card card;
+  };
 
-  void unskip() {
+  Unplay unplay() {
     assert(card_count_ > 0);
-    assert(skipped_[card_count_ - 1]);
     card_count_--;
+    return {.skipped = skipped_[card_count_], .card = cards_[card_count_]};
   }
 
 private:
@@ -212,7 +211,9 @@ public:
   bool finished() const { return tricks_taken_ == tricks_max_; }
 
   void play(Card card);
+  void skip();
   void unplay();
+  void unskip();
 
   bool  valid_play(Card c) const;
   Cards valid_plays() const;
