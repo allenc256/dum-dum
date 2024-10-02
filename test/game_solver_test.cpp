@@ -23,16 +23,16 @@ void validate_solver(Solver &s1) {
   s2.enable_all_optimizations(false);
   auto r1 = s1.solve();
   auto r2 = s2.solve();
-  ASSERT_EQ(r1.tricks_taken_by_ns(), r2.tricks_taken_by_ns());
+  ASSERT_EQ(r1.tricks_taken_by_ns, r2.tricks_taken_by_ns);
   int count = 0;
   while (!s1.game().finished()) {
     SCOPED_TRACE(::testing::Message() << "card " << count);
-    s1.game().play(r1.best_play());
+    s1.game().play(r1.best_play);
     r1 = s1.solve();
     count++;
-    ASSERT_EQ(r1.tricks_taken_by_ns(), r2.tricks_taken_by_ns());
+    ASSERT_EQ(r1.tricks_taken_by_ns, r2.tricks_taken_by_ns);
   }
-  ASSERT_EQ(s1.game().tricks_taken_by_ns(), r1.tricks_taken_by_ns());
+  ASSERT_EQ(s1.game().tricks_taken_by_ns(), r1.tricks_taken_by_ns);
 }
 
 TEST(Solver, ab_pruning) {
@@ -50,7 +50,7 @@ TEST(Solver, ab_pruning) {
   }
 }
 
-TEST(Solver, sure_tricks) {
+TEST(Solver, mini_solver) {
   std::default_random_engine random(123);
 
   for (int i = 0; i < 100; i++) {
@@ -58,9 +58,12 @@ TEST(Solver, sure_tricks) {
     Solver s = Solver(g);
     s.enable_all_optimizations(false);
     s.enable_ab_pruning(true);
-    s.enable_sure_tricks(true);
+    s.enable_mini_solver(true);
     ASSERT_NO_FATAL_FAILURE({
-      SCOPED_TRACE(::testing::Message() << "iteration " << i);
+      SCOPED_TRACE(
+          ::testing::Message() << "iteration " << i << ":" << std::endl
+                               << g
+      );
       validate_solver(s);
     });
   }
@@ -146,8 +149,8 @@ TEST_P(ManualTest, manual_test) {
   Game                  g(p.trump_suit, p.lead_seat, hands);
   Solver                s(g);
   auto                  r = s.solve();
-  EXPECT_EQ(r.tricks_taken_by_ns(), p.tricks_taken_by_ns);
-  EXPECT_TRUE(p.best_plays.contains(r.best_play()));
+  EXPECT_EQ(r.tricks_taken_by_ns, p.tricks_taken_by_ns);
+  EXPECT_TRUE(p.best_plays.contains(r.best_play));
 }
 
 const ManualTestCase MANUAL_TESTS[] = {

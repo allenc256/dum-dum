@@ -19,6 +19,7 @@ void Solver::GameState::init(
 Solver::Solver(Game g)
     : game_(g),
       states_explored_(0),
+      mini_solver_(game_),
       trace_ostream_(nullptr),
       trace_lineno_(0) {
   enable_all_optimizations(true);
@@ -31,13 +32,14 @@ Solver::Result Solver::solve() {
   Card best_play;
   int  tricks_taken_by_ns = solve_internal(0, game_.tricks_max(), &best_play);
   int  tricks_taken_by_ew = game_.tricks_max() - tricks_taken_by_ns;
-  return Solver::Result(
-      tricks_taken_by_ns,
-      tricks_taken_by_ew,
-      best_play,
-      states_explored_,
-      (int)tp_table_.size()
-  );
+  return {
+      .tricks_taken_by_ns = tricks_taken_by_ns,
+      .tricks_taken_by_ew = tricks_taken_by_ew,
+      .best_play          = best_play,
+      .states_explored    = states_explored_,
+      .states_memoized    = (int64_t)tp_table_.size(),
+      .ms_states_memoized = mini_solver_.states_memoized(),
+  };
 }
 
 #define TRACE(tag, state, alpha, beta, tricks_taken_by_ns)                     \
@@ -62,8 +64,8 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
     );
 
     if (!best_play) {
-      if (sure_tricks_enabled_) {
-        int result = search_sure_tricks(game_state, maximizing, alpha, beta);
+      if (mini_solver_enabled_) {
+        int result = search_forced_tricks(maximizing, alpha, beta);
         if (result >= 0) {
           return result;
         }
@@ -219,48 +221,26 @@ bool Solver::search_specific_card(SearchState &s, Card c) {
   return prune;
 }
 
-int Solver::search_sure_tricks(
-    const GameState &state, bool maximizing, int &alpha, int &beta
-) {
-  assert(sure_tricks_enabled_);
-  int sure_tricks = count_sure_tricks(state);
+int Solver::search_forced_tricks(bool maximizing, int &alpha, int &beta) {
+  assert(mini_solver_enabled_);
+  int forced_tricks = mini_solver_.count_forced_tricks();
   if (maximizing) {
-    int worst_case = game_.tricks_taken_by_ns() + sure_tricks;
+    int worst_case = game_.tricks_taken_by_ns() + forced_tricks;
     if (worst_case >= beta) {
-      TRACE("prune", &state, alpha, beta, worst_case);
+      TRACE("prune", nullptr, alpha, beta, worst_case);
       return worst_case;
     }
     alpha = std::max(alpha, worst_case);
   } else {
     int best_case =
-        game_.tricks_taken_by_ns() + game_.tricks_left() - sure_tricks;
+        game_.tricks_taken_by_ns() + game_.tricks_left() - forced_tricks;
     if (best_case <= alpha) {
-      TRACE("prune", &state, alpha, beta, best_case);
+      TRACE("prune", nullptr, alpha, beta, best_case);
       return best_case;
     }
     beta = std::min(beta, best_case);
   }
   return -1;
-}
-
-int Solver::count_sure_tricks(const GameState &state) const {
-  if (game_.current_trick().started() || !tp_table_norm_enabled_) {
-    return 0;
-  }
-
-  Seat next_seat = game_.next_seat();
-  int  total     = 0;
-  for (Suit suit = FIRST_SUIT; suit <= LAST_SUIT; suit++) {
-    int count = state.hands[next_seat].top_ranks(suit);
-    for (int i = 1; i < 4; i++) {
-      Cards h = state.hands[right_seat(next_seat, i)];
-      int   c = h.intersect(suit).count();
-      count   = std::min(count, c);
-    }
-    total += count;
-  }
-
-  return total;
 }
 
 static void
@@ -295,7 +275,7 @@ void Solver::trace(
   std::snprintf(
       line_buf,
       sizeof(line_buf),
-      "%-7d %-8s %16s %2d %2d %2d %s",
+      "%-7llu %-8s %16s %2d %2d %2d %s",
       trace_lineno_,
       tag,
       hash_buf,

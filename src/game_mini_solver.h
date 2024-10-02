@@ -10,7 +10,7 @@ public:
     std::array<Cards, 4> hands;
     Seat                 next_seat;
 
-    GameState(const Game &game);
+    GameState(const Game &game, Cards ignorable_cards);
 
     template <typename H> friend H AbslHashValue(H h, const GameState &s) {
       return H::combine(std::move(h), s.hands, s.next_seat);
@@ -22,6 +22,8 @@ public:
   };
 
   MiniSolver(Game &game) : game_(game) {}
+
+  int64_t states_memoized() const { return tp_table_.size(); }
 
   int count_forced_tricks();
 

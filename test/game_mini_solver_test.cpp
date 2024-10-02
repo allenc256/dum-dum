@@ -87,8 +87,8 @@ TEST(MiniSolver, random_test) {
     int        r2 = s2.count_forced_tricks();
 
     int best_tricks = g.lead_seat() == NORTH || g.lead_seat() == SOUTH
-                          ? r1.tricks_taken_by_ns()
-                          : r1.tricks_taken_by_ew();
+                          ? r1.tricks_taken_by_ns
+                          : r1.tricks_taken_by_ew;
     EXPECT_LE(r2, best_tricks);
   }
 }

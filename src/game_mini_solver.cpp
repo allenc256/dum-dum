@@ -1,10 +1,9 @@
 #include "game_mini_solver.h"
 
-MiniSolver::GameState::GameState(const Game &game)
+MiniSolver::GameState::GameState(const Game &game, Cards ignorable_cards)
     : next_seat(game.next_seat()) {
-  Cards ignorable = game.ignorable_cards();
   for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
-    hands[seat] = game.hand(seat).collapse(ignorable);
+    hands[seat] = game.hand(seat).collapse(ignorable_cards);
   }
 }
 
@@ -15,7 +14,8 @@ int MiniSolver::count_forced_tricks() {
 
   assert(game_.start_of_trick());
 
-  GameState game_state(game_);
+  Cards     ignorable_cards = game_.ignorable_cards();
+  GameState game_state(game_, ignorable_cards);
   auto      it = tp_table_.find(game_state);
   if (it != tp_table_.end()) {
     return it->second;
@@ -57,8 +57,10 @@ int MiniSolver::count_forced_tricks() {
       poss_winners = Cards::all(suit);
     }
 
-    Cards my_poss_winners      = my_cards.intersect(poss_winners);
-    Cards partner_poss_winners = partner_cards.intersect(poss_winners);
+    Cards my_poss_winners =
+        my_cards.intersect(poss_winners).prune_equivalent(ignorable_cards);
+    Cards partner_poss_winners =
+        partner_cards.intersect(poss_winners).prune_equivalent(ignorable_cards);
 
     for (auto it = my_poss_winners.iter_highest(); it.valid();
          it      = my_poss_winners.iter_lower(it)) {
