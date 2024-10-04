@@ -1,4 +1,5 @@
-#include "game_solver.h"
+#include "solver.h"
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

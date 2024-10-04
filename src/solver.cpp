@@ -1,4 +1,4 @@
-#include "game_solver.h"
+#include "solver.h"
 
 #include <picosha2.h>
 

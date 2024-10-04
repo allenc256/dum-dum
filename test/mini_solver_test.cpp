@@ -1,5 +1,5 @@
-#include "game_mini_solver.h"
-#include "game_solver.h"
+#include "mini_solver.h"
+#include "solver.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

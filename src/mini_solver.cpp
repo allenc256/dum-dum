@@ -1,4 +1,4 @@
-#include "game_mini_solver.h"
+#include "mini_solver.h"
 
 int MiniSolver::count_forced_tricks() {
   if (game_.finished()) {

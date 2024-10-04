@@ -1,5 +1,6 @@
 #include "game_model.h"
-#include "game_solver.h"
+#include "solver.h"
+
 #include <bitset>
 #include <chrono>
 #include <fstream>

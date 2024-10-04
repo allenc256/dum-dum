@@ -1,7 +1,7 @@
 #pragma once
 
-#include "game_mini_solver.h"
 #include "game_model.h"
+#include "mini_solver.h"
 
 #include <absl/container/flat_hash_map.h>
 #include <array>
