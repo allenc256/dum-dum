@@ -44,6 +44,7 @@ public:
   const Game &game() const { return game_; }
 
   Result solve();
+  Result solve(int alpha, int beta);
 
 private:
   int solve_internal(int alpha, int beta, Card *best_play);
@@ -74,8 +75,8 @@ private:
   );
 
   struct Bounds {
-    int8_t alpha;
-    int8_t beta;
+    int8_t lower;
+    int8_t upper;
   };
 
   typedef absl::flat_hash_map<GameState, Bounds> TranspositionTable;

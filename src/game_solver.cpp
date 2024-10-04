@@ -13,10 +13,12 @@ Solver::Solver(Game g)
 
 Solver::~Solver() {}
 
-Solver::Result Solver::solve() {
+Solver::Result Solver::solve() { return solve(-1, game_.tricks_max() + 1); }
+
+Solver::Result Solver::solve(int alpha, int beta) {
   states_explored_ = 0;
   Card best_play;
-  int  tricks_taken_by_ns = solve_internal(0, game_.tricks_max(), &best_play);
+  int  tricks_taken_by_ns = solve_internal(alpha, beta, &best_play);
   int  tricks_taken_by_ew = game_.tricks_max() - tricks_taken_by_ns;
   return {
       .tricks_taken_by_ns = tricks_taken_by_ns,
@@ -39,9 +41,9 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
     return game_.tricks_taken_by_ns();
   }
 
-  bool    maximizing = game_.next_seat() == NORTH || game_.next_seat() == SOUTH;
-  Cards   ignorable  = game_.ignorable_cards();
-  Bounds *table_bounds = nullptr;
+  bool   maximizing = game_.next_seat() == NORTH || game_.next_seat() == SOUTH;
+  Cards  ignorable  = game_.ignorable_cards();
+  Bounds table_bounds;
   GameState game_state;
 
   if (game_.start_of_trick()) {
@@ -59,17 +61,19 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
       if (tp_table_enabled_) {
         auto it = tp_table_.find(game_state);
         if (it != tp_table_.end()) {
-          table_bounds    = &it->second;
-          int table_alpha = table_bounds->alpha + game_.tricks_taken_by_ns();
-          int table_beta  = table_bounds->beta + game_.tricks_taken_by_ns();
-          if (table_alpha >= beta) {
-            TRACE("lookup", &game_state, alpha, beta, table_alpha);
-            return table_alpha;
-          }
-          if (table_beta <= alpha) {
-            TRACE("lookup", &game_state, alpha, beta, table_beta);
-            return table_beta;
-          }
+          table_bounds = it->second;
+        } else {
+          table_bounds = {.lower = 0, .upper = (int8_t)game_.tricks_left()};
+        }
+        int lower = table_bounds.lower + game_.tricks_taken_by_ns();
+        int upper = table_bounds.upper + game_.tricks_taken_by_ns();
+        if (lower >= beta) {
+          TRACE("lookup", &game_state, alpha, beta, lower);
+          return lower;
+        }
+        if (upper <= alpha) {
+          TRACE("lookup", &game_state, alpha, beta, upper);
+          return upper;
         }
       }
     }
@@ -91,20 +95,19 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
     TRACE("end", &game_state, alpha, beta, search_state.best_tricks_by_ns);
 
     if (tp_table_enabled_) {
-      int    tricks     = search_state.best_tricks_by_ns;
-      int8_t adj_tricks = (int8_t)(tricks - game_.tricks_taken_by_ns());
-      assert(adj_tricks >= 0 && adj_tricks <= game_.tricks_left());
-      if (table_bounds == nullptr) {
-        int8_t a = tricks < beta ? adj_tricks : (int8_t)game_.tricks_left();
-        int8_t b = tricks > alpha ? adj_tricks : 0;
-        tp_table_[game_state] = {.alpha = a, .beta = b};
-      } else {
-        if (tricks < beta) {
-          table_bounds->beta = adj_tricks;
-        }
-        if (tricks > alpha) {
-          table_bounds->alpha = adj_tricks;
-        }
+      int8_t best    = (int8_t)search_state.best_tricks_by_ns;
+      int8_t taken   = (int8_t)game_.tricks_taken_by_ns();
+      bool   changed = false;
+      if (best < beta) {
+        table_bounds.upper = best - taken;
+        changed            = true;
+      }
+      if (best > alpha) {
+        table_bounds.lower = best - taken;
+        changed            = true;
+      }
+      if (changed) {
+        tp_table_[game_state] = table_bounds;
       }
     }
   }
