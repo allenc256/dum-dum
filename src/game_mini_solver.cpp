@@ -1,12 +1,5 @@
 #include "game_mini_solver.h"
 
-MiniSolver::GameState::GameState(const Game &game, Cards ignorable_cards)
-    : next_seat(game.next_seat()) {
-  for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
-    hands[seat] = game.hand(seat).collapse(ignorable_cards);
-  }
-}
-
 int MiniSolver::count_forced_tricks() {
   if (game_.finished()) {
     return 0;

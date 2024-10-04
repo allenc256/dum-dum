@@ -239,3 +239,27 @@ private:
 
   friend std::ostream &operator<<(std::ostream &os, const Game &g);
 };
+
+struct GameState {
+  std::array<Cards, 4> hands;
+  Seat                 next_seat;
+
+  GameState() = default;
+  GameState(const Game &g, Cards ignorable) { init(g, ignorable); }
+
+  void init(const Game &g, Cards ignorable) {
+    assert(g.start_of_trick());
+    next_seat = g.next_seat();
+    for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
+      hands[seat] = g.hand(seat).collapse(ignorable);
+    }
+  }
+
+  template <typename H> friend H AbslHashValue(H h, const GameState &s) {
+    return H::combine(std::move(h), s.hands, s.next_seat);
+  }
+
+  friend bool operator==(const GameState &s1, const GameState &s2) {
+    return s1.hands == s2.hands && s1.next_seat == s2.next_seat;
+  }
+};

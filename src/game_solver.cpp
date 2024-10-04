@@ -2,20 +2,6 @@
 
 #include <picosha2.h>
 
-void Solver::GameState::init(
-    const Game &g, int alpha_param, int beta_param, Cards ignorable
-) {
-  assert(!g.current_trick().started());
-
-  for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
-    hands[seat] = g.hand(seat).collapse(ignorable);
-  }
-
-  next_seat = g.next_seat();
-  alpha     = (uint8_t)std::max(0, alpha_param - g.tricks_taken_by_ns());
-  beta      = (uint8_t)std::max(0, beta_param - g.tricks_taken_by_ns());
-}
-
 Solver::Solver(Game g)
     : game_(g),
       states_explored_(0),
@@ -53,20 +39,19 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
     return game_.tricks_taken_by_ns();
   }
 
-  bool  maximizing = game_.next_seat() == NORTH || game_.next_seat() == SOUTH;
-  bool  start_of_trick = !game_.current_trick().started();
-  Cards ignorable      = game_.ignorable_cards();
+  bool    maximizing = game_.next_seat() == NORTH || game_.next_seat() == SOUTH;
+  Cards   ignorable  = game_.ignorable_cards();
+  Bounds *table_bounds = nullptr;
   GameState game_state;
 
-  if (start_of_trick) {
-    game_state.init(
-        game_, alpha, beta, tp_table_norm_enabled_ ? ignorable : Cards()
-    );
+  if (game_.start_of_trick()) {
+    game_state.init(game_, ignorable);
 
     if (!best_play) {
       if (mini_solver_enabled_) {
         int result = search_forced_tricks(maximizing, alpha, beta);
         if (result >= 0) {
+          TRACE("prune", &game_state, alpha, beta, result);
           return result;
         }
       }
@@ -74,9 +59,17 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
       if (tp_table_enabled_) {
         auto it = tp_table_.find(game_state);
         if (it != tp_table_.end()) {
-          int tricks_taken_by_ns = game_.tricks_taken_by_ns() + it->second;
-          TRACE("lookup", &game_state, alpha, beta, tricks_taken_by_ns);
-          return tricks_taken_by_ns;
+          table_bounds    = &it->second;
+          int table_alpha = table_bounds->alpha + game_.tricks_taken_by_ns();
+          int table_beta  = table_bounds->beta + game_.tricks_taken_by_ns();
+          if (table_alpha >= beta) {
+            TRACE("lookup", &game_state, alpha, beta, table_alpha);
+            return table_alpha;
+          }
+          if (table_beta <= alpha) {
+            TRACE("lookup", &game_state, alpha, beta, table_beta);
+            return table_beta;
+          }
         }
       }
     }
@@ -94,14 +87,25 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
   };
   search_all_cards(search_state);
 
-  if (start_of_trick) {
+  if (game_.start_of_trick()) {
     TRACE("end", &game_state, alpha, beta, search_state.best_tricks_by_ns);
 
     if (tp_table_enabled_) {
-      int tricks_takable_by_ns =
-          search_state.best_tricks_by_ns - game_.tricks_taken_by_ns();
-      assert(tricks_takable_by_ns >= 0);
-      tp_table_[game_state] = (uint8_t)tricks_takable_by_ns;
+      int    tricks     = search_state.best_tricks_by_ns;
+      int8_t adj_tricks = (int8_t)(tricks - game_.tricks_taken_by_ns());
+      assert(adj_tricks >= 0 && adj_tricks <= game_.tricks_left());
+      if (table_bounds == nullptr) {
+        int8_t a = tricks < beta ? adj_tricks : (int8_t)game_.tricks_left();
+        int8_t b = tricks > alpha ? adj_tricks : 0;
+        tp_table_[game_state] = {.alpha = a, .beta = b};
+      } else {
+        if (tricks < beta) {
+          table_bounds->beta = adj_tricks;
+        }
+        if (tricks > alpha) {
+          table_bounds->alpha = adj_tricks;
+        }
+      }
     }
   }
 
@@ -195,10 +199,9 @@ bool Solver::search_specific_card(SearchState &s, Card c) {
       }
     }
     if (ab_pruning_enabled_) {
+      s.alpha = std::max(s.alpha, s.best_tricks_by_ns);
       if (s.best_tricks_by_ns >= s.beta) {
         prune = true;
-      } else {
-        s.alpha = std::max(s.alpha, s.best_tricks_by_ns);
       }
     }
   } else {
@@ -209,10 +212,9 @@ bool Solver::search_specific_card(SearchState &s, Card c) {
       }
     }
     if (ab_pruning_enabled_) {
+      s.beta = std::min(s.beta, s.best_tricks_by_ns);
       if (s.best_tricks_by_ns <= s.alpha) {
         prune = true;
-      } else {
-        s.beta = std::min(s.beta, s.best_tricks_by_ns);
       }
     }
   }
@@ -227,7 +229,6 @@ int Solver::search_forced_tricks(bool maximizing, int &alpha, int &beta) {
   if (maximizing) {
     int worst_case = game_.tricks_taken_by_ns() + forced_tricks;
     if (worst_case >= beta) {
-      TRACE("prune", nullptr, alpha, beta, worst_case);
       return worst_case;
     }
     alpha = std::max(alpha, worst_case);
@@ -235,7 +236,6 @@ int Solver::search_forced_tricks(bool maximizing, int &alpha, int &beta) {
     int best_case =
         game_.tricks_taken_by_ns() + game_.tricks_left() - forced_tricks;
     if (best_case <= alpha) {
-      TRACE("prune", nullptr, alpha, beta, best_case);
       return best_case;
     }
     beta = std::min(beta, best_case);
@@ -243,15 +243,14 @@ int Solver::search_forced_tricks(bool maximizing, int &alpha, int &beta) {
   return -1;
 }
 
-static void
-sha256_hash(const Solver::GameState *state, char *buf, size_t buflen) {
+static void sha256_hash(const GameState *state, char *buf, size_t buflen) {
   if (!state) {
     buf[0] = 0;
     return;
   }
   uint8_t  digest[32];
   uint8_t *in_begin = (uint8_t *)state;
-  uint8_t *in_end   = in_begin + sizeof(Solver::GameState);
+  uint8_t *in_end   = in_begin + sizeof(GameState);
   picosha2::hash256(in_begin, in_end, digest, digest + 32);
   std::snprintf(
       buf, buflen, "%08x%08x", *(uint32_t *)&digest[0], *(uint32_t *)&digest[4]

@@ -18,24 +18,6 @@ public:
     int64_t ms_states_memoized;
   };
 
-  struct GameState {
-    std::array<Cards, 4> hands;
-    Seat                 next_seat;
-    uint8_t              alpha;
-    uint8_t              beta;
-
-    void init(const Game &g, int alpha, int beta, Cards ignorable);
-
-    template <typename H> friend H AbslHashValue(H h, const GameState &s) {
-      return H::combine(std::move(h), s.hands, s.next_seat, s.alpha, s.beta);
-    }
-
-    friend bool operator==(const GameState &s1, const GameState &s2) {
-      return s1.hands == s2.hands && s1.next_seat == s2.next_seat &&
-             s1.alpha == s2.alpha && s1.beta == s2.beta;
-    }
-  };
-
   Solver(Game g);
   ~Solver();
 
@@ -91,7 +73,12 @@ private:
       int              tricks_taken_by_ns
   );
 
-  typedef absl::flat_hash_map<GameState, uint8_t> TranspositionTable;
+  struct Bounds {
+    int8_t alpha;
+    int8_t beta;
+  };
+
+  typedef absl::flat_hash_map<GameState, Bounds> TranspositionTable;
 
   Game               game_;
   int64_t            states_explored_;
