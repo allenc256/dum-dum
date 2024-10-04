@@ -7,9 +7,8 @@ int MiniSolver::count_forced_tricks() {
 
   assert(game_.start_of_trick());
 
-  Cards     ignorable_cards = game_.ignorable_cards();
-  GameState game_state(game_, ignorable_cards);
-  auto      it = tp_table_.find(game_state);
+  Cards ignorable_cards = game_.ignorable_cards();
+  auto  it              = tp_table_.find(game_.game_state());
   if (it != tp_table_.end()) {
     return it->second;
   }
@@ -101,7 +100,7 @@ int MiniSolver::count_forced_tricks() {
     // - finesses?
   }
 
-  tp_table_[game_state] = (uint8_t)forced_tricks;
+  tp_table_[game_.game_state()] = (uint8_t)forced_tricks;
   return forced_tricks;
 }
 

@@ -122,7 +122,8 @@ Game::Game(Suit trump_suit, Seat lead_seat, Cards hands[4])
       lead_seat_(lead_seat),
       next_seat_(lead_seat),
       tricks_taken_(0),
-      tricks_taken_by_ns_(0) {
+      tricks_taken_by_ns_(0),
+      game_state_valid_(false) {
   tricks_max_ = hands[0].count();
   for (int i = 1; i < 4; i++) {
     if (hands[i].count() != tricks_max_) {
@@ -180,6 +181,8 @@ void Game::play(Card c) {
   } else {
     next_seat_ = t.next_seat();
   }
+
+  game_state_valid_ = false;
 }
 
 void Game::skip() {
@@ -196,6 +199,8 @@ void Game::skip() {
   } else {
     next_seat_ = t.next_seat();
   }
+
+  game_state_valid_ = false;
 }
 
 void Game::unplay() {
@@ -231,6 +236,7 @@ void Game::unplay() {
       throw std::runtime_error("no cards played");
     }
   }
+  game_state_valid_ = false;
 }
 
 Cards Game::valid_plays() const {

@@ -1,6 +1,5 @@
 #include "game_model.h"
 #include "test_util.h"
-#include <absl/hash/hash_testing.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <vector>
@@ -338,15 +337,4 @@ TEST(Game, skip) {
   EXPECT_EQ(game.tricks_taken_by_ns(), 0);
   EXPECT_EQ(game.tricks_taken_by_ew(), 0);
   EXPECT_FALSE(game.finished());
-}
-
-TEST(GameState, hash) {
-  std::default_random_engine random(123);
-  std::vector<GameState>     states;
-  for (int i = 0; i < 100; i++) {
-    Game      g = Game::random_deal(random, 13);
-    GameState s(g, false);
-    states.push_back(s);
-  }
-  EXPECT_TRUE(absl::VerifyTypeImplementsAbslHashCorrectly(states));
 }

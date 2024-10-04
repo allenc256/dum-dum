@@ -66,13 +66,7 @@ private:
   bool search_specific_card(SearchState &s, Card c);
   int  search_forced_tricks(bool maximizing, int &alpha, int &beta);
 
-  void trace(
-      const char      *tag,
-      const GameState *state,
-      int              alpha,
-      int              beta,
-      int              tricks_taken_by_ns
-  );
+  void trace(const char *tag, int alpha, int beta, int tricks_taken_by_ns);
 
   struct Bounds {
     int8_t lower;

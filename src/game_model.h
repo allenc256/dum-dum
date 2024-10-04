@@ -179,6 +179,19 @@ private:
 
 std::ostream &operator<<(std::ostream &os, const Trick &t);
 
+struct GameState {
+  std::array<Cards, 4> hands;
+  Seat                 next_seat;
+
+  template <typename H> friend H AbslHashValue(H h, const GameState &s) {
+    return H::combine(std::move(h), s.hands, s.next_seat);
+  }
+
+  friend bool operator==(const GameState &s1, const GameState &s2) {
+    return s1.hands == s2.hands && s1.next_seat == s2.next_seat;
+  }
+};
+
 class Game {
 public:
   static Game
@@ -227,39 +240,30 @@ public:
     return in_play_cards.complement();
   }
 
+  const GameState &game_state() {
+    assert(start_of_trick());
+    if (!game_state_valid_) {
+      Cards ignorable       = ignorable_cards();
+      game_state_.next_seat = next_seat_;
+      for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
+        game_state_.hands[seat] = hands_[seat].collapse(ignorable);
+      }
+      game_state_valid_ = true;
+    }
+    return game_state_;
+  }
+
 private:
-  Cards hands_[4];
-  Suit  trump_suit_;
-  Seat  lead_seat_;
-  Seat  next_seat_;
-  Trick tricks_[14];
-  int   tricks_taken_;
-  int   tricks_max_;
-  int   tricks_taken_by_ns_;
+  Cards     hands_[4];
+  Suit      trump_suit_;
+  Seat      lead_seat_;
+  Seat      next_seat_;
+  Trick     tricks_[14];
+  int       tricks_taken_;
+  int       tricks_max_;
+  int       tricks_taken_by_ns_;
+  GameState game_state_;
+  bool      game_state_valid_;
 
   friend std::ostream &operator<<(std::ostream &os, const Game &g);
-};
-
-struct GameState {
-  std::array<Cards, 4> hands;
-  Seat                 next_seat;
-
-  GameState() = default;
-  GameState(const Game &g, Cards ignorable) { init(g, ignorable); }
-
-  void init(const Game &g, Cards ignorable) {
-    assert(g.start_of_trick());
-    next_seat = g.next_seat();
-    for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
-      hands[seat] = g.hand(seat).collapse(ignorable);
-    }
-  }
-
-  template <typename H> friend H AbslHashValue(H h, const GameState &s) {
-    return H::combine(std::move(h), s.hands, s.next_seat);
-  }
-
-  friend bool operator==(const GameState &s1, const GameState &s2) {
-    return s1.hands == s2.hands && s1.next_seat == s2.next_seat;
-  }
 };

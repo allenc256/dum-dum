@@ -30,36 +30,33 @@ Solver::Result Solver::solve(int alpha, int beta) {
   };
 }
 
-#define TRACE(tag, state, alpha, beta, tricks_taken_by_ns)                     \
+#define TRACE(tag, alpha, beta, tricks_taken_by_ns)                            \
   if (trace_ostream_) {                                                        \
-    trace(tag, state, alpha, beta, tricks_taken_by_ns);                        \
+    trace(tag, alpha, beta, tricks_taken_by_ns);                               \
   }
 
 int Solver::solve_internal(int alpha, int beta, Card *best_play) {
   if (game_.finished()) {
-    TRACE("terminal", nullptr, alpha, beta, game_.tricks_taken_by_ns());
+    TRACE("terminal", alpha, beta, game_.tricks_taken_by_ns());
     return game_.tricks_taken_by_ns();
   }
 
   bool   maximizing = game_.next_seat() == NORTH || game_.next_seat() == SOUTH;
   Cards  ignorable  = game_.ignorable_cards();
   Bounds table_bounds;
-  GameState game_state;
 
   if (game_.start_of_trick()) {
-    game_state.init(game_, ignorable);
-
     if (!best_play) {
       if (mini_solver_enabled_) {
         int result = search_forced_tricks(maximizing, alpha, beta);
         if (result >= 0) {
-          TRACE("prune", &game_state, alpha, beta, result);
+          TRACE("prune", alpha, beta, result);
           return result;
         }
       }
 
       if (tp_table_enabled_) {
-        auto it = tp_table_.find(game_state);
+        auto it = tp_table_.find(game_.game_state());
         if (it != tp_table_.end()) {
           table_bounds = it->second;
         } else {
@@ -68,17 +65,17 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
         int lower = table_bounds.lower + game_.tricks_taken_by_ns();
         int upper = table_bounds.upper + game_.tricks_taken_by_ns();
         if (lower >= beta) {
-          TRACE("lookup", &game_state, alpha, beta, lower);
+          TRACE("lookup", alpha, beta, lower);
           return lower;
         }
         if (upper <= alpha) {
-          TRACE("lookup", &game_state, alpha, beta, upper);
+          TRACE("lookup", alpha, beta, upper);
           return upper;
         }
       }
     }
 
-    TRACE("start", &game_state, alpha, beta, -1);
+    TRACE("start", alpha, beta, -1);
   }
 
   SearchState search_state = {
@@ -92,7 +89,7 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
   search_all_cards(search_state);
 
   if (game_.start_of_trick()) {
-    TRACE("end", &game_state, alpha, beta, search_state.best_tricks_by_ns);
+    TRACE("end", alpha, beta, search_state.best_tricks_by_ns);
 
     if (tp_table_enabled_) {
       int8_t best    = (int8_t)search_state.best_tricks_by_ns;
@@ -107,7 +104,7 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
         changed            = true;
       }
       if (changed) {
-        tp_table_[game_state] = table_bounds;
+        tp_table_[game_.game_state()] = table_bounds;
       }
     }
   }
@@ -246,14 +243,15 @@ int Solver::search_forced_tricks(bool maximizing, int &alpha, int &beta) {
   return -1;
 }
 
-static void sha256_hash(const GameState *state, char *buf, size_t buflen) {
-  if (!state) {
+static void sha256_hash(Game &game, char *buf, size_t buflen) {
+  if (!game.start_of_trick()) {
     buf[0] = 0;
     return;
   }
-  uint8_t  digest[32];
-  uint8_t *in_begin = (uint8_t *)state;
-  uint8_t *in_end   = in_begin + sizeof(GameState);
+  const GameState &state = game.game_state();
+  uint8_t          digest[32];
+  uint8_t         *in_begin = (uint8_t *)&state;
+  uint8_t         *in_end   = in_begin + sizeof(GameState);
   picosha2::hash256(in_begin, in_end, digest, digest + 32);
   std::snprintf(
       buf, buflen, "%08x%08x", *(uint32_t *)&digest[0], *(uint32_t *)&digest[4]
@@ -261,14 +259,10 @@ static void sha256_hash(const GameState *state, char *buf, size_t buflen) {
 }
 
 void Solver::trace(
-    const char      *tag,
-    const GameState *state,
-    int              alpha,
-    int              beta,
-    int              tricks_taken_by_ns
+    const char *tag, int alpha, int beta, int tricks_taken_by_ns
 ) {
   char line_buf[121], tricks_buf[3], hash_buf[17];
-  sha256_hash(state, hash_buf, sizeof(hash_buf));
+  sha256_hash(game_, hash_buf, sizeof(hash_buf));
   if (tricks_taken_by_ns >= 0) {
     std::snprintf(tricks_buf, sizeof(tricks_buf), "%2d", tricks_taken_by_ns);
   } else {
