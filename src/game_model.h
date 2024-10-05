@@ -50,9 +50,9 @@ public:
   bool started() const { return card_count_ > 0; }
   bool finished() const { return card_count_ >= 4; }
 
-  bool skipped(int index) const {
+  bool is_null_play(int index) const {
     assert(index >= 0 && index < card_count_);
-    return skipped_[index];
+    return null_play_[index];
   }
 
   Seat lead_seat() const {
@@ -121,7 +121,7 @@ public:
     card_count_       = 1;
     winning_cards_[0] = compute_winning_cards(c);
     winning_index_[0] = 0;
-    skipped_[0]       = false;
+    null_play_[0]     = false;
   }
 
   void play_continue(Card c) {
@@ -133,29 +133,31 @@ public:
       winning_index_[card_count_] = winning_index();
       winning_cards_[card_count_] = winning_cards();
     }
-    cards_[card_count_]   = c;
-    skipped_[card_count_] = false;
+    cards_[card_count_]     = c;
+    null_play_[card_count_] = false;
     card_count_++;
   }
 
-  void skip_continue() {
+  void play_null() {
     assert(card_count_ > 0 && card_count_ < 4);
     winning_index_[card_count_] = winning_index();
     winning_cards_[card_count_] = winning_cards();
     cards_[card_count_]         = Card();
-    skipped_[card_count_]       = true;
+    null_play_[card_count_]     = true;
     card_count_++;
   }
 
   struct Unplay {
-    bool skipped;
+    bool was_null_play;
     Card card;
   };
 
   Unplay unplay() {
     assert(card_count_ > 0);
     card_count_--;
-    return {.skipped = skipped_[card_count_], .card = cards_[card_count_]};
+    return {
+        .was_null_play = null_play_[card_count_], .card = cards_[card_count_]
+    };
   }
 
 private:
@@ -174,7 +176,7 @@ private:
   int   card_count_;
   int   winning_index_[4];
   Cards winning_cards_[4];
-  bool  skipped_[4];
+  bool  null_play_[4];
 };
 
 std::ostream &operator<<(std::ostream &os, const Trick &t);
@@ -226,7 +228,7 @@ public:
   bool start_of_trick() const { return !current_trick().started(); }
 
   void play(Card card);
-  void skip();
+  void play_null();
   void unplay();
 
   bool  valid_play(Card c) const;

@@ -142,7 +142,7 @@ void MiniSolver::play_opp_lowest() {
   Suit  suit          = game_.current_trick().lead_suit();
   Cards cards_in_suit = game_.hand(game_.next_seat()).intersect(suit);
   if (cards_in_suit.empty()) {
-    game_.skip();
+    game_.play_null();
   } else {
     game_.play(cards_in_suit.iter_lowest().card());
   }

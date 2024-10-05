@@ -38,7 +38,7 @@ std::ostream &operator<<(std::ostream &os, const Trick &t) {
     os << '-';
   } else {
     for (int i = 0; i < t.card_count(); i++) {
-      if (t.skipped(i)) {
+      if (t.is_null_play(i)) {
         os << "??";
       } else {
         os << t.card(i);
@@ -185,10 +185,10 @@ void Game::play(Card c) {
   game_state_valid_ = false;
 }
 
-void Game::skip() {
+void Game::play_null() {
   Trick &t = current_trick();
   assert(t.started());
-  t.skip_continue();
+  t.play_null();
 
   if (t.finished()) {
     next_seat_ = t.winning_seat();
@@ -215,7 +215,7 @@ void Game::unplay() {
     } else {
       next_seat_ = lead_seat_;
     }
-    if (!u.skipped) {
+    if (!u.was_null_play) {
       hands_[next_seat_].add(u.card);
     }
   } else {
@@ -229,7 +229,7 @@ void Game::unplay() {
       }
       Trick::Unplay u = t.unplay();
       next_seat_      = t.next_seat();
-      if (!u.skipped) {
+      if (!u.was_null_play) {
         hands_[next_seat_].add(u.card);
       }
     } else {
