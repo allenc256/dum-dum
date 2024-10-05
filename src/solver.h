@@ -24,14 +24,12 @@ public:
   void enable_all_optimizations(bool enabled) {
     ab_pruning_enabled_    = enabled;
     tp_table_enabled_      = enabled;
-    tp_table_norm_enabled_ = enabled;
     move_ordering_enabled_ = enabled;
     mini_solver_enabled_   = enabled;
   }
 
   void enable_ab_pruning(bool enabled) { ab_pruning_enabled_ = enabled; }
   void enable_tp_table(bool enabled) { tp_table_enabled_ = enabled; }
-  void enable_tp_table_norm(bool enabled) { tp_table_norm_enabled_ = enabled; }
   void enable_move_ordering(bool enabled) { move_ordering_enabled_ = enabled; }
   void enable_mini_solver(bool enabled) { mini_solver_enabled_ = enabled; }
 
@@ -73,7 +71,6 @@ private:
   MiniSolver         mini_solver_;
   bool               ab_pruning_enabled_;
   bool               tp_table_enabled_;
-  bool               tp_table_norm_enabled_;
   bool               move_ordering_enabled_;
   bool               mini_solver_enabled_;
   std::ostream      *trace_ostream_;
