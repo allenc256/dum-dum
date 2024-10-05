@@ -11,13 +11,15 @@ using ::testing::IsEmpty;
 TEST(Rank, istream) {
   EXPECT_EQ(from_string<Rank>("2"), RANK_2);
   EXPECT_EQ(from_string<Rank>("T"), TEN);
+  EXPECT_EQ(from_string<Rank>("X"), RANK_UNKNOWN);
   EXPECT_THROW(from_string<Rank>(""), ParseFailure);
-  EXPECT_THROW(from_string<Rank>("XXX"), ParseFailure);
+  EXPECT_THROW(from_string<Rank>("Y"), ParseFailure);
 }
 
 TEST(Rank, ostream) {
   EXPECT_EQ(to_string(RANK_2), "2");
   EXPECT_EQ(to_string(ACE), "A");
+  EXPECT_EQ(to_string(RANK_UNKNOWN), "X");
 }
 
 TEST(Card, sizeof) { EXPECT_EQ(sizeof(Card), 2); }
@@ -46,6 +48,7 @@ TEST(Suit, ostream) {
 TEST(Card, istream) {
   EXPECT_EQ(from_string<Card>("3C"), Card(RANK_3, CLUBS));
   EXPECT_EQ(from_string<Card>("T♥"), Card(TEN, HEARTS));
+  EXPECT_EQ(from_string<Card>("X♥"), Card(RANK_UNKNOWN, HEARTS));
   EXPECT_THROW(from_string<Card>("T"), ParseFailure);
 }
 

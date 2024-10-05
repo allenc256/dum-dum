@@ -41,7 +41,8 @@ enum Rank : int8_t {
   JACK,
   QUEEN,
   KING,
-  ACE
+  ACE,
+  RANK_UNKNOWN,
 };
 
 inline Rank operator++(Rank &r, int) { return (Rank)((int8_t &)r)++; }
@@ -58,6 +59,7 @@ public:
 
   Rank rank() const { return (Rank)rank_; }
   Suit suit() const { return (Suit)suit_; }
+  bool known() const { return rank_ != RANK_UNKNOWN; }
 
   std::string to_string() const;
 
@@ -105,22 +107,38 @@ public:
 
   uint64_t bits() const { return bits_; }
   bool     empty() const { return !bits_; }
-  void     add(Card c) { bits_ |= to_card_bit(c); }
   void     add_all(Cards c) { bits_ |= c.bits_; }
-  void     remove(Card c) { bits_ &= ~to_card_bit(c); }
   void     remove_all(Cards c) { bits_ &= ~c.bits_; }
   void     add(int card_index) { bits_ |= to_card_bit(card_index); }
   void     remove(int card_index) { bits_ &= ~to_card_bit(card_index); }
   void     clear() { bits_ = 0; }
-  bool     contains(Card c) const { return bits_ & to_card_bit(c); }
   int      count() const { return std::popcount(bits_); }
-  Cards    with(Card c) const { return Cards(bits_ | to_card_bit(c)); }
   Cards    union_with(Cards c) const { return Cards(bits_ | c.bits_); }
   Cards    complement() const { return Cards(~bits_ & ALL_MASK); }
   bool     disjoint(Cards c) const { return intersect(c).empty(); }
   Cards    intersect(Cards c) const { return Cards(bits_ & c.bits_); }
   Cards    subtract(Cards c) const { return Cards(bits_ & ~c.bits_); }
   Cards    honors() const { return Cards(bits_ & HONORS_MASK); }
+
+  void add(Card c) {
+    assert(c.known());
+    bits_ |= to_card_bit(c);
+  }
+
+  void remove(Card c) {
+    assert(c.known());
+    bits_ &= ~to_card_bit(c);
+  }
+
+  bool contains(Card c) const {
+    assert(c.known());
+    return bits_ & to_card_bit(c);
+  }
+
+  Cards with(Card c) const {
+    assert(c.known());
+    return Cards(bits_ | to_card_bit(c));
+  }
 
   Cards intersect(Suit s) const { return Cards(bits_ & (SUIT_MASK << s)); }
 
@@ -205,11 +223,13 @@ public:
   static Cards all(Suit s) { return Cards(SUIT_MASK << s); }
 
   static Cards higher_ranking(Card card) {
+    assert(card.known());
     uint64_t rank_bits = (SUIT_MASK << ((card.rank() + 1) * 4)) & ALL_MASK;
     return Cards(rank_bits << card.suit());
   }
 
   static Cards lower_ranking(Card card) {
+    assert(card.known());
     uint64_t rank_bits = (SUIT_MASK >> ((13 - card.rank()) * 4)) & ALL_MASK;
     return Cards(rank_bits << card.suit());
   }

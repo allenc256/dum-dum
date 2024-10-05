@@ -59,11 +59,12 @@ static Rank parse_rank(std::istream &is) {
     return (Rank)(ch - '2');
   }
   switch (ch) {
-  case 'T': return Rank::TEN;
-  case 'J': return Rank::JACK;
-  case 'Q': return Rank::QUEEN;
-  case 'K': return Rank::KING;
-  case 'A': return Rank::ACE;
+  case 'T': return TEN;
+  case 'J': return JACK;
+  case 'Q': return QUEEN;
+  case 'K': return KING;
+  case 'A': return ACE;
+  case 'X': return RANK_UNKNOWN;
   default: throw ParseFailure("bad rank");
   }
 }
@@ -73,10 +74,10 @@ std::istream &operator>>(std::istream &is, Rank &r) {
   return is;
 }
 
-static const char *RANK_STRS = "23456789TJQKA";
+static const char *RANK_STRS = "23456789TJQKAX";
 
 std::ostream &operator<<(std::ostream &os, Rank r) {
-  if (r < 0 || r >= 13) {
+  if (r < 0 || r >= 14) {
     throw std::runtime_error("bad rank");
   }
   os << RANK_STRS[r];
