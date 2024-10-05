@@ -21,8 +21,11 @@ TEST_P(MiniSolverTest, test_case) {
   const MiniSolverTestCase &p        = GetParam();
   Cards                     hands[4] = {p.west, p.north, p.east, p.south};
   Game                      g(p.trump_suit, p.lead_seat, hands);
-  MiniSolver                s(g);
-  int                       forced_tricks = s.count_forced_tricks();
+  TranspositionTable        tp_table;
+  MiniSolver                s(g, tp_table);
+  Bounds                    b = s.compute_bounds();
+  bool maximizing             = p.lead_seat == NORTH || p.lead_seat == SOUTH;
+  int  forced_tricks          = maximizing ? b.lower : g.tricks_max() - b.upper;
   EXPECT_EQ(forced_tricks, p.forced_tricks);
 }
 
@@ -58,13 +61,23 @@ const MiniSolverTestCase MINI_SOLVER_TEST_CASES[] = {
         .forced_tricks = 3,
     },
     {
-        .name          = "partner_winners",
+        .name          = "partner_winners_west",
         .west          = Cards("♠ 2  ♥ 3 ♦ - ♣ -"),
         .north         = Cards("♠ -  ♥ AK ♦ - ♣ -"),
         .east          = Cards("♠ AK ♥ - ♦ - ♣ -"),
         .south         = Cards("♠ 3  ♥ 4 ♦ - ♣ -"),
         .trump_suit    = NO_TRUMP,
         .lead_seat     = WEST,
+        .forced_tricks = 2,
+    },
+    {
+        .name          = "partner_winners_north",
+        .west          = Cards("♠ 3  ♥ 4 ♦ - ♣ -"),
+        .north         = Cards("♠ 2  ♥ 3 ♦ - ♣ -"),
+        .east          = Cards("♠ -  ♥ AK ♦ - ♣ -"),
+        .south         = Cards("♠ AK ♥ - ♦ - ♣ -"),
+        .trump_suit    = NO_TRUMP,
+        .lead_seat     = NORTH,
         .forced_tricks = 2,
     },
 };
@@ -80,15 +93,14 @@ TEST(MiniSolver, random_test) {
   std::default_random_engine random(123);
 
   for (int i = 0; i < 100; i++) {
-    Game       g  = Game::random_deal(random, 6);
-    Solver     s1 = Solver(g);
-    MiniSolver s2 = MiniSolver(g);
-    auto       r1 = s1.solve();
-    int        r2 = s2.count_forced_tricks();
+    Game               g  = Game::random_deal(random, 6);
+    Solver             s1 = Solver(g);
+    TranspositionTable tp_table;
+    MiniSolver         s2 = MiniSolver(g, tp_table);
+    auto               r  = s1.solve();
+    Bounds             b  = s2.compute_bounds();
 
-    int best_tricks = g.lead_seat() == NORTH || g.lead_seat() == SOUTH
-                          ? r1.tricks_taken_by_ns
-                          : r1.tricks_taken_by_ew;
-    EXPECT_LE(r2, best_tricks);
+    EXPECT_LE(b.lower, r.tricks_taken_by_ns);
+    EXPECT_GE(b.upper, r.tricks_taken_by_ns);
   }
 }

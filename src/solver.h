@@ -64,16 +64,8 @@ private:
   bool search_all_cards(SearchState &s);
   bool search_specific_cards(SearchState &s, Cards c, Order o);
   bool search_specific_card(SearchState &s, Card c);
-  int  search_forced_tricks(bool maximizing, int &alpha, int &beta);
 
   void trace(const char *tag, int alpha, int beta, int tricks_taken_by_ns);
-
-  struct Bounds {
-    int8_t lower;
-    int8_t upper;
-  };
-
-  typedef absl::flat_hash_map<GameState, Bounds> TranspositionTable;
 
   Game               game_;
   int64_t            states_explored_;

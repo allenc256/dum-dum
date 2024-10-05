@@ -5,7 +5,7 @@
 Solver::Solver(Game g)
     : game_(g),
       states_explored_(0),
-      mini_solver_(game_),
+      mini_solver_(game_, tp_table_),
       trace_ostream_(nullptr),
       trace_lineno_(0) {
   enable_all_optimizations(true);
@@ -26,7 +26,6 @@ Solver::Result Solver::solve(int alpha, int beta) {
       .best_play          = best_play,
       .states_explored    = states_explored_,
       .states_memoized    = (int64_t)tp_table_.size(),
-      .ms_states_memoized = mini_solver_.states_memoized(),
   };
 }
 
@@ -43,27 +42,23 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
 
   bool   maximizing = game_.next_seat() == NORTH || game_.next_seat() == SOUTH;
   Cards  ignorable  = game_.ignorable_cards();
-  Bounds table_bounds;
+  Bounds bounds;
 
   if (game_.start_of_trick()) {
     if (!best_play) {
-      if (mini_solver_enabled_) {
-        int result = search_forced_tricks(maximizing, alpha, beta);
-        if (result >= 0) {
-          TRACE("prune", alpha, beta, result);
-          return result;
-        }
-      }
-
       if (tp_table_enabled_) {
-        auto it = tp_table_.find(game_.game_state());
-        if (it != tp_table_.end()) {
-          table_bounds = it->second;
+        if (mini_solver_enabled_) {
+          bounds = mini_solver_.compute_bounds();
         } else {
-          table_bounds = {.lower = 0, .upper = (int8_t)game_.tricks_left()};
+          auto it = tp_table_.find(game_.game_state());
+          if (it != tp_table_.end()) {
+            bounds = it->second;
+          } else {
+            bounds = {.lower = 0, .upper = (int8_t)game_.tricks_left()};
+          }
         }
-        int lower = table_bounds.lower + game_.tricks_taken_by_ns();
-        int upper = table_bounds.upper + game_.tricks_taken_by_ns();
+        int lower = bounds.lower + game_.tricks_taken_by_ns();
+        int upper = bounds.upper + game_.tricks_taken_by_ns();
         if (lower >= beta) {
           TRACE("lookup", alpha, beta, lower);
           return lower;
@@ -96,15 +91,16 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
       int8_t taken   = (int8_t)game_.tricks_taken_by_ns();
       bool   changed = false;
       if (best < beta) {
-        table_bounds.upper = best - taken;
-        changed            = true;
+        bounds.upper = best - taken;
+        changed      = true;
       }
       if (best > alpha) {
-        table_bounds.lower = best - taken;
-        changed            = true;
+        bounds.lower = best - taken;
+        changed      = true;
       }
       if (changed) {
-        tp_table_[game_.game_state()] = table_bounds;
+        assert(bounds.lower <= bounds.upper);
+        tp_table_[game_.game_state()] = bounds;
       }
     }
   }
@@ -221,26 +217,6 @@ bool Solver::search_specific_card(SearchState &s, Card c) {
 
   game_.unplay();
   return prune;
-}
-
-int Solver::search_forced_tricks(bool maximizing, int &alpha, int &beta) {
-  assert(mini_solver_enabled_);
-  int forced_tricks = mini_solver_.count_forced_tricks();
-  if (maximizing) {
-    int worst_case = game_.tricks_taken_by_ns() + forced_tricks;
-    if (worst_case >= beta) {
-      return worst_case;
-    }
-    alpha = std::max(alpha, worst_case);
-  } else {
-    int best_case =
-        game_.tricks_taken_by_ns() + game_.tricks_left() - forced_tricks;
-    if (best_case <= alpha) {
-      return best_case;
-    }
-    beta = std::min(beta, best_case);
-  }
-  return -1;
 }
 
 static void sha256_hash(Game &game, char *buf, size_t buflen) {

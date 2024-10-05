@@ -1,8 +1,18 @@
 #include "mini_solver.h"
 
-int MiniSolver::count_forced_tricks() {
+static void
+update_bounds(Bounds &bounds, const Bounds &child_bounds, bool maximizing) {
+  if (maximizing) {
+    bounds.lower = std::max(bounds.lower, (int8_t)(child_bounds.lower + 1));
+  } else {
+    bounds.upper = std::min(bounds.upper, child_bounds.upper);
+  }
+  assert(bounds.lower <= bounds.upper);
+}
+
+Bounds MiniSolver::compute_bounds() {
   if (game_.finished()) {
-    return 0;
+    return {.lower = 0, .upper = 0};
   }
 
   assert(game_.start_of_trick());
@@ -13,12 +23,13 @@ int MiniSolver::count_forced_tricks() {
     return it->second;
   }
 
-  int forced_tricks = 0;
+  Bounds bounds = {.lower = 0, .upper = (int8_t)game_.tricks_left()};
 
-  Seat me      = game_.next_seat();
-  Seat left    = game_.next_seat(1);
-  Seat partner = game_.next_seat(2);
-  Seat right   = game_.next_seat(3);
+  Seat me         = game_.next_seat();
+  Seat left       = game_.next_seat(1);
+  Seat partner    = game_.next_seat(2);
+  Seat right      = game_.next_seat(3);
+  bool maximizing = me == NORTH || me == SOUTH;
 
   Cards left_trumps;
   Cards right_trumps;
@@ -54,41 +65,44 @@ int MiniSolver::count_forced_tricks() {
     Cards partner_poss_winners =
         partner_cards.intersect(poss_winners).prune_equivalent(ignorable_cards);
 
-    for (auto it = my_poss_winners.iter_highest(); it.valid();
-         it      = my_poss_winners.iter_lower(it)) {
+    for (auto it = my_poss_winners.iter_highest();
+         it.valid() && bounds.lower < bounds.upper;
+         it = my_poss_winners.iter_lower(it)) {
       game_.play(it.card());
       play_opp_lowest();
       play_partner_lowest();
       play_opp_lowest();
       assert(game_.next_seat() == me || game_.next_seat() == partner);
-      forced_tricks = std::max(forced_tricks, count_forced_tricks() + 1);
+      update_bounds(bounds, compute_bounds(), maximizing);
       game_.unplay();
       game_.unplay();
       game_.unplay();
       game_.unplay();
     }
 
-    for (auto it = partner_poss_winners.iter_highest(); it.valid();
-         it      = partner_poss_winners.iter_lower(it)) {
+    for (auto it = partner_poss_winners.iter_highest();
+         it.valid() && bounds.lower < bounds.upper;
+         it = partner_poss_winners.iter_lower(it)) {
       play_my_lowest(suit);
       play_opp_lowest();
       game_.play(it.card());
       play_opp_lowest();
       assert(game_.next_seat() == me || game_.next_seat() == partner);
-      forced_tricks = std::max(forced_tricks, count_forced_tricks() + 1);
+      update_bounds(bounds, compute_bounds(), maximizing);
       game_.unplay();
       game_.unplay();
       game_.unplay();
       game_.unplay();
     }
 
-    if (partner_cards.empty() && !partner_trumps.empty()) {
+    if (partner_cards.empty() && !partner_trumps.empty() &&
+        bounds.lower < bounds.upper) {
       play_my_lowest(suit);
       play_opp_lowest();
       play_partner_ruff();
       play_opp_lowest();
       assert(game_.next_seat() == me || game_.next_seat() == partner);
-      forced_tricks = std::max(forced_tricks, count_forced_tricks() + 1);
+      update_bounds(bounds, compute_bounds(), maximizing);
       game_.unplay();
       game_.unplay();
       game_.unplay();
@@ -100,8 +114,8 @@ int MiniSolver::count_forced_tricks() {
     // - finesses?
   }
 
-  tp_table_[game_.game_state()] = (uint8_t)forced_tricks;
-  return forced_tricks;
+  tp_table_[game_.game_state()] = bounds;
+  return bounds;
 }
 
 void MiniSolver::play_my_lowest(Suit suit) {

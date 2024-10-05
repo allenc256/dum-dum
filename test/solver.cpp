@@ -45,6 +45,7 @@ TEST(Solver, mini_solver) {
     Solver s = Solver(g);
     s.enable_all_optimizations(false);
     s.enable_ab_pruning(true);
+    s.enable_tp_table(true);
     s.enable_mini_solver(true);
     ASSERT_NO_FATAL_FAILURE({
       SCOPED_TRACE(

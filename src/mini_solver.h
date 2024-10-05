@@ -4,22 +4,27 @@
 
 #include <absl/container/flat_hash_map.h>
 
+struct Bounds {
+  int8_t lower;
+  int8_t upper;
+};
+
+typedef absl::flat_hash_map<GameState, Bounds> TranspositionTable;
+
 class MiniSolver {
 public:
-  MiniSolver(Game &game) : game_(game) {}
+  MiniSolver(Game &game, TranspositionTable &tp_table)
+      : game_(game),
+        tp_table_(tp_table) {}
 
-  int64_t states_memoized() const { return tp_table_.size(); }
-
-  int count_forced_tricks();
+  Bounds compute_bounds();
 
 private:
-  typedef absl::flat_hash_map<GameState, uint8_t> TranspositionTable;
-
   void play_my_lowest(Suit suit);
   void play_opp_lowest();
   void play_partner_lowest();
   void play_partner_ruff();
 
-  Game              &game_;
-  TranspositionTable tp_table_;
+  Game               &game_;
+  TranspositionTable &tp_table_;
 };
