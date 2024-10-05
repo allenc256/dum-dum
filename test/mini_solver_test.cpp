@@ -21,8 +21,8 @@ TEST_P(MiniSolverTest, test_case) {
   const MiniSolverTestCase &p        = GetParam();
   Cards                     hands[4] = {p.west, p.north, p.east, p.south};
   Game                      g(p.trump_suit, p.lead_seat, hands);
-  TranspositionTable        tp_table;
-  MiniSolver                s(g, tp_table);
+  TpnTable                  tpn_table;
+  MiniSolver                s(g, tpn_table);
   Bounds                    b = s.compute_bounds();
   bool maximizing             = p.lead_seat == NORTH || p.lead_seat == SOUTH;
   int  forced_tricks          = maximizing ? b.lower : g.tricks_max() - b.upper;
@@ -93,12 +93,12 @@ TEST(MiniSolver, random_test) {
   std::default_random_engine random(123);
 
   for (int i = 0; i < 100; i++) {
-    Game               g  = Game::random_deal(random, 6);
-    Solver             s1 = Solver(g);
-    TranspositionTable tp_table;
-    MiniSolver         s2 = MiniSolver(g, tp_table);
-    auto               r  = s1.solve();
-    Bounds             b  = s2.compute_bounds();
+    Game       g  = Game::random_deal(random, 6);
+    Solver     s1 = Solver(g);
+    TpnTable   tpn_table;
+    MiniSolver s2 = MiniSolver(g, tpn_table);
+    auto       r  = s1.solve();
+    Bounds     b  = s2.compute_bounds();
 
     EXPECT_LE(b.lower, r.tricks_taken_by_ns);
     EXPECT_GE(b.upper, r.tricks_taken_by_ns);

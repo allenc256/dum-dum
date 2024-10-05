@@ -45,7 +45,7 @@ TEST(Solver, mini_solver) {
     Solver s = Solver(g);
     s.enable_all_optimizations(false);
     s.enable_ab_pruning(true);
-    s.enable_tp_table(true);
+    s.enable_tpn_table(true);
     s.enable_mini_solver(true);
     ASSERT_NO_FATAL_FAILURE({
       SCOPED_TRACE(
@@ -57,14 +57,14 @@ TEST(Solver, mini_solver) {
   }
 }
 
-TEST(Solver, tp_table) {
+TEST(Solver, tpn_table) {
   std::default_random_engine random(123);
 
   for (int i = 0; i < 100; i++) {
     Game   g = Game::random_deal(random, DEAL_SIZE);
     Solver s = Solver(g);
     s.enable_all_optimizations(false);
-    s.enable_tp_table(true);
+    s.enable_tpn_table(true);
     ASSERT_NO_FATAL_FAILURE({
       SCOPED_TRACE(::testing::Message() << "iteration " << i);
       validate_solver(s);

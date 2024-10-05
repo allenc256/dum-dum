@@ -22,13 +22,13 @@ public:
 
   void enable_all_optimizations(bool enabled) {
     ab_pruning_enabled_    = enabled;
-    tp_table_enabled_      = enabled;
+    tpn_table_enabled_     = enabled;
     move_ordering_enabled_ = enabled;
     mini_solver_enabled_   = enabled;
   }
 
   void enable_ab_pruning(bool enabled) { ab_pruning_enabled_ = enabled; }
-  void enable_tp_table(bool enabled) { tp_table_enabled_ = enabled; }
+  void enable_tpn_table(bool enabled) { tpn_table_enabled_ = enabled; }
   void enable_move_ordering(bool enabled) { move_ordering_enabled_ = enabled; }
   void enable_mini_solver(bool enabled) { mini_solver_enabled_ = enabled; }
 
@@ -66,14 +66,14 @@ private:
 
   void trace(const char *tag, int alpha, int beta, int tricks_taken_by_ns);
 
-  Game               game_;
-  int64_t            states_explored_;
-  TranspositionTable tp_table_;
-  MiniSolver         mini_solver_;
-  bool               ab_pruning_enabled_;
-  bool               tp_table_enabled_;
-  bool               move_ordering_enabled_;
-  bool               mini_solver_enabled_;
-  std::ostream      *trace_ostream_;
-  int64_t            trace_lineno_;
+  Game          game_;
+  int64_t       states_explored_;
+  TpnTable      tpn_table_;
+  MiniSolver    mini_solver_;
+  bool          ab_pruning_enabled_;
+  bool          tpn_table_enabled_;
+  bool          move_ordering_enabled_;
+  bool          mini_solver_enabled_;
+  std::ostream *trace_ostream_;
+  int64_t       trace_lineno_;
 };

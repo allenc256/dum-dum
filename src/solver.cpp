@@ -5,7 +5,7 @@
 Solver::Solver(Game g)
     : game_(g),
       states_explored_(0),
-      mini_solver_(game_, tp_table_),
+      mini_solver_(game_, tpn_table_),
       trace_ostream_(nullptr),
       trace_lineno_(0) {
   enable_all_optimizations(true);
@@ -25,7 +25,7 @@ Solver::Result Solver::solve(int alpha, int beta) {
       .tricks_taken_by_ew = tricks_taken_by_ew,
       .best_play          = best_play,
       .states_explored    = states_explored_,
-      .states_memoized    = (int64_t)tp_table_.size(),
+      .states_memoized    = (int64_t)tpn_table_.size(),
   };
 }
 
@@ -46,7 +46,7 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
 
   if (game_.start_of_trick()) {
     if (!best_play) {
-      if (tp_table_enabled_) {
+      if (tpn_table_enabled_) {
         bounds    = compute_initial_bounds();
         int lower = bounds.lower + game_.tricks_taken_by_ns();
         int upper = bounds.upper + game_.tricks_taken_by_ns();
@@ -77,7 +77,7 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
   if (game_.start_of_trick()) {
     TRACE("end", alpha, beta, search_state.best_tricks_by_ns);
 
-    if (tp_table_enabled_) {
+    if (tpn_table_enabled_) {
       int8_t best    = (int8_t)search_state.best_tricks_by_ns;
       int8_t taken   = (int8_t)game_.tricks_taken_by_ns();
       bool   changed = false;
@@ -91,7 +91,7 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
       }
       if (changed) {
         assert(bounds.lower <= bounds.upper);
-        tp_table_[game_.game_state()] = bounds;
+        tpn_table_[game_.game_state()] = bounds;
       }
     }
   }
@@ -103,8 +103,8 @@ Bounds Solver::compute_initial_bounds() {
   if (mini_solver_enabled_) {
     return mini_solver_.compute_bounds();
   }
-  auto it = tp_table_.find(game_.game_state());
-  if (it != tp_table_.end()) {
+  auto it = tpn_table_.find(game_.game_state());
+  if (it != tpn_table_.end()) {
     return it->second;
   } else {
     return {.lower = 0, .upper = (int8_t)game_.tricks_left()};

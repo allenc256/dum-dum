@@ -18,8 +18,8 @@ Bounds MiniSolver::compute_bounds() {
   assert(game_.start_of_trick());
 
   Cards ignorable_cards = game_.ignorable_cards();
-  auto  it              = tp_table_.find(game_.game_state());
-  if (it != tp_table_.end()) {
+  auto  it              = tpn_table_.find(game_.game_state());
+  if (it != tpn_table_.end()) {
     return it->second;
   }
 
@@ -114,7 +114,7 @@ Bounds MiniSolver::compute_bounds() {
     // - finesses?
   }
 
-  tp_table_[game_.game_state()] = bounds;
+  tpn_table_[game_.game_state()] = bounds;
   return bounds;
 }
 
