@@ -47,24 +47,15 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
   if (game_.start_of_trick()) {
     if (!best_play) {
       if (tp_table_enabled_) {
-        if (mini_solver_enabled_) {
-          bounds = mini_solver_.compute_bounds();
-        } else {
-          auto it = tp_table_.find(game_.game_state());
-          if (it != tp_table_.end()) {
-            bounds = it->second;
-          } else {
-            bounds = {.lower = 0, .upper = (int8_t)game_.tricks_left()};
-          }
-        }
+        bounds    = compute_initial_bounds();
         int lower = bounds.lower + game_.tricks_taken_by_ns();
         int upper = bounds.upper + game_.tricks_taken_by_ns();
         if (lower >= beta) {
-          TRACE("lookup", alpha, beta, lower);
+          TRACE("prune", alpha, beta, lower);
           return lower;
         }
         if (upper <= alpha) {
-          TRACE("lookup", alpha, beta, upper);
+          TRACE("prune", alpha, beta, upper);
           return upper;
         }
       }
@@ -106,6 +97,18 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
   }
 
   return search_state.best_tricks_by_ns;
+}
+
+Bounds Solver::compute_initial_bounds() {
+  if (mini_solver_enabled_) {
+    return mini_solver_.compute_bounds();
+  }
+  auto it = tp_table_.find(game_.game_state());
+  if (it != tp_table_.end()) {
+    return it->second;
+  } else {
+    return {.lower = 0, .upper = (int8_t)game_.tricks_left()};
+  }
 }
 
 bool Solver::search_all_cards(SearchState &s) {

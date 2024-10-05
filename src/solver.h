@@ -45,6 +45,8 @@ public:
   Result solve(int alpha, int beta);
 
 private:
+  Bounds compute_initial_bounds();
+
   int solve_internal(int alpha, int beta, Card *best_play);
 
   struct SearchState {
