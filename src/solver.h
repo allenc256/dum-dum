@@ -15,7 +15,6 @@ public:
     Card    best_play;
     int64_t states_explored;
     int64_t states_memoized;
-    int64_t ms_states_memoized;
   };
 
   Solver(Game g);

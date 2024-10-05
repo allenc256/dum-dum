@@ -7,23 +7,42 @@
 #include <iostream>
 #include <random>
 
-void show_line(const Game &g, std::string line) {
-  std::istringstream is(line);
-  Game               copy(g);
+void benchmark(int num_games, int cards_per_hand) {
+  std::printf(
+      "%20s,%20s,%20s,%20s,%20s\n",
+      "seed",
+      "tricks_taken_by_ns",
+      "states_explored",
+      "states_memoized",
+      "elapsed_ms"
+  );
 
-  std::cout << copy << std::endl;
-  while (is.peek() != EOF) {
-    Card c;
-    is >> c;
-    std::cout << g.next_seat() << " plays " << c << std::endl << std::endl;
-    copy.play(c);
-    std::cout << copy << std::endl;
+  for (int i = 0; i < num_games; i++) {
+    std::default_random_engine random(i);
+    Game                       g = Game::random_deal(random, cards_per_hand);
+    Solver                     s(g);
+
+    auto begin = std::chrono::steady_clock::now();
+    auto r     = s.solve();
+    auto end   = std::chrono::steady_clock::now();
+    auto elapsed_ms =
+        std::chrono::duration_cast<std::chrono::milliseconds>(end - begin)
+            .count();
+
+    std::printf(
+        "%20d,%20d,%20lld,%20lld,%20lld\n",
+        i,
+        r.tricks_taken_by_ns,
+        r.states_explored,
+        r.states_memoized,
+        elapsed_ms
+    );
   }
 }
 
-int main() {
-  std::default_random_engine random(123);
-  Game                       g = Game::random_deal(random, 13);
+void solve_seed(int seed, int cards_per_hand) {
+  std::default_random_engine random(seed);
+  Game                       g = Game::random_deal(random, cards_per_hand);
   Solver                     s(g);
 
   auto begin = std::chrono::steady_clock::now();
@@ -37,7 +56,6 @@ int main() {
   std::cout << "best_tricks_by_ns:  " << r.tricks_taken_by_ns << std::endl
             << "states_explored:    " << r.states_explored << std::endl
             << "states_memoized:    " << r.states_memoized << std::endl
-            << "ms_states_memoized: " << r.ms_states_memoized << std::endl
             << "elapsed_ms:         " << elapsed_ms << std::endl;
 
   while (!s.game().finished()) {
@@ -49,6 +67,9 @@ int main() {
     std::cout << std::setw(20) << std::format("trick_{}:", i)
               << s.game().trick(i) << std::endl;
   }
+}
 
+int main() {
+  solve_seed(123, 13);
   return 0;
 }
