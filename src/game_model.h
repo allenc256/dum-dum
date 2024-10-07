@@ -9,6 +9,7 @@ enum Seat : int {
   NORTH,
   EAST,
   SOUTH,
+  NO_SEAT,
 };
 
 constexpr Seat FIRST_SEAT = WEST;
@@ -28,6 +29,10 @@ inline Seat left_seat(Seat s, int i) {
 inline Seat right_seat(Seat s, int i) {
   assert(i >= 0);
   return (Seat)((s + i) & 3);
+}
+
+inline int right_seat_diff(Seat s1, Seat s2) {
+  return (Seat)((s2 + (4 - s1)) & 3);
 }
 
 std::ostream &operator<<(std::ostream &os, Seat s);

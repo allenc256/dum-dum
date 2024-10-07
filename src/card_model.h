@@ -59,7 +59,7 @@ public:
 
   Rank rank() const { return (Rank)rank_; }
   Suit suit() const { return (Suit)suit_; }
-  bool known() const { return rank_ != RANK_UNKNOWN; }
+  bool is_rank_unknown() const { return rank_ == RANK_UNKNOWN; }
 
   std::string to_string() const;
 
@@ -121,22 +121,22 @@ public:
   Cards    honors() const { return Cards(bits_ & HONORS_MASK); }
 
   void add(Card c) {
-    assert(c.known());
+    assert(!c.is_rank_unknown());
     bits_ |= to_card_bit(c);
   }
 
   void remove(Card c) {
-    assert(c.known());
+    assert(!c.is_rank_unknown());
     bits_ &= ~to_card_bit(c);
   }
 
   bool contains(Card c) const {
-    assert(c.known());
+    assert(!c.is_rank_unknown());
     return bits_ & to_card_bit(c);
   }
 
   Cards with(Card c) const {
-    assert(c.known());
+    assert(!c.is_rank_unknown());
     return Cards(bits_ | to_card_bit(c));
   }
 
@@ -223,13 +223,13 @@ public:
   static Cards all(Suit s) { return Cards(SUIT_MASK << s); }
 
   static Cards higher_ranking(Card card) {
-    assert(card.known());
+    assert(!card.is_rank_unknown());
     uint64_t rank_bits = (SUIT_MASK << ((card.rank() + 1) * 4)) & ALL_MASK;
     return Cards(rank_bits << card.suit());
   }
 
   static Cards lower_ranking(Card card) {
-    assert(card.known());
+    assert(!card.is_rank_unknown());
     uint64_t rank_bits = (SUIT_MASK >> ((13 - card.rank()) * 4)) & ALL_MASK;
     return Cards(rank_bits << card.suit());
   }
