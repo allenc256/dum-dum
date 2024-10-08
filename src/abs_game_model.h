@@ -4,68 +4,78 @@
 
 class AbsTrick {
 public:
+  enum State { STARTING, STARTED, FINISHING, FINISHED };
+
   AbsTrick()
       : card_count_(0),
         lead_seat_(NO_SEAT),
         trump_suit_(NO_TRUMP),
-        is_poss_winning_{false},
-        chosen_winning_seat_(NO_SEAT) {}
+        winning_seat_(NO_SEAT),
+        can_finish_{false},
+        state_(STARTING) {}
 
-  bool started() const { return card_count_ > 0; }
-  bool finished() const { return card_count_ == 4; }
+  State state() const { return state_; }
 
   Suit lead_suit() const {
-    assert(started());
+    assert(state_ != STARTING);
     return cards_[lead_seat_].suit();
   }
 
-  bool is_poss_winning(Seat seat) const {
-    assert(finished());
-    return is_poss_winning_[right_seat_diff(lead_seat_, seat)];
+  Seat lead_seat() const {
+    assert(state_ != STARTING);
+    return lead_seat_;
   }
 
-  Seat chosen_winning_seat() const {
-    assert(chosen_winning_seat_ != NO_SEAT);
-    return chosen_winning_seat_;
+  bool can_finish(Seat seat) const {
+    assert(state_ == FINISHING);
+    return can_finish_[right_seat_diff(lead_seat_, seat)];
   }
 
-  void choose_winning_seat(Seat seat) {
-    assert(finished());
-    assert(is_poss_winning_[seat]);
-    assert(chosen_winning_seat_ != NO_SEAT);
-    chosen_winning_seat_ = seat;
+  void finish(Seat seat) {
+    assert(state_ == FINISHING && can_finish_[seat]);
+    winning_seat_ = seat;
+    state_        = FINISHED;
   }
 
-  void unchoose_winning_seat() {
-    assert(finished());
-    assert(chosen_winning_seat_ != NO_SEAT);
-    chosen_winning_seat_ = NO_SEAT;
+  Seat unfinish() {
+    assert(state_ == FINISHED);
+    Seat s        = winning_seat_;
+    winning_seat_ = NO_SEAT;
+    state_        = FINISHING;
+    return s;
   }
 
   void play_starting_card(Seat lead_seat, Suit trump_suit, Card card) {
-    assert(!started());
+    assert(state_ == STARTING);
     cards_[0]   = card;
     card_count_ = 1;
     trump_suit_ = trump_suit;
     lead_seat_  = lead_seat;
+    state_      = STARTED;
   }
 
   void play_continuing_card(Card card) {
-    assert(started() && !finished());
+    assert(state_ == STARTED);
     cards_[card_count_] = card;
     card_count_++;
     if (card_count_ == 4) {
-      compute_winning_seats();
+      state_ = FINISHING;
+      compute_can_finish();
     }
   }
 
-  void unplay() {
-    assert(started());
+  Card unplay() {
+    assert(state_ == STARTED);
+    Card c = cards_[card_count_];
     card_count_--;
+    if (card_count_ == 0) {
+      state_ = STARTING;
+    }
+    return c;
   }
 
 private:
-  void compute_winning_seats() {
+  void compute_can_finish() {
     Card best      = cards_[0];
     Suit lead_suit = cards_[lead_seat_].suit();
     for (int i = 1; i < 4; i++) {
@@ -74,7 +84,7 @@ private:
       }
     }
     for (int i = 0; i < 4; i++) {
-      is_poss_winning_[i] = (cards_[i] == best);
+      can_finish_[i] = (cards_[i] == best);
     }
   }
 
@@ -106,12 +116,13 @@ private:
     }
   }
 
-  Card cards_[4];
-  int  card_count_;
-  Seat lead_seat_;
-  Suit trump_suit_;
-  bool is_poss_winning_[4];
-  Seat chosen_winning_seat_;
+  Card  cards_[4];
+  int   card_count_;
+  Seat  lead_seat_;
+  Suit  trump_suit_;
+  Seat  winning_seat_;
+  bool  can_finish_[4];
+  State state_;
 };
 
 class AbsCards {
@@ -125,6 +136,8 @@ public:
     }
   }
 
+  AbsCards(std::string_view s);
+
   Cards high_cards() const { return high_cards_; }
   int   low_cards(Suit suit) const { return low_cards_[suit]; }
 
@@ -134,6 +147,48 @@ public:
       n += low_cards_[i];
     }
     return n;
+  }
+
+  void add(Card c) {
+    if (c.rank() == RANK_UNKNOWN) {
+      low_cards_[c.suit()]++;
+    } else {
+      assert(!high_cards_.contains(c));
+      high_cards_.add(c);
+    }
+  }
+
+  void remove(Card c) {
+    if (c.rank() == RANK_UNKNOWN) {
+      assert(low_cards_[c.suit()] > 0);
+      low_cards_[c.suit()]--;
+    } else {
+      assert(high_cards_.contains(c));
+      high_cards_.remove(c);
+    }
+  }
+
+  bool contains(Suit suit) const {
+    return !high_cards_.intersect(suit).empty() || low_cards_[suit] > 0;
+  }
+
+  AbsCards intersect(Suit suit) const {
+    Cards  hc    = high_cards_.intersect(suit);
+    int8_t lc[4] = {0};
+    lc[suit]     = low_cards_[suit];
+    return AbsCards(hc, lc);
+  }
+
+  friend bool operator==(const AbsCards &c1, const AbsCards &c2) {
+    if (c1.high_cards_ != c2.high_cards_) {
+      return false;
+    }
+    for (int i = 0; i < 4; i++) {
+      if (c1.low_cards_[i] != c2.low_cards_[i]) {
+        return false;
+      }
+    }
+    return true;
   }
 
   class Iter {
@@ -183,21 +238,6 @@ public:
   };
 
   Iter iter() const { return Iter(*this); }
-  // AbsPlays valid_plays(const AbsTrick &trick) const {
-  //   if (!trick.started()) {
-  //     bool lc[4];
-  //     for (int i = 0; i < 4; i++) {
-  //       lc[i] = low_cards_[i] > 0;
-  //     }
-  //     return AbsPlays(high_cards_, lc);
-  //   } else {
-  //     Suit  s     = trick.lead_suit();
-  //     Cards hc    = high_cards_.intersect(s);
-  //     bool  lc[4] = {false};
-  //     lc[s]       = low_cards_[s] > 0;
-  //     return AbsPlays(hc, lc);
-  //   }
-  // }
 
 private:
   friend class Iter;
@@ -206,44 +246,93 @@ private:
   int8_t low_cards_[4];
 };
 
-// class AbsGame {
-// public:
-//   AbsGame(Suit trump_suit, Seat initial_lead_seat, AbsHand hands[4])
-//       : trump_suit_(trump_suit),
-//         initial_lead_seat_(initial_lead_seat),
-//         tricks_taken_(0),
-//         tricks_taken_by_ns_(0) {
-//     int hand_size = hands[0].size();
-//     for (int i = 1; i < 4; i++) {
-//       if (hands[i].size() != hand_size) {
-//         throw std::runtime_error("hands must be same size");
-//       }
-//     }
+std::ostream &operator<<(std::ostream &os, const AbsCards &c);
+std::istream &operator>>(std::istream &is, AbsCards &c);
 
-//     for (int i = 0; i < 4; i++) {
-//       hands_[i] = hands[i];
-//     }
-//   }
+class AbsGame {
+public:
+  AbsGame(Suit trump_suit, Seat initial_lead_seat, AbsCards hands[4])
+      : trump_suit_(trump_suit),
+        next_seat_(initial_lead_seat),
+        tricks_taken_(0),
+        tricks_taken_by_ns_(0),
+        tricks_max_(hands[0].size()) {
+    for (int i = 1; i < 4; i++) {
+      if (hands[i].size() != tricks_max_) {
+        throw std::runtime_error("hands must be same size");
+      }
+    }
 
-//   struct ValidPlays {
-//     Cards high_cards;
-//     bool  low_cards[4];
-//   };
+    for (int i = 0; i < 4; i++) {
+      hands_[i] = hands[i];
+    }
+  }
 
-//   ValidPlays valid_plays() const {
-//     const AbsTrick &t = tricks_[tricks_taken_];
-//     if (!t.started()) {
-//       // return { .high_cards=hands_[next_seat_].high_cards(), .low_c};
-//     }
-//   }
+  AbsTrick::State trick_state() const { return tricks_[tricks_taken_].state(); }
 
-// private:
-//   Suit     trump_suit_;
-//   Seat     initial_lead_seat_;
-//   Seat     next_seat_;
-//   AbsHand  hands_[4];
-//   AbsTrick tricks_[14];
-//   int      tricks_taken_;
-//   int      tricks_taken_by_ns_;
-//   int      tricks_max_;
-// };
+  AbsCards valid_plays() const {
+    const AbsTrick &t = tricks_[tricks_taken_];
+    const AbsCards &h = hands_[next_seat_];
+    if (t.state() == AbsTrick::STARTED && h.contains(t.lead_suit())) {
+      return h.intersect(t.lead_suit());
+    } else {
+      return h;
+    }
+  }
+
+  void play(Card c) {
+    assert(tricks_taken_ < tricks_max_);
+    AbsTrick &t = tricks_[tricks_taken_];
+    if (t.state() == AbsTrick::STARTING) {
+      t.play_starting_card(next_seat_, trump_suit_, c);
+    } else if (t.state() == AbsTrick::STARTED) {
+      t.play_continuing_card(c);
+    } else {
+      assert(false);
+    }
+    hands_[next_seat_].remove(c);
+    next_seat_ = right_seat(next_seat_);
+  }
+
+  void unplay() {
+    AbsTrick &t = tricks_[tricks_taken_];
+    assert(t.state() == AbsTrick::STARTED);
+    Card c     = t.unplay();
+    next_seat_ = left_seat(next_seat_);
+    hands_[next_seat_].add(c);
+  }
+
+  bool can_finish_trick(Seat seat) const {
+    return tricks_[tricks_taken_].can_finish(seat);
+  }
+
+  void finish_trick(Seat seat) {
+    tricks_[tricks_taken_].finish(seat);
+    tricks_taken_++;
+    if (seat == NORTH || seat == SOUTH) {
+      tricks_taken_by_ns_++;
+    }
+    next_seat_ = seat;
+  }
+
+  void unfinish_trick() {
+    assert(tricks_taken_ > 0);
+    assert(tricks_[tricks_taken_].state() == AbsTrick::STARTING);
+    tricks_taken_--;
+    AbsTrick &t = tricks_[tricks_taken_];
+    Seat      s = t.unfinish();
+    if (s == NORTH || s == SOUTH) {
+      tricks_taken_by_ns_--;
+    }
+    next_seat_ = t.lead_seat();
+  }
+
+private:
+  Suit     trump_suit_;
+  Seat     next_seat_;
+  AbsCards hands_[4];
+  AbsTrick tricks_[14];
+  int      tricks_taken_;
+  int      tricks_taken_by_ns_;
+  int      tricks_max_;
+};

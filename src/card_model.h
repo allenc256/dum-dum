@@ -51,6 +51,8 @@ inline Rank operator--(Rank &r, int) { return (Rank)((int8_t &)r)--; }
 std::istream &operator>>(std::istream &is, Rank &r);
 std::ostream &operator<<(std::ostream &os, Rank r);
 
+bool peek_is_rank(std::istream &is);
+
 class Card {
 public:
   Card() : rank_(RANK_2), suit_(CLUBS) {}

@@ -114,9 +114,8 @@ TEST_P(AbsTrickTest, test_case) {
   for (int i = 1; i < 4; i++) {
     trick.play_continuing_card(Card(tc.cards[i]));
   }
-  EXPECT_TRUE(trick.finished());
   for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
-    EXPECT_EQ(trick.is_poss_winning(seat), tc.poss_winners.contains(seat));
+    EXPECT_EQ(trick.can_finish(seat), tc.poss_winners.contains(seat));
   }
 }
 
@@ -127,11 +126,41 @@ INSTANTIATE_TEST_SUITE_P(
     [](const auto &info) { return info.param.name; }
 );
 
-void test_abs_cards_iter(Cards high_cards, int8_t low_cards[4]) {
+void test_abs_cards_istream(const char *str, AbsCards exp) {
+  std::istringstream is(str);
+  AbsCards           act;
+  is >> act >> std::ws;
+  EXPECT_TRUE(is.eof());
+  EXPECT_EQ(act, exp);
+}
+
+TEST(AbsCards, istream_empty) {
+  test_abs_cards_istream("S - H - D - C -", AbsCards());
+}
+
+TEST(AbsCards, istream_low) {
+  test_abs_cards_istream(
+      "S X H XX D XXX C XXXX", AbsCards(Cards(), (int8_t[4]){4, 3, 2, 1})
+  );
+}
+
+TEST(AbsCards, istream_high) {
+  test_abs_cards_istream(
+      "S KQ H - D 54 C 32",
+      AbsCards(Cards("S KQ H - D 54 C 32"), (int8_t[4]){0})
+  );
+}
+
+TEST(AbsCards, istream_high_and_low) {
+  test_abs_cards_istream(
+      "S KQXXX H - D 54 C 32",
+      AbsCards(Cards("S KQ H - D 54 C 32"), (int8_t[4]){0, 0, 0, 3})
+  );
+}
+
+void test_abs_cards_iter(AbsCards cards) {
   Cards  act_high_cards   = Cards();
   int8_t act_low_cards[4] = {0};
-
-  AbsCards cards(high_cards, low_cards);
 
   for (auto it = cards.iter(); it.valid(); it.next()) {
     Card c = it.card();
@@ -142,24 +171,102 @@ void test_abs_cards_iter(Cards high_cards, int8_t low_cards[4]) {
     }
   }
 
-  EXPECT_EQ(high_cards, act_high_cards);
-  for (int i = 0; i < 4; i++) {
-    EXPECT_EQ(low_cards[i] > 0, act_low_cards[i] == 1);
+  EXPECT_EQ(cards.high_cards(), act_high_cards);
+  for (Suit suit = FIRST_SUIT; suit <= LAST_SUIT; suit++) {
+    EXPECT_EQ(cards.low_cards(suit) > 0, act_low_cards[suit] == 1);
   }
 }
 
-TEST(AbsCards, iter_empty) {
-  test_abs_cards_iter(Cards(), (int8_t[4]){0, 0, 0, 0});
-}
+TEST(AbsCards, iter_empty) { test_abs_cards_iter(AbsCards("♠ - ♥ - ♦ - ♣ -")); }
 
 TEST(AbsCards, iter_high_only) {
-  test_abs_cards_iter(Cards({"2C", "3C", "4C", "5S"}), (int8_t[4]){0, 0, 0, 0});
+  test_abs_cards_iter(AbsCards("♠ J ♥ J ♦ - ♣ AKQ"));
 }
 
 TEST(AbsCards, iter_low_only) {
-  test_abs_cards_iter(Cards(), (int8_t[4]){0, 1, 2, 3});
+  test_abs_cards_iter(AbsCards("♠ X ♥ X ♦ XXX ♣ -"));
 }
 
 TEST(AbsCards, iter_high_and_low) {
-  test_abs_cards_iter(Cards({"2C", "3C", "4C", "5S"}), (int8_t[4]){0, 1, 2, 3});
+  test_abs_cards_iter(AbsCards("♠ AQXXX ♥ XX ♦ - ♣ JX"));
+}
+
+struct ValidPlaysTestCase {
+  AbsCards    west;
+  AbsCards    north;
+  AbsCards    east;
+  AbsCards    south;
+  Suit        trump_suit;
+  Seat        lead_seat;
+  const char *line;
+  AbsCards    valid_plays;
+};
+
+void test_abs_game_valid_plays(ValidPlaysTestCase t) {
+  AbsGame game = AbsGame(
+      t.trump_suit,
+      t.lead_seat,
+      (AbsCards[4]){
+          t.west,
+          t.north,
+          t.east,
+          t.south,
+      }
+  );
+
+  if (t.line) {
+    std::istringstream is(t.line);
+    while (!is.eof()) {
+      if (game.trick_state() == AbsTrick::FINISHING) {
+        Seat s;
+        is >> s;
+        game.finish_trick(s);
+      } else {
+        Card c;
+        is >> c;
+        game.play(c);
+      }
+      is >> std::ws;
+    }
+  }
+
+  EXPECT_EQ(game.valid_plays(), t.valid_plays);
+}
+
+TEST(AbsGame, valid_plays_leads) {
+  test_abs_game_valid_plays({
+      .west        = AbsCards("♠ AK ♥ X ♦ - ♣ -"),
+      .north       = AbsCards("♠ XX ♥ X ♦ - ♣ -"),
+      .east        = AbsCards("♠ XX ♥ X ♦ - ♣ -"),
+      .south       = AbsCards("♠ XX ♥ X ♦ - ♣ -"),
+      .lead_seat   = WEST,
+      .trump_suit  = NO_TRUMP,
+      .valid_plays = AbsCards("♠ AK ♥ X ♦ - ♣ -"),
+  });
+}
+
+TEST(AbsGame, valid_plays_follow_suit) {
+  test_abs_game_valid_plays({
+      .west        = AbsCards("♠ AK ♥ X ♦ - ♣ -"),
+      .north       = AbsCards("♠ QX ♥ X ♦ - ♣ -"),
+      .east        = AbsCards("♠ XX ♥ X ♦ - ♣ -"),
+      .south       = AbsCards("♠ XX ♥ X ♦ - ♣ -"),
+      .lead_seat   = WEST,
+      .trump_suit  = NO_TRUMP,
+      .line        = "A♠",
+      .valid_plays = AbsCards("♠ QX ♥ - ♦ - ♣ -"),
+  });
+}
+
+TEST(AbsGame, valid_plays_winner) {
+  test_abs_game_valid_plays({
+      .west        = AbsCards("♠ AK ♥ X  ♦ - ♣ -"),
+      .north       = AbsCards("♠ -  ♥ XX ♦ J ♣ -"),
+      .east        = AbsCards("♠ XX ♥ X  ♦ - ♣ -"),
+      .south       = AbsCards("♠ XX ♥ X  ♦ - ♣ -"),
+      .lead_seat   = WEST,
+      .trump_suit  = NO_TRUMP,
+      .line        = "A♠X♥X♠X♠ W",
+      .valid_plays = AbsCards("♠ K ♥ X ♦ - ♣ -"),
+  });
 }

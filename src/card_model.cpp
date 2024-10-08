@@ -137,7 +137,7 @@ std::ostream &operator<<(std::ostream &os, Cards c) {
   return os;
 }
 
-bool is_rank_char(int ch) {
+static bool is_rank_char(int ch) {
   if (ch >= '2' && ch <= '9') {
     return true;
   } else {
@@ -147,9 +147,15 @@ bool is_rank_char(int ch) {
     case 'Q': return true;
     case 'K': return true;
     case 'A': return true;
+    case 'X': return true;
     }
   }
   return false;
+}
+
+bool peek_is_rank(std::istream &is) {
+  is >> std::ws;
+  return is_rank_char(is.peek());
 }
 
 static void parse_cards_ranks(std::istream &is, Suit s, Cards &cs) {
