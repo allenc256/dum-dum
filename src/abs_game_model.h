@@ -65,11 +65,13 @@ public:
   }
 
   Card unplay() {
-    assert(state_ == STARTED);
-    Card c = cards_[card_count_];
+    assert(state_ == STARTED || state_ == FINISHING);
     card_count_--;
+    Card c = cards_[card_count_];
     if (card_count_ == 0) {
       state_ = STARTING;
+    } else {
+      state_ = STARTED;
     }
     return c;
   }
@@ -268,15 +270,24 @@ public:
     }
   }
 
+  bool            finished() const { return tricks_taken_ == tricks_max_; }
+  Seat            next_seat() const { return next_seat_; }
   AbsTrick::State trick_state() const { return tricks_[tricks_taken_].state(); }
+  int             tricks_taken() const { return tricks_taken_; }
+  int             tricks_taken_by_ns() const { return tricks_taken_by_ns_; }
 
   AbsCards valid_plays() const {
     const AbsTrick &t = tricks_[tricks_taken_];
     const AbsCards &h = hands_[next_seat_];
-    if (t.state() == AbsTrick::STARTED && h.contains(t.lead_suit())) {
-      return h.intersect(t.lead_suit());
-    } else {
+    if (t.state() == AbsTrick::STARTING) {
       return h;
+    } else {
+      assert(t.state() == AbsTrick::STARTED);
+      if (h.contains(t.lead_suit())) {
+        return h.intersect(t.lead_suit());
+      } else {
+        return h;
+      }
     }
   }
 
@@ -296,7 +307,7 @@ public:
 
   void unplay() {
     AbsTrick &t = tricks_[tricks_taken_];
-    assert(t.state() == AbsTrick::STARTED);
+    assert(t.state() == AbsTrick::STARTED || t.state() == AbsTrick::FINISHING);
     Card c     = t.unplay();
     next_seat_ = left_seat(next_seat_);
     hands_[next_seat_].add(c);

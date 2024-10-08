@@ -3,111 +3,112 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-struct AbsTrickTestCase {
+struct AbsTrickCanFinishTestCase {
   const char    *name;
   Suit           trump_suit;
   Seat           lead_seat;
   const char    *cards[4];
-  std::set<Seat> poss_winners;
+  std::set<Seat> can_finish;
 };
 
-const AbsTrickTestCase ABS_TRICK_TEST_CASES[] = {
+const AbsTrickCanFinishTestCase ABS_TRICK_CAN_FINISH_TEST_CASES[] = {
     {
-        .name         = "no_trump",
-        .trump_suit   = NO_TRUMP,
-        .lead_seat    = WEST,
-        .cards        = {"2C", "3C", "4C", "5C"},
-        .poss_winners = {SOUTH},
+        .name       = "no_trump",
+        .trump_suit = NO_TRUMP,
+        .lead_seat  = WEST,
+        .cards      = {"2C", "3C", "4C", "5C"},
+        .can_finish = {SOUTH},
     },
     {
-        .name         = "no_trump_north_lead",
-        .trump_suit   = NO_TRUMP,
-        .lead_seat    = NORTH,
-        .cards        = {"2C", "3C", "4C", "5C"},
-        .poss_winners = {WEST},
+        .name       = "no_trump_north_lead",
+        .trump_suit = NO_TRUMP,
+        .lead_seat  = NORTH,
+        .cards      = {"2C", "3C", "4C", "5C"},
+        .can_finish = {WEST},
     },
     {
-        .name         = "no_trump_discard",
-        .trump_suit   = NO_TRUMP,
-        .lead_seat    = WEST,
-        .cards        = {"2C", "3C", "4C", "5H"},
-        .poss_winners = {EAST},
+        .name       = "no_trump_discard",
+        .trump_suit = NO_TRUMP,
+        .lead_seat  = WEST,
+        .cards      = {"2C", "3C", "4C", "5H"},
+        .can_finish = {EAST},
     },
     {
-        .name         = "trump_no_ruff",
-        .trump_suit   = HEARTS,
-        .lead_seat    = WEST,
-        .cards        = {"2H", "3H", "4H", "5H"},
-        .poss_winners = {SOUTH},
+        .name       = "trump_no_ruff",
+        .trump_suit = HEARTS,
+        .lead_seat  = WEST,
+        .cards      = {"2H", "3H", "4H", "5H"},
+        .can_finish = {SOUTH},
     },
     {
-        .name         = "trump_discard",
-        .trump_suit   = HEARTS,
-        .lead_seat    = WEST,
-        .cards        = {"2H", "3H", "AS", "AC"},
-        .poss_winners = {NORTH},
+        .name       = "trump_discard",
+        .trump_suit = HEARTS,
+        .lead_seat  = WEST,
+        .cards      = {"2H", "3H", "AS", "AC"},
+        .can_finish = {NORTH},
     },
     {
-        .name         = "trump_ruff",
-        .trump_suit   = HEARTS,
-        .lead_seat    = WEST,
-        .cards        = {"2C", "3C", "4H", "5C"},
-        .poss_winners = {EAST},
+        .name       = "trump_ruff",
+        .trump_suit = HEARTS,
+        .lead_seat  = WEST,
+        .cards      = {"2C", "3C", "4H", "5C"},
+        .can_finish = {EAST},
     },
     {
-        .name         = "trump_overruff",
-        .trump_suit   = HEARTS,
-        .lead_seat    = WEST,
-        .cards        = {"2C", "3C", "4H", "5H"},
-        .poss_winners = {SOUTH},
+        .name       = "trump_overruff",
+        .trump_suit = HEARTS,
+        .lead_seat  = WEST,
+        .cards      = {"2C", "3C", "4H", "5H"},
+        .can_finish = {SOUTH},
     },
     {
-        .name         = "trump_ruff_and_sluff",
-        .trump_suit   = HEARTS,
-        .lead_seat    = WEST,
-        .cards        = {"2C", "3H", "4C", "5S"},
-        .poss_winners = {NORTH},
+        .name       = "trump_ruff_and_sluff",
+        .trump_suit = HEARTS,
+        .lead_seat  = WEST,
+        .cards      = {"2C", "3H", "4C", "5S"},
+        .can_finish = {NORTH},
     },
     {
-        .name         = "no_trump_unknown_loses",
-        .trump_suit   = NO_TRUMP,
-        .lead_seat    = WEST,
-        .cards        = {"XC", "XC", "QC", "TC"},
-        .poss_winners = {EAST},
+        .name       = "no_trump_unknown_loses",
+        .trump_suit = NO_TRUMP,
+        .lead_seat  = WEST,
+        .cards      = {"XC", "XC", "QC", "TC"},
+        .can_finish = {EAST},
     },
     {
-        .name         = "no_trump_unknown_discard",
-        .trump_suit   = NO_TRUMP,
-        .lead_seat    = WEST,
-        .cards        = {"2C", "3C", "XH", "4C"},
-        .poss_winners = {SOUTH},
+        .name       = "no_trump_unknown_discard",
+        .trump_suit = NO_TRUMP,
+        .lead_seat  = WEST,
+        .cards      = {"2C", "3C", "XH", "4C"},
+        .can_finish = {SOUTH},
     },
     {
-        .name         = "no_trump_unknown_wins",
-        .trump_suit   = NO_TRUMP,
-        .lead_seat    = WEST,
-        .cards        = {"XC", "XC", "5H", "XC"},
-        .poss_winners = {WEST, NORTH, SOUTH},
+        .name       = "no_trump_unknown_wins",
+        .trump_suit = NO_TRUMP,
+        .lead_seat  = WEST,
+        .cards      = {"XC", "XC", "5H", "XC"},
+        .can_finish = {WEST, NORTH, SOUTH},
     },
     {
-        .name         = "trump_unknown_ruff",
-        .trump_suit   = HEARTS,
-        .lead_seat    = WEST,
-        .cards        = {"2C", "XH", "XH", "4C"},
-        .poss_winners = {NORTH, EAST},
+        .name       = "trump_unknown_ruff",
+        .trump_suit = HEARTS,
+        .lead_seat  = WEST,
+        .cards      = {"2C", "XH", "XH", "4C"},
+        .can_finish = {NORTH, EAST},
     },
     {
-        .name         = "trump_unknown_overruff",
-        .trump_suit   = HEARTS,
-        .lead_seat    = WEST,
-        .cards        = {"2C", "XH", "3H", "4C"},
-        .poss_winners = {EAST},
+        .name       = "trump_unknown_overruff",
+        .trump_suit = HEARTS,
+        .lead_seat  = WEST,
+        .cards      = {"2C", "XH", "3H", "4C"},
+        .can_finish = {EAST},
     },
 };
 
-class AbsTrickTest : public testing::TestWithParam<AbsTrickTestCase> {};
+class AbsTrickCanFinishTest
+    : public testing::TestWithParam<AbsTrickCanFinishTestCase> {};
 
-TEST_P(AbsTrickTest, test_case) {
+TEST_P(AbsTrickCanFinishTest, test_case) {
   const auto &tc = GetParam();
   AbsTrick    trick;
   trick.play_starting_card(tc.lead_seat, tc.trump_suit, Card(tc.cards[0]));
@@ -115,14 +116,14 @@ TEST_P(AbsTrickTest, test_case) {
     trick.play_continuing_card(Card(tc.cards[i]));
   }
   for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
-    EXPECT_EQ(trick.can_finish(seat), tc.poss_winners.contains(seat));
+    EXPECT_EQ(trick.can_finish(seat), tc.can_finish.contains(seat));
   }
 }
 
 INSTANTIATE_TEST_SUITE_P(
     AbsTrick,
-    AbsTrickTest,
-    testing::ValuesIn(ABS_TRICK_TEST_CASES),
+    AbsTrickCanFinishTest,
+    testing::ValuesIn(ABS_TRICK_CAN_FINISH_TEST_CASES),
     [](const auto &info) { return info.param.name; }
 );
 
@@ -191,82 +192,108 @@ TEST(AbsCards, iter_high_and_low) {
   test_abs_cards_iter(AbsCards("♠ AQXXX ♥ XX ♦ - ♣ JX"));
 }
 
-struct ValidPlaysTestCase {
-  AbsCards    west;
-  AbsCards    north;
-  AbsCards    east;
-  AbsCards    south;
-  Suit        trump_suit;
-  Seat        lead_seat;
-  const char *line;
-  AbsCards    valid_plays;
+struct CheckAbsGameArgs {
+  Seat            next_seat;
+  AbsCards        valid_plays;
+  AbsTrick::State trick_state;
+  int             tricks_taken;
+  int             tricks_taken_by_ns;
 };
 
-void test_abs_game_valid_plays(ValidPlaysTestCase t) {
+void check_abs_game(const AbsGame &game, CheckAbsGameArgs a) {
+  EXPECT_EQ(game.next_seat(), a.next_seat);
+  if (game.trick_state() == AbsTrick::STARTING ||
+      game.trick_state() == AbsTrick::STARTED) {
+    EXPECT_EQ(game.valid_plays(), a.valid_plays);
+  }
+  EXPECT_EQ(game.trick_state(), a.trick_state);
+  EXPECT_EQ(game.tricks_taken(), a.tricks_taken);
+  EXPECT_EQ(game.tricks_taken_by_ns(), a.tricks_taken_by_ns);
+}
+
+TEST(AbsGame, play_unplay) {
   AbsGame game = AbsGame(
-      t.trump_suit,
-      t.lead_seat,
+      NO_TRUMP,
+      WEST,
       (AbsCards[4]){
-          t.west,
-          t.north,
-          t.east,
-          t.south,
+          AbsCards("♠ TX ♥ X ♦ - ♣ -"),
+          AbsCards("♠ QX ♥ A ♦ - ♣ -"),
+          AbsCards("♠ JX ♥ - ♦ X ♣ -"),
+          AbsCards("♠ -  ♥ X ♦ - ♣ T5"),
       }
   );
 
-  if (t.line) {
-    std::istringstream is(t.line);
-    while (!is.eof()) {
-      if (game.trick_state() == AbsTrick::FINISHING) {
-        Seat s;
-        is >> s;
-        game.finish_trick(s);
-      } else {
-        Card c;
-        is >> c;
-        game.play(c);
-      }
-      is >> std::ws;
-    }
+  CheckAbsGameArgs check_args[] = {
+      {
+          .next_seat          = WEST,
+          .valid_plays        = AbsCards("♠ TX ♥ X ♦ - ♣ -"),
+          .trick_state        = AbsTrick::STARTING,
+          .tricks_taken       = 0,
+          .tricks_taken_by_ns = 0,
+      },
+      {
+          .next_seat          = NORTH,
+          .valid_plays        = AbsCards("♠ QX ♥ - ♦ - ♣ -"),
+          .trick_state        = AbsTrick::STARTED,
+          .tricks_taken       = 0,
+          .tricks_taken_by_ns = 0,
+      },
+      {
+          .next_seat          = EAST,
+          .valid_plays        = AbsCards("♠ JX ♥ - ♦ - ♣ -"),
+          .trick_state        = AbsTrick::STARTED,
+          .tricks_taken       = 0,
+          .tricks_taken_by_ns = 0,
+      },
+      {
+          .next_seat          = SOUTH,
+          .valid_plays        = AbsCards("♠ - ♥ X ♦ - ♣ T5"),
+          .trick_state        = AbsTrick::STARTED,
+          .tricks_taken       = 0,
+          .tricks_taken_by_ns = 0,
+      },
+      {
+          .next_seat          = WEST,
+          .trick_state        = AbsTrick::FINISHING,
+          .tricks_taken       = 0,
+          .tricks_taken_by_ns = 0,
+      },
+  };
+
+  CheckAbsGameArgs north_finish_args = {
+      .next_seat          = NORTH,
+      .valid_plays        = AbsCards("♠ Q ♥ A ♦ - ♣ -"),
+      .trick_state        = AbsTrick::STARTING,
+      .tricks_taken       = 1,
+      .tricks_taken_by_ns = 1,
+  };
+  CheckAbsGameArgs east_finish_args = {
+      .next_seat          = EAST,
+      .valid_plays        = AbsCards("♠ J ♥ - ♦ X ♣ -"),
+      .trick_state        = AbsTrick::STARTING,
+      .tricks_taken       = 1,
+      .tricks_taken_by_ns = 0,
+  };
+
+  Card cards[4] = {Card("X♠"), Card("X♠"), Card("X♠"), Card("5♣")};
+
+  for (int i = 0; i < 4; i++) {
+    check_abs_game(game, check_args[i]);
+    game.play(cards[i]);
+    check_abs_game(game, check_args[i + 1]);
   }
 
-  EXPECT_EQ(game.valid_plays(), t.valid_plays);
-}
+  game.finish_trick(NORTH);
+  check_abs_game(game, north_finish_args);
+  game.unfinish_trick();
+  check_abs_game(game, check_args[4]);
+  game.finish_trick(EAST);
+  check_abs_game(game, east_finish_args);
+  game.unfinish_trick();
 
-TEST(AbsGame, valid_plays_leads) {
-  test_abs_game_valid_plays({
-      .west        = AbsCards("♠ AK ♥ X ♦ - ♣ -"),
-      .north       = AbsCards("♠ XX ♥ X ♦ - ♣ -"),
-      .east        = AbsCards("♠ XX ♥ X ♦ - ♣ -"),
-      .south       = AbsCards("♠ XX ♥ X ♦ - ♣ -"),
-      .lead_seat   = WEST,
-      .trump_suit  = NO_TRUMP,
-      .valid_plays = AbsCards("♠ AK ♥ X ♦ - ♣ -"),
-  });
-}
-
-TEST(AbsGame, valid_plays_follow_suit) {
-  test_abs_game_valid_plays({
-      .west        = AbsCards("♠ AK ♥ X ♦ - ♣ -"),
-      .north       = AbsCards("♠ QX ♥ X ♦ - ♣ -"),
-      .east        = AbsCards("♠ XX ♥ X ♦ - ♣ -"),
-      .south       = AbsCards("♠ XX ♥ X ♦ - ♣ -"),
-      .lead_seat   = WEST,
-      .trump_suit  = NO_TRUMP,
-      .line        = "A♠",
-      .valid_plays = AbsCards("♠ QX ♥ - ♦ - ♣ -"),
-  });
-}
-
-TEST(AbsGame, valid_plays_winner) {
-  test_abs_game_valid_plays({
-      .west        = AbsCards("♠ AK ♥ X  ♦ - ♣ -"),
-      .north       = AbsCards("♠ -  ♥ XX ♦ J ♣ -"),
-      .east        = AbsCards("♠ XX ♥ X  ♦ - ♣ -"),
-      .south       = AbsCards("♠ XX ♥ X  ♦ - ♣ -"),
-      .lead_seat   = WEST,
-      .trump_suit  = NO_TRUMP,
-      .line        = "A♠X♥X♠X♠ W",
-      .valid_plays = AbsCards("♠ K ♥ X ♦ - ♣ -"),
-  });
+  for (int i = 3; i >= 0; i--) {
+    check_abs_game(game, check_args[i + 1]);
+    game.unplay();
+    check_abs_game(game, check_args[i]);
+  }
 }
