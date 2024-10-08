@@ -101,13 +101,12 @@ public:
   }
 
 private:
-  PossTricks solve_internal();
-
   bool is_maximizing() const {
     return game_.next_seat() == NORTH || game_.next_seat() == SOUTH;
   }
 
-  PossTricks solve_internal_child();
+  PossTricks solve_internal(int alpha, int beta);
+  PossTricks solve_internal_child(int alpha, int beta);
 
   void trace(const char *tag, const PossTricks *poss_tricks);
 

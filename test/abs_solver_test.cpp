@@ -133,6 +133,10 @@ void test_random_deal(int seed) {
   auto                       res1 = solver.solve();
   auto                       res2 = abs_solver.solve();
   EXPECT_TRUE(res2.poss_tricks.contains(res1.tricks_taken_by_ns));
+
+  // std::cout << res1.tricks_taken_by_ns << ' ' << res2.poss_tricks << ' '
+  //           << res1.states_explored << ' ' << res2.states_explored <<
+  //           std::endl;
 }
 
 TEST(AbsSolver, random_deal) {
