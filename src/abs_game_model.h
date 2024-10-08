@@ -18,7 +18,7 @@ public:
 
   Suit lead_suit() const {
     assert(state_ != STARTING);
-    return cards_[lead_seat_].suit();
+    return cards_[0].suit();
   }
 
   Seat lead_seat() const {
@@ -28,11 +28,11 @@ public:
 
   bool can_finish(Seat seat) const {
     assert(state_ == FINISHING);
-    return can_finish_[right_seat_diff(lead_seat_, seat)];
+    return can_finish_[seat_to_index(seat)];
   }
 
   void finish(Seat seat) {
-    assert(state_ == FINISHING && can_finish_[seat]);
+    assert(can_finish(seat));
     winning_seat_ = seat;
     state_        = FINISHED;
   }
@@ -79,7 +79,7 @@ public:
 private:
   void compute_can_finish() {
     Card best      = cards_[0];
-    Suit lead_suit = cards_[lead_seat_].suit();
+    Suit lead_suit = cards_[0].suit();
     for (int i = 1; i < 4; i++) {
       if (is_higher_card(cards_[i], best, lead_suit)) {
         best = cards_[i];
@@ -116,6 +116,10 @@ private:
     } else {
       return r1 > r2;
     }
+  }
+
+  int seat_to_index(Seat seat) const {
+    return right_seat_diff(lead_seat_, seat);
   }
 
   Card  cards_[4];
@@ -273,9 +277,11 @@ public:
 
   bool            finished() const { return tricks_taken_ == tricks_max_; }
   Seat            next_seat() const { return next_seat_; }
+  const AbsTrick &trick(int i) const { return tricks_[i]; }
   AbsTrick::State trick_state() const { return tricks_[tricks_taken_].state(); }
   int             tricks_taken() const { return tricks_taken_; }
   int             tricks_taken_by_ns() const { return tricks_taken_by_ns_; }
+  int             tricks_max() const { return tricks_max_; }
 
   AbsCards valid_plays() const {
     const AbsTrick &t = tricks_[tricks_taken_];
@@ -338,6 +344,8 @@ public:
     }
     next_seat_ = t.lead_seat();
   }
+
+  static AbsGame from_game(const Game &g, Rank min_high_card_rank);
 
 private:
   Suit     trump_suit_;

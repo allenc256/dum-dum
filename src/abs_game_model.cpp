@@ -151,3 +151,25 @@ std::ostream &operator<<(std::ostream &os, const AbsGame &g) {
 
   return os;
 }
+
+AbsGame AbsGame::from_game(const Game &game, Rank min_high_card_rank) {
+  assert(game.tricks_taken() == 0 && game.start_of_trick());
+
+  AbsCards abs_hands[4];
+  for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
+    Cards  hand = game.hand(seat);
+    Cards  hc;
+    int8_t lc[4] = {0};
+    for (auto it = hand.iter_highest(); it.valid(); it = hand.iter_lower(it)) {
+      Card c = it.card();
+      if (c.rank() >= min_high_card_rank) {
+        hc.add(c);
+      } else {
+        lc[c.suit()]++;
+      }
+    }
+    abs_hands[seat] = AbsCards(hc, lc);
+  }
+
+  return AbsGame(game.trump_suit(), game.lead_seat(), abs_hands);
+}
