@@ -4,81 +4,63 @@
 
 #include <bit>
 
-class PossTricks {
+class AbsBounds {
 public:
-  PossTricks() : bits_(0) {}
+  AbsBounds() : lower_(13), upper_(0) {}
 
-  bool empty() const { return bits_ == 0; }
-  bool contains(int n) const { return bits_ & (1 << n); }
+  AbsBounds(int lower, int upper)
+      : lower_((int8_t)lower),
+        upper_((int8_t)upper) {
+    assert(lower >= 0 && lower <= 13);
+    assert(upper >= 0 && upper <= 13);
+  }
 
-  int lower_bound() const {
+  bool empty() const { return lower_ > upper_; }
+  int  lower() const { return lower_; }
+  int  upper() const { return upper_; }
+  bool contains(int n) const { return n >= lower_ && n <= upper_; }
+
+  void extend(AbsBounds other) {
+    lower_ = std::min(lower_, other.lower_);
+    upper_ = std::max(upper_, other.upper_);
+  }
+
+  AbsBounds max(AbsBounds other) {
     if (empty()) {
-      return 0;
+      return other;
+    } else if (other.empty()) {
+      return *this;
     } else {
-      return std::countr_zero(bits_);
+      int lower = std::max(lower_, other.lower_);
+      int upper = std::max(upper_, other.upper_);
+      return AbsBounds(lower, upper);
     }
   }
 
-  int upper_bound() const {
+  AbsBounds min(AbsBounds other) {
     if (empty()) {
-      return 13;
+      return other;
+    } else if (other.empty()) {
+      return *this;
     } else {
-      return 15 - std::countl_zero(bits_);
+      int lower = std::min(lower_, other.lower_);
+      int upper = std::min(upper_, other.upper_);
+      return AbsBounds(lower, upper);
     }
   }
 
-  void add_all(PossTricks other) { bits_ |= other.bits_; }
-
-  PossTricks union_with(PossTricks other) const {
-    return PossTricks(bits_ | other.bits_);
+  friend bool operator==(const AbsBounds &p1, const AbsBounds &p2) {
+    return p1.lower_ == p2.lower_ && p1.upper_ == p2.upper_;
   }
 
-  PossTricks intersect(PossTricks other) const {
-    return PossTricks(bits_ & other.bits_);
-  }
-
-  PossTricks max(PossTricks other) const {
-    int lb = std::max(lower_bound(), other.lower_bound());
-    return union_with(other).intersect(at_least(lb));
-  }
-
-  PossTricks min(PossTricks other) const {
-    int ub = std::min(upper_bound(), other.upper_bound());
-    return union_with(other).intersect(at_most(ub));
-  }
-
-  static PossTricks at_least(int n) {
-    assert(n >= 0 && n <= 13);
-    return PossTricks((ALL_MASK << n) & ALL_MASK);
-  }
-
-  static PossTricks at_most(int n) {
-    assert(n >= 0 && n <= 13);
-    return PossTricks(ALL_MASK >> (13 - n));
-  }
-
-  static PossTricks between(int lb, int ub) {
-    return at_least(lb).intersect(at_most(ub));
-  }
-
-  static PossTricks only(int n) {
-    assert(n >= 0 && n <= 13);
-    return PossTricks((uint16_t)(1 << n));
-  }
-
-  friend bool operator==(const PossTricks &p1, const PossTricks &p2) {
-    return p1.bits_ == p2.bits_;
+  friend std::ostream &operator<<(std::ostream &os, const AbsBounds &b) {
+    return os << '[' << (int)b.lower_ << ", " << (int)b.upper_ << ']';
   }
 
 private:
-  PossTricks(uint16_t bits) : bits_(bits) { assert(!(bits & ~ALL_MASK)); }
-
-  static constexpr uint16_t ALL_MASK = 0b11111111111111;
-
-  uint16_t bits_;
+  int8_t lower_;
+  int8_t upper_;
 };
-
-std::ostream &operator<<(std::ostream &os, const PossTricks &t);
 
 class AbsSolver {
 public:
@@ -89,8 +71,8 @@ public:
         trace_lineno_(0) {}
 
   struct Result {
-    PossTricks poss_tricks;
-    int64_t    states_explored;
+    AbsBounds bounds;
+    int64_t   states_explored;
   };
 
   Result solve();
@@ -105,10 +87,10 @@ private:
     return game_.next_seat() == NORTH || game_.next_seat() == SOUTH;
   }
 
-  PossTricks solve_internal(int alpha, int beta);
-  PossTricks solve_internal_child(int alpha, int beta);
+  AbsBounds solve_internal(int alpha, int beta);
+  AbsBounds solve_internal_child(int alpha, int beta);
 
-  void trace(const char *tag, const PossTricks *poss_tricks);
+  void trace(const char *tag, const AbsBounds *bounds);
 
   AbsGame       game_;
   int64_t       states_explored_;

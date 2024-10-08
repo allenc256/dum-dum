@@ -4,69 +4,59 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-TEST(PossTricks, empty) {
-  PossTricks p;
-  EXPECT_EQ(p.lower_bound(), 0);
-  EXPECT_EQ(p.upper_bound(), 13);
-  for (int i = 0; i < 13; i++) {
-    EXPECT_FALSE(p.contains(i));
-  }
+TEST(AbsBounds, empty) {
+  AbsBounds b;
+  EXPECT_EQ(b.lower(), 13);
+  EXPECT_EQ(b.upper(), 0);
 }
 
-TEST(PossTricks, only) {
-  PossTricks p = PossTricks::only(5);
-  EXPECT_EQ(p.lower_bound(), 5);
-  EXPECT_EQ(p.upper_bound(), 5);
-  for (int i = 0; i < 13; i++) {
-    EXPECT_EQ(p.contains(i), i == 5);
-  }
+TEST(AbsBounds, extend) {
+  AbsBounds b(1, 3);
+  b.extend(AbsBounds(2, 4));
+  EXPECT_EQ(b.lower(), 1);
+  EXPECT_EQ(b.upper(), 4);
 }
 
-TEST(PossTricks, union_with) {
-  PossTricks p1 = PossTricks::between(1, 3);
-  PossTricks p2 = PossTricks::between(6, 8);
-  PossTricks p  = p1.union_with(p2);
-  EXPECT_EQ(p.lower_bound(), 1);
-  EXPECT_EQ(p.upper_bound(), 8);
-  for (int i = 0; i < 13; i++) {
-    EXPECT_EQ(p.contains(i), (i >= 1 && i <= 3) || (i >= 6 && i <= 8));
-  }
+TEST(AbsBounds, extend_empty) {
+  AbsBounds b;
+  b.extend(AbsBounds());
+  EXPECT_TRUE(b.empty());
+  b.extend(AbsBounds(1, 3));
+  EXPECT_FALSE(b.empty());
+  EXPECT_EQ(b.lower(), 1);
+  EXPECT_EQ(b.upper(), 3);
 }
 
-TEST(PossTricks, max) {
-  PossTricks p1 = PossTricks::between(3, 6);
-  PossTricks p2 = PossTricks::between(4, 8);
-  PossTricks p  = p1.max(p2);
-  EXPECT_EQ(p.lower_bound(), 4);
-  EXPECT_EQ(p.upper_bound(), 8);
-  for (int i = 0; i < 13; i++) {
-    EXPECT_EQ(p.contains(i), i >= 4 && i <= 8);
-  }
+TEST(AbsBounds, max) {
+  AbsBounds b1 = AbsBounds(3, 6);
+  AbsBounds b2 = AbsBounds(4, 8);
+  AbsBounds b  = b1.max(b2);
+  EXPECT_EQ(b.lower(), 4);
+  EXPECT_EQ(b.upper(), 8);
 }
 
-TEST(PossTricks, max_empty) {
-  PossTricks p1 = PossTricks::between(3, 6);
-  PossTricks p2;
-  EXPECT_EQ(p1.max(p2), p1);
-  EXPECT_EQ(p2.max(p1), p1);
+TEST(AbsBounds, max_empty) {
+  AbsBounds b1 = AbsBounds(3, 6);
+  AbsBounds b2;
+  EXPECT_EQ(b1.max(b2), b1);
+  EXPECT_EQ(b2.max(b1), b1);
+  EXPECT_EQ(b2.max(b2), b2);
 }
 
-TEST(PossTricks, min) {
-  PossTricks p1 = PossTricks::between(3, 6);
-  PossTricks p2 = PossTricks::between(4, 8);
-  PossTricks p  = p1.min(p2);
-  EXPECT_EQ(p.lower_bound(), 3);
-  EXPECT_EQ(p.upper_bound(), 6);
-  for (int i = 0; i < 13; i++) {
-    EXPECT_EQ(p.contains(i), i >= 3 && i <= 6);
-  }
+TEST(AbsBounds, min) {
+  AbsBounds b1 = AbsBounds(3, 6);
+  AbsBounds b2 = AbsBounds(4, 8);
+  AbsBounds b  = b1.min(b2);
+  EXPECT_EQ(b.lower(), 3);
+  EXPECT_EQ(b.upper(), 6);
 }
 
-TEST(PossTricks, min_empty) {
-  PossTricks p1 = PossTricks::between(3, 6);
-  PossTricks p2;
-  EXPECT_EQ(p1.min(p2), p1);
-  EXPECT_EQ(p2.min(p1), p1);
+TEST(AbsBounds, min_empty) {
+  AbsBounds b1 = AbsBounds(3, 6);
+  AbsBounds b2;
+  EXPECT_EQ(b1.min(b2), b1);
+  EXPECT_EQ(b2.min(b1), b1);
+  EXPECT_EQ(b2.min(b2), b2);
 }
 
 struct AbsSolverTestCase {
@@ -77,29 +67,29 @@ struct AbsSolverTestCase {
   AbsCards    south;
   Suit        trump_suit;
   Seat        lead_seat;
-  PossTricks  poss_tricks;
+  AbsBounds   bounds;
 };
 
 struct AbsSolverTestCase ABS_SOLVER_TEST_CASES[] = {
     {
-        .name        = "simple",
-        .west        = AbsCards("♠ KX ♥ - ♦ - ♣ -"),
-        .north       = AbsCards("♠ X  ♥ A ♦ - ♣ -"),
-        .east        = AbsCards("♠ X  ♥ X ♦ - ♣ -"),
-        .south       = AbsCards("♠ X  ♥ K ♦ - ♣ -"),
-        .trump_suit  = NO_TRUMP,
-        .lead_seat   = WEST,
-        .poss_tricks = PossTricks::only(0),
+        .name       = "simple",
+        .west       = AbsCards("♠ KX ♥ - ♦ - ♣ -"),
+        .north      = AbsCards("♠ X  ♥ A ♦ - ♣ -"),
+        .east       = AbsCards("♠ X  ♥ X ♦ - ♣ -"),
+        .south      = AbsCards("♠ X  ♥ K ♦ - ♣ -"),
+        .trump_suit = NO_TRUMP,
+        .lead_seat  = WEST,
+        .bounds     = AbsBounds(0, 0),
     },
     {
-        .name        = "simple_squeeze",
-        .west        = AbsCards("♠ KQ ♥ A   ♦ - ♣ -"),
-        .north       = AbsCards("♠ AX ♥ K   ♦ - ♣ -"),
-        .east        = AbsCards("♠ -  ♥ XXX ♦ - ♣ -"),
-        .south       = AbsCards("♠ X  ♥ X   ♦ - ♣ X"),
-        .trump_suit  = NO_TRUMP,
-        .lead_seat   = SOUTH,
-        .poss_tricks = PossTricks::only(3),
+        .name       = "simple_squeeze",
+        .west       = AbsCards("♠ KQ ♥ A   ♦ - ♣ -"),
+        .north      = AbsCards("♠ AX ♥ K   ♦ - ♣ -"),
+        .east       = AbsCards("♠ -  ♥ XXX ♦ - ♣ -"),
+        .south      = AbsCards("♠ X  ♥ X   ♦ - ♣ X"),
+        .trump_suit = NO_TRUMP,
+        .lead_seat  = SOUTH,
+        .bounds     = AbsBounds(3, 3),
     },
 };
 
@@ -112,9 +102,9 @@ TEST_P(AbsSolverTest, test_case) {
       tc.lead_seat,
       (AbsCards[4]){tc.west, tc.north, tc.east, tc.south}
   );
-  AbsSolver  solver(game);
-  PossTricks poss_tricks = solver.solve().poss_tricks;
-  EXPECT_EQ(poss_tricks, tc.poss_tricks);
+  AbsSolver solver(game);
+  AbsBounds bounds = solver.solve().bounds;
+  EXPECT_EQ(bounds, tc.bounds);
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -132,9 +122,9 @@ void test_random_deal(int seed) {
   AbsSolver                  abs_solver(abs_game);
   auto                       res1 = solver.solve();
   auto                       res2 = abs_solver.solve();
-  EXPECT_TRUE(res2.poss_tricks.contains(res1.tricks_taken_by_ns));
+  EXPECT_TRUE(res2.bounds.contains(res1.tricks_taken_by_ns));
 
-  // std::cout << res1.tricks_taken_by_ns << ' ' << res2.poss_tricks << ' '
+  // std::cout << res1.tricks_taken_by_ns << ' ' << res2.bounds << ' '
   //           << res1.states_explored << ' ' << res2.states_explored <<
   //           std::endl;
 }
