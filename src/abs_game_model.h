@@ -125,16 +125,20 @@ private:
   Seat  winning_seat_;
   bool  can_finish_[4];
   State state_;
+
+  friend std::ostream &operator<<(std::ostream &os, const AbsTrick &t);
 };
 
 class AbsCards {
 public:
-  AbsCards() : low_cards_{0} {}
+  AbsCards() : low_cards_{0}, count_(0) {}
 
   AbsCards(Cards high_cards, const int8_t low_cards[4])
       : high_cards_(high_cards) {
+    count_ = (int8_t)high_cards.count();
     for (int i = 0; i < 4; i++) {
       low_cards_[i] = low_cards[i];
+      count_ += low_cards[i];
     }
   }
 
@@ -142,14 +146,8 @@ public:
 
   Cards high_cards() const { return high_cards_; }
   int   low_cards(Suit suit) const { return low_cards_[suit]; }
-
-  int size() const {
-    int n = high_cards_.count();
-    for (int i = 0; i < 4; i++) {
-      n += low_cards_[i];
-    }
-    return n;
-  }
+  int   count() const { return count_; }
+  bool  empty() const { return count_ == 0; }
 
   void add(Card c) {
     if (c.rank() == RANK_UNKNOWN) {
@@ -158,6 +156,7 @@ public:
       assert(!high_cards_.contains(c));
       high_cards_.add(c);
     }
+    count_++;
   }
 
   void remove(Card c) {
@@ -168,6 +167,7 @@ public:
       assert(high_cards_.contains(c));
       high_cards_.remove(c);
     }
+    count_--;
   }
 
   bool contains(Suit suit) const {
@@ -246,6 +246,7 @@ private:
 
   Cards  high_cards_;
   int8_t low_cards_[4];
+  int8_t count_;
 };
 
 std::ostream &operator<<(std::ostream &os, const AbsCards &c);
@@ -258,9 +259,9 @@ public:
         next_seat_(initial_lead_seat),
         tricks_taken_(0),
         tricks_taken_by_ns_(0),
-        tricks_max_(hands[0].size()) {
+        tricks_max_(hands[0].count()) {
     for (int i = 1; i < 4; i++) {
-      if (hands[i].size() != tricks_max_) {
+      if (hands[i].count() != tricks_max_) {
         throw std::runtime_error("hands must be same size");
       }
     }
@@ -346,4 +347,6 @@ private:
   int      tricks_taken_;
   int      tricks_taken_by_ns_;
   int      tricks_max_;
+
+  friend std::ostream &operator<<(std::ostream &os, const AbsGame &g);
 };
