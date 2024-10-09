@@ -13,7 +13,11 @@
 AbsSolver::Result AbsSolver::solve() {
   states_explored_ = 0;
   AbsBounds bounds = solve_internal(-1, game_.tricks_max() + 1);
-  return {.bounds = bounds, .states_explored = states_explored_};
+  return {
+      .bounds          = bounds,
+      .states_explored = states_explored_,
+      .states_memoized = (int64_t)tpn_table_.size(),
+  };
 }
 
 AbsBounds AbsSolver::solve_internal(int alpha, int beta) {
@@ -24,13 +28,26 @@ AbsBounds AbsSolver::solve_internal(int alpha, int beta) {
     return bounds;
   }
 
-  states_explored_++;
+  AbsState game_state;
+  if (game_.trick_state() == AbsTrick::STARTING) {
+    game_state.init(game_);
+    AbsBounds bounds = tpn_table_.lookup(game_, game_state);
+    if (bounds.lower() >= beta) {
+      return bounds;
+    }
+    if (bounds.upper() <= alpha) {
+      return bounds;
+    }
+  }
 
-  TRACE("start", nullptr);
+  states_explored_++;
 
   bool      maximizing  = is_maximizing();
   AbsCards  valid_plays = game_.valid_plays();
   AbsBounds bounds;
+
+  TRACE("start", nullptr);
+
   for (auto it = valid_plays.iter(); it.valid(); it.next()) {
     game_.play(it.card());
     AbsBounds child_bounds = solve_internal_child(alpha, beta);
@@ -52,16 +69,36 @@ AbsBounds AbsSolver::solve_internal(int alpha, int beta) {
 
   TRACE("end", &bounds);
 
+  if (game_.trick_state() == AbsTrick::STARTING) {
+    tpn_table_.update(game_, game_state, bounds);
+  }
+
   return bounds;
 }
 
 AbsBounds AbsSolver::solve_internal_child(int alpha, int beta) {
   if (game_.trick_state() == AbsTrick::FINISHING) {
+    // int poss_winners = 0;
+    // for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
+    //   if (game_.can_finish_trick(seat)) {
+    //     poss_winners++;
+    //   }
+    // }
+
     AbsBounds bounds;
     for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
       if (game_.can_finish_trick(seat)) {
         game_.finish_trick(seat);
         bounds.extend(solve_internal(alpha, beta));
+        // if (poss_winners == 1) {
+        //   bounds.extend(solve_internal(alpha, beta));
+        // } else {
+        //   AbsBounds trivial_bounds = AbsBounds(
+        //       game_.tricks_taken_by_ns(),
+        //       game_.tricks_taken_by_ns() + game_.tricks_left()
+        //   );
+        //   bounds.extend(trivial_bounds);
+        // }
         game_.unfinish_trick();
       }
     }

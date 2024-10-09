@@ -185,6 +185,16 @@ public:
     return AbsCards(hc, lc);
   }
 
+  AbsCards collapse(Cards ignorable_high_cards) const {
+    Cards hc = high_cards_.collapse(ignorable_high_cards);
+    return AbsCards(hc, low_cards_);
+  }
+
+  template <typename H> friend H AbslHashValue(H h, const AbsCards &c) {
+    h = H::combine_contiguous(std::move(h), c.low_cards_, sizeof(c.low_cards_));
+    return H::combine(std::move(h), c.high_cards_);
+  }
+
   friend bool operator==(const AbsCards &c1, const AbsCards &c2) {
     if (c1.high_cards_ != c2.high_cards_) {
       return false;
@@ -281,7 +291,9 @@ public:
   AbsTrick::State trick_state() const { return tricks_[tricks_taken_].state(); }
   int             tricks_taken() const { return tricks_taken_; }
   int             tricks_taken_by_ns() const { return tricks_taken_by_ns_; }
+  int             tricks_left() const { return tricks_max_ - tricks_taken_; }
   int             tricks_max() const { return tricks_max_; }
+  const AbsCards &hand(Seat seat) const { return hands_[seat]; }
 
   AbsCards valid_plays() const {
     const AbsTrick &t = tricks_[tricks_taken_];

@@ -2,6 +2,7 @@
 
 #include "abs_game_model.h"
 
+#include <absl/container/flat_hash_map.h>
 #include <bit>
 
 class AbsBounds {
@@ -62,6 +63,64 @@ private:
   int8_t upper_;
 };
 
+class AbsState {
+public:
+  AbsState() {}
+
+  void init(const AbsGame &game) {
+    Cards ignorable;
+    for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
+      ignorable.add_all(game.hand(seat).high_cards());
+    }
+    ignorable = ignorable.complement();
+
+    for (int i = 0; i < 4; i++) {
+      Seat seat = right_seat(game.next_seat(), i);
+      hands_[i] = game.hand(seat).collapse(ignorable);
+    }
+  }
+
+  template <typename H> friend H AbslHashValue(H h, const AbsState &s) {
+    return H::combine(std::move(h), s.hands_);
+  }
+
+  friend bool operator==(const AbsState &s1, const AbsState &s2) {
+    return s1.hands_ == s2.hands_;
+  }
+
+private:
+  std::array<AbsCards, 4> hands_;
+};
+
+class AbsTpnTable {
+public:
+  AbsBounds lookup(const AbsGame &game, const AbsState &state) const {
+    auto it = table_.find(state);
+    if (it != table_.end()) {
+      auto &b     = it->second;
+      int   lower = b.lower() + game.tricks_taken_by_ns();
+      int   upper = b.upper() + game.tricks_taken_by_ns();
+      return AbsBounds(lower, upper);
+    } else {
+      return AbsBounds(game.tricks_taken_by_ns(), game.tricks_max());
+    }
+  }
+
+  void
+  update(const AbsGame &game, const AbsState &state, const AbsBounds &bounds) {
+    int lower = bounds.lower() - game.tricks_taken_by_ns();
+    int upper = bounds.upper() - game.tricks_taken_by_ns();
+    assert(lower >= 0 && upper >= 0);
+    assert(lower <= upper);
+    table_[state] = AbsBounds(lower, upper);
+  }
+
+  size_t size() const { return table_.size(); }
+
+private:
+  absl::flat_hash_map<AbsState, AbsBounds> table_;
+};
+
 class AbsSolver {
 public:
   AbsSolver(AbsGame game)
@@ -73,6 +132,7 @@ public:
   struct Result {
     AbsBounds bounds;
     int64_t   states_explored;
+    int64_t   states_memoized;
   };
 
   Result solve();
@@ -93,6 +153,7 @@ private:
   void trace(const char *tag, const AbsBounds *bounds);
 
   AbsGame       game_;
+  AbsTpnTable   tpn_table_;
   int64_t       states_explored_;
   std::ostream *trace_os_;
   int64_t       trace_lineno_;

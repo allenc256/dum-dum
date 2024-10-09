@@ -116,7 +116,7 @@ INSTANTIATE_TEST_SUITE_P(
 
 void test_random_deal(int seed) {
   std::default_random_engine random(seed);
-  Game                       game     = Game::random_deal(random, 4);
+  Game                       game     = Game::random_deal(random, 7);
   AbsGame                    abs_game = AbsGame::from_game(game, Rank::TEN);
   Solver                     solver(game);
   AbsSolver                  abs_solver(abs_game);
@@ -124,9 +124,17 @@ void test_random_deal(int seed) {
   auto                       res2 = abs_solver.solve();
   EXPECT_TRUE(res2.bounds.contains(res1.tricks_taken_by_ns));
 
-  // std::cout << res1.tricks_taken_by_ns << ' ' << res2.bounds << ' '
-  //           << res1.states_explored << ' ' << res2.states_explored <<
-  //           std::endl;
+  std::printf(
+      "%3d %2d %2d %2d %10lld %10lld %10lld %10lld\n",
+      seed,
+      res1.tricks_taken_by_ns,
+      res2.bounds.lower(),
+      res2.bounds.upper(),
+      res1.states_explored,
+      res2.states_explored,
+      res1.states_memoized,
+      res2.states_memoized
+  );
 }
 
 TEST(AbsSolver, random_deal) {
