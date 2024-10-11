@@ -46,7 +46,7 @@ public:
 private:
   Bounds compute_initial_bounds();
 
-  int solve_internal(int alpha, int beta, Card *best_play);
+  int solve_internal(int alpha, int beta);
 
   struct SearchState {
     Cards ignorable;
@@ -55,7 +55,6 @@ private:
     int   alpha;
     int   beta;
     int   best_tricks_by_ns;
-    Card *best_play;
   };
 
   enum Order { LOW_TO_HIGH, HIGH_TO_LOW };
@@ -67,6 +66,8 @@ private:
   void trace(const char *tag, int alpha, int beta, int tricks_taken_by_ns);
 
   Game          game_;
+  int           search_ply_;
+  Card          best_play_;
   int64_t       states_explored_;
   TpnTable      tpn_table_;
   MiniSolver    mini_solver_;
