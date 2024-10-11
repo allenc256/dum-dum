@@ -5,7 +5,6 @@
 Solver::Solver(Game g)
     : game_(g),
       search_ply_(0),
-      best_play_found_(false),
       states_explored_(0),
       mini_solver_(game_, tpn_table_),
       trace_ostream_(nullptr),
@@ -20,16 +19,16 @@ Solver::Result Solver::solve() {
 }
 
 Solver::Result Solver::solve(int alpha, int beta, int max_depth) {
-  states_explored_       = 0;
-  search_ply_            = 0;
-  best_play_found_       = false;
+  states_explored_ = 0;
+  search_ply_      = 0;
+  best_play_.reset();
   int tricks_taken_by_ns = solve_internal(alpha, beta, max_depth);
   int tricks_taken_by_ew = game_.tricks_max() - tricks_taken_by_ns;
-  assert(best_play_found_);
+  assert(best_play_.has_value());
   return {
       .tricks_taken_by_ns = tricks_taken_by_ns,
       .tricks_taken_by_ew = tricks_taken_by_ew,
-      .best_play          = best_play_,
+      .best_play          = *best_play_,
       .states_explored    = states_explored_,
       .states_memoized    = (int64_t)tpn_table_.size(),
   };
@@ -58,16 +57,14 @@ int Solver::solve_internal(int alpha, int beta, int max_depth) {
       if (lower >= beta) {
         TRACE("prune", alpha, beta, lower);
         if (search_ply_ == 0 && lower == upper) {
-          best_play_       = bounds.best_play;
-          best_play_found_ = true;
+          best_play_ = bounds.best_play;
         }
         return lower;
       }
       if (upper <= alpha) {
         TRACE("prune", alpha, beta, upper);
         if (search_ply_ == 0 && lower == upper) {
-          best_play_       = bounds.best_play;
-          best_play_found_ = true;
+          best_play_ = bounds.best_play;
         }
         return upper;
       }
@@ -113,8 +110,7 @@ int Solver::solve_internal(int alpha, int beta, int max_depth) {
   bool is_pv_node = alpha < search_state.best_tricks_by_ns &&
                     search_state.best_tricks_by_ns < beta;
   if (search_ply_ == 0 && is_pv_node) {
-    best_play_       = search_state.best_play;
-    best_play_found_ = true;
+    best_play_ = search_state.best_play;
   }
 
   return search_state.best_tricks_by_ns;

@@ -67,17 +67,16 @@ private:
 
   void trace(const char *tag, int alpha, int beta, int tricks_taken_by_ns);
 
-  Game          game_;
-  int           search_ply_;
-  Card          best_play_;
-  bool          best_play_found_;
-  int64_t       states_explored_;
-  TpnTable      tpn_table_;
-  MiniSolver    mini_solver_;
-  bool          ab_pruning_enabled_;
-  bool          tpn_table_enabled_;
-  bool          move_ordering_enabled_;
-  bool          mini_solver_enabled_;
-  std::ostream *trace_ostream_;
-  int64_t       trace_lineno_;
+  Game                game_;
+  int                 search_ply_;
+  std::optional<Card> best_play_;
+  int64_t             states_explored_;
+  TpnTable            tpn_table_;
+  MiniSolver          mini_solver_;
+  bool                ab_pruning_enabled_;
+  bool                tpn_table_enabled_;
+  bool                move_ordering_enabled_;
+  bool                mini_solver_enabled_;
+  std::ostream       *trace_ostream_;
+  int64_t             trace_lineno_;
 };
