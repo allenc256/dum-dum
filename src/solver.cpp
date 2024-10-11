@@ -4,6 +4,7 @@
 
 Solver::Solver(Game g)
     : game_(g),
+      search_ply_(0),
       states_explored_(0),
       mini_solver_(game_, tpn_table_),
       trace_ostream_(nullptr),
@@ -16,14 +17,14 @@ Solver::~Solver() {}
 Solver::Result Solver::solve() { return solve(-1, game_.tricks_max() + 1); }
 
 Solver::Result Solver::solve(int alpha, int beta) {
-  states_explored_ = 0;
-  Card best_play;
-  int  tricks_taken_by_ns = solve_internal(alpha, beta, &best_play);
-  int  tricks_taken_by_ew = game_.tricks_max() - tricks_taken_by_ns;
+  states_explored_       = 0;
+  search_ply_            = 0;
+  int tricks_taken_by_ns = solve_internal(alpha, beta);
+  int tricks_taken_by_ew = game_.tricks_max() - tricks_taken_by_ns;
   return {
       .tricks_taken_by_ns = tricks_taken_by_ns,
       .tricks_taken_by_ew = tricks_taken_by_ew,
-      .best_play          = best_play,
+      .best_play          = best_play_,
       .states_explored    = states_explored_,
       .states_memoized    = (int64_t)tpn_table_.size(),
   };
@@ -34,7 +35,7 @@ Solver::Result Solver::solve(int alpha, int beta) {
     trace(tag, alpha, beta, tricks_taken_by_ns);                               \
   }
 
-int Solver::solve_internal(int alpha, int beta, Card *best_play) {
+int Solver::solve_internal(int alpha, int beta) {
   if (game_.finished()) {
     TRACE("terminal", alpha, beta, game_.tricks_taken_by_ns());
     return game_.tricks_taken_by_ns();
@@ -45,7 +46,7 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
   Bounds bounds;
 
   if (game_.start_of_trick()) {
-    if (!best_play) {
+    if (search_ply_ > 0) {
       if (tpn_table_enabled_) {
         bounds    = compute_initial_bounds();
         int lower = bounds.lower + game_.tricks_taken_by_ns();
@@ -70,7 +71,6 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
       .alpha             = alpha,
       .beta              = beta,
       .best_tricks_by_ns = maximizing ? -1 : game_.tricks_max() + 1,
-      .best_play         = best_play,
   };
   search_all_cards(search_state);
 
@@ -187,14 +187,15 @@ bool Solver::search_specific_cards(SearchState &s, Cards c, Order o) {
 
 bool Solver::search_specific_card(SearchState &s, Card c) {
   game_.play(c);
+  search_ply_++;
 
-  int  child_tricks_by_ns = solve_internal(s.alpha, s.beta, nullptr);
+  int  child_tricks_by_ns = solve_internal(s.alpha, s.beta);
   bool prune              = false;
   if (s.maximizing) {
     if (child_tricks_by_ns > s.best_tricks_by_ns) {
       s.best_tricks_by_ns = child_tricks_by_ns;
-      if (s.best_play) {
-        *s.best_play = c;
+      if (search_ply_ == 1) {
+        best_play_ = c;
       }
     }
     if (ab_pruning_enabled_) {
@@ -206,8 +207,8 @@ bool Solver::search_specific_card(SearchState &s, Card c) {
   } else {
     if (child_tricks_by_ns < s.best_tricks_by_ns) {
       s.best_tricks_by_ns = child_tricks_by_ns;
-      if (s.best_play) {
-        *s.best_play = c;
+      if (search_ply_ == 1) {
+        best_play_ = c;
       }
     }
     if (ab_pruning_enabled_) {
@@ -218,6 +219,7 @@ bool Solver::search_specific_card(SearchState &s, Card c) {
     }
   }
 
+  search_ply_--;
   game_.unplay();
   return prune;
 }
