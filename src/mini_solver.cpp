@@ -1,11 +1,17 @@
 #include "mini_solver.h"
 
-static void
-update_bounds(Bounds &bounds, const Bounds &child_bounds, bool maximizing) {
+static void update_bounds(
+    Bounds       &bounds,
+    const Bounds &child_bounds,
+    const Card   &play,
+    bool          maximizing
+) {
   if (maximizing) {
-    bounds.lower = std::max(bounds.lower, (int8_t)(child_bounds.lower + 1));
+    bounds.lower     = std::max(bounds.lower, (int8_t)(child_bounds.lower + 1));
+    bounds.best_play = play;
   } else {
-    bounds.upper = std::min(bounds.upper, child_bounds.upper);
+    bounds.upper     = std::min(bounds.upper, child_bounds.upper);
+    bounds.best_play = play;
   }
   assert(bounds.lower <= bounds.upper);
 }
@@ -68,12 +74,13 @@ Bounds MiniSolver::compute_bounds() {
     for (auto it = my_poss_winners.iter_highest();
          it.valid() && bounds.lower < bounds.upper;
          it = my_poss_winners.iter_lower(it)) {
-      game_.play(it.card());
+      Card my_play = it.card();
+      game_.play(my_play);
       play_opp_lowest();
       play_partner_lowest();
       play_opp_lowest();
       assert(game_.next_seat() == me || game_.next_seat() == partner);
-      update_bounds(bounds, compute_bounds(), maximizing);
+      update_bounds(bounds, compute_bounds(), my_play, maximizing);
       game_.unplay();
       game_.unplay();
       game_.unplay();
@@ -83,12 +90,12 @@ Bounds MiniSolver::compute_bounds() {
     for (auto it = partner_poss_winners.iter_highest();
          it.valid() && bounds.lower < bounds.upper;
          it = partner_poss_winners.iter_lower(it)) {
-      play_my_lowest(suit);
+      Card my_play = play_my_lowest(suit);
       play_opp_lowest();
       game_.play(it.card());
       play_opp_lowest();
       assert(game_.next_seat() == me || game_.next_seat() == partner);
-      update_bounds(bounds, compute_bounds(), maximizing);
+      update_bounds(bounds, compute_bounds(), my_play, maximizing);
       game_.unplay();
       game_.unplay();
       game_.unplay();
@@ -97,12 +104,12 @@ Bounds MiniSolver::compute_bounds() {
 
     if (partner_cards.empty() && !partner_trumps.empty() &&
         bounds.lower < bounds.upper) {
-      play_my_lowest(suit);
+      Card my_play = play_my_lowest(suit);
       play_opp_lowest();
       play_partner_ruff();
       play_opp_lowest();
       assert(game_.next_seat() == me || game_.next_seat() == partner);
-      update_bounds(bounds, compute_bounds(), maximizing);
+      update_bounds(bounds, compute_bounds(), my_play, maximizing);
       game_.unplay();
       game_.unplay();
       game_.unplay();
@@ -118,10 +125,12 @@ Bounds MiniSolver::compute_bounds() {
   return bounds;
 }
 
-void MiniSolver::play_my_lowest(Suit suit) {
+Card MiniSolver::play_my_lowest(Suit suit) {
   auto it = game_.valid_plays().intersect(suit).iter_lowest();
   assert(it.valid());
-  game_.play(it.card());
+  Card my_play = it.card();
+  game_.play(my_play);
+  return my_play;
 }
 
 void MiniSolver::play_partner_lowest() {

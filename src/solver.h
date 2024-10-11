@@ -55,6 +55,7 @@ private:
     int   alpha;
     int   beta;
     int   best_tricks_by_ns;
+    Card  best_play;
   };
 
   enum Order { LOW_TO_HIGH, HIGH_TO_LOW };
