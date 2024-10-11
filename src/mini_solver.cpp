@@ -16,20 +16,24 @@ static void update_bounds(
   assert(bounds.lower <= bounds.upper);
 }
 
-Bounds MiniSolver::compute_bounds() {
+Bounds MiniSolver::compute_bounds(int max_depth) {
   if (game_.finished()) {
-    return {.lower = 0, .upper = 0};
+    return {.lower = 0, .upper = 0, .max_depth = (int8_t)max_depth};
   }
 
   assert(game_.start_of_trick());
 
   Cards ignorable_cards = game_.ignorable_cards();
   auto  it              = tpn_table_.find(game_.game_state());
-  if (it != tpn_table_.end()) {
+  if (it != tpn_table_.end() && it->second.max_depth == max_depth) {
     return it->second;
   }
 
-  Bounds bounds = {.lower = 0, .upper = (int8_t)game_.tricks_left()};
+  Bounds bounds = {
+      .lower     = 0,
+      .upper     = (int8_t)game_.tricks_left(),
+      .max_depth = (int8_t)max_depth
+  };
 
   Seat me         = game_.next_seat();
   Seat left       = game_.next_seat(1);
@@ -80,7 +84,7 @@ Bounds MiniSolver::compute_bounds() {
       play_partner_lowest();
       play_opp_lowest();
       assert(game_.next_seat() == me || game_.next_seat() == partner);
-      update_bounds(bounds, compute_bounds(), my_play, maximizing);
+      update_bounds(bounds, compute_bounds(max_depth), my_play, maximizing);
       game_.unplay();
       game_.unplay();
       game_.unplay();
@@ -95,7 +99,7 @@ Bounds MiniSolver::compute_bounds() {
       game_.play(it.card());
       play_opp_lowest();
       assert(game_.next_seat() == me || game_.next_seat() == partner);
-      update_bounds(bounds, compute_bounds(), my_play, maximizing);
+      update_bounds(bounds, compute_bounds(max_depth), my_play, maximizing);
       game_.unplay();
       game_.unplay();
       game_.unplay();
@@ -109,7 +113,7 @@ Bounds MiniSolver::compute_bounds() {
       play_partner_ruff();
       play_opp_lowest();
       assert(game_.next_seat() == me || game_.next_seat() == partner);
-      update_bounds(bounds, compute_bounds(), my_play, maximizing);
+      update_bounds(bounds, compute_bounds(max_depth), my_play, maximizing);
       game_.unplay();
       game_.unplay();
       game_.unplay();

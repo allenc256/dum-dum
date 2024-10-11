@@ -7,6 +7,7 @@
 struct Bounds {
   int8_t lower;
   int8_t upper;
+  int8_t max_depth;
   Card   best_play;
 };
 
@@ -18,7 +19,7 @@ public:
       : game_(game),
         tpn_table_(tpn_table) {}
 
-  Bounds compute_bounds();
+  Bounds compute_bounds(int max_depth);
 
 private:
   Card play_my_lowest(Suit suit);
