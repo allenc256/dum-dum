@@ -23,7 +23,7 @@ TEST_P(MiniSolverTest, test_case) {
   Game                      g(p.trump_suit, p.lead_seat, hands);
   TpnTable                  tpn_table;
   MiniSolver                s(g, tpn_table);
-  Bounds                    b = s.compute_bounds();
+  Bounds                    b = s.compute_bounds(g.tricks_max());
   bool maximizing             = p.lead_seat == NORTH || p.lead_seat == SOUTH;
   int  forced_tricks          = maximizing ? b.lower : g.tricks_max() - b.upper;
   EXPECT_EQ(forced_tricks, p.forced_tricks);
@@ -98,7 +98,7 @@ TEST(MiniSolver, random_test) {
     TpnTable   tpn_table;
     MiniSolver s2 = MiniSolver(g, tpn_table);
     auto       r  = s1.solve();
-    Bounds     b  = s2.compute_bounds();
+    Bounds     b  = s2.compute_bounds(g.tricks_max());
 
     EXPECT_LE(b.lower, r.tricks_taken_by_ns);
     EXPECT_GE(b.upper, r.tricks_taken_by_ns);

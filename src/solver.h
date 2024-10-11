@@ -41,12 +41,12 @@ public:
   const Game &game() const { return game_; }
 
   Result solve();
-  Result solve(int alpha, int beta);
+  Result solve(int alpha, int beta, int max_depth);
 
 private:
-  Bounds compute_initial_bounds();
+  Bounds compute_initial_bounds(int max_depth);
 
-  int solve_internal(int alpha, int beta);
+  int solve_internal(int alpha, int beta, int max_depth);
 
   struct SearchState {
     Cards ignorable;
@@ -55,6 +55,7 @@ private:
     int   alpha;
     int   beta;
     int   best_tricks_by_ns;
+    int   max_depth;
     Card  best_play;
   };
 
@@ -69,6 +70,7 @@ private:
   Game          game_;
   int           search_ply_;
   Card          best_play_;
+  bool          best_play_found_;
   int64_t       states_explored_;
   TpnTable      tpn_table_;
   MiniSolver    mini_solver_;

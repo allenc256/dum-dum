@@ -12,9 +12,12 @@ void validate_solver(Solver &s1) {
   auto r2 = s2.solve();
   ASSERT_EQ(r1.tricks_taken_by_ns, r2.tricks_taken_by_ns);
   int count = 0;
-  while (!s1.game().finished()) {
+  while (true) {
     SCOPED_TRACE(::testing::Message() << "card " << count);
     s1.game().play(r1.best_play);
+    if (s1.game().finished()) {
+      break;
+    }
     r1 = s1.solve();
     count++;
     ASSERT_EQ(r1.tricks_taken_by_ns, r2.tricks_taken_by_ns);
