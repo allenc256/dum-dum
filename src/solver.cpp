@@ -82,18 +82,24 @@ int Solver::solve_internal(int alpha, int beta) {
       int8_t taken   = (int8_t)game_.tricks_taken_by_ns();
       bool   changed = false;
       if (best < beta) {
-        bounds.upper = best - taken;
-        changed      = true;
+        bounds.upper     = best - taken;
+        bounds.best_play = search_state.best_play;
+        changed          = true;
       }
       if (best > alpha) {
-        bounds.lower = best - taken;
-        changed      = true;
+        bounds.lower     = best - taken;
+        bounds.best_play = search_state.best_play;
+        changed          = true;
       }
       if (changed) {
         assert(bounds.lower <= bounds.upper);
         tpn_table_[game_.game_state()] = bounds;
       }
     }
+  }
+
+  if (search_ply_ == 0) {
+    best_play_ = search_state.best_play;
   }
 
   return search_state.best_tricks_by_ns;
@@ -194,9 +200,7 @@ bool Solver::search_specific_card(SearchState &s, Card c) {
   if (s.maximizing) {
     if (child_tricks_by_ns > s.best_tricks_by_ns) {
       s.best_tricks_by_ns = child_tricks_by_ns;
-      if (search_ply_ == 1) {
-        best_play_ = c;
-      }
+      s.best_play         = c;
     }
     if (ab_pruning_enabled_) {
       s.alpha = std::max(s.alpha, s.best_tricks_by_ns);
@@ -207,9 +211,7 @@ bool Solver::search_specific_card(SearchState &s, Card c) {
   } else {
     if (child_tricks_by_ns < s.best_tricks_by_ns) {
       s.best_tricks_by_ns = child_tricks_by_ns;
-      if (search_ply_ == 1) {
-        best_play_ = c;
-      }
+      s.best_play         = c;
     }
     if (ab_pruning_enabled_) {
       s.beta = std::min(s.beta, s.best_tricks_by_ns);

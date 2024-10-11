@@ -7,6 +7,7 @@
 struct Bounds {
   int8_t lower;
   int8_t upper;
+  Card   best_play;
 };
 
 typedef absl::flat_hash_map<GameState, Bounds> TpnTable;
@@ -20,7 +21,7 @@ public:
   Bounds compute_bounds();
 
 private:
-  void play_my_lowest(Suit suit);
+  Card play_my_lowest(Suit suit);
   void play_opp_lowest();
   void play_partner_lowest();
   void play_partner_ruff();
