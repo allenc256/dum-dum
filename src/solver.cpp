@@ -46,7 +46,6 @@ int Solver::solve_internal(int alpha, int beta, int max_depth) {
   }
 
   bool   maximizing = game_.next_seat() == NORTH || game_.next_seat() == SOUTH;
-  Cards  ignorable  = game_.ignorable_cards();
   Bounds bounds;
 
   if (game_.start_of_trick()) {
@@ -74,7 +73,6 @@ int Solver::solve_internal(int alpha, int beta, int max_depth) {
   }
 
   SearchState search_state = {
-      .ignorable         = ignorable,
       .maximizing        = maximizing,
       .alpha             = alpha,
       .beta              = beta,
@@ -102,7 +100,7 @@ int Solver::solve_internal(int alpha, int beta, int max_depth) {
       }
       if (changed) {
         assert(bounds.lower <= bounds.upper);
-        tpn_table_[game_.game_state()] = bounds;
+        tpn_table_[game_.game_key()] = bounds;
       }
     }
   }
@@ -120,7 +118,7 @@ Bounds Solver::compute_initial_bounds(int max_depth) {
   if (mini_solver_enabled_) {
     return mini_solver_.compute_bounds(max_depth);
   }
-  auto it = tpn_table_.find(game_.game_state());
+  auto it = tpn_table_.find(game_.game_key());
   if (it != tpn_table_.end() && it->second.max_depth == max_depth) {
     return it->second;
   } else {
@@ -189,7 +187,7 @@ bool Solver::search_specific_cards(SearchState &s, Cards c, Order o) {
     return false;
   }
   s.already_searched.add_all(c);
-  c = c.prune_equivalent(s.ignorable);
+  c = c.prune_equivalent(game_.ignorable_cards());
   if (o == HIGH_TO_LOW) {
     for (auto i = c.iter_highest(); i.valid(); i = c.iter_lower(i)) {
       if (search_specific_card(s, i.card())) {
@@ -246,10 +244,10 @@ static void sha256_hash(Game &game, char *buf, size_t buflen) {
     buf[0] = 0;
     return;
   }
-  const GameState &state = game.game_state();
-  uint8_t          digest[32];
-  uint8_t         *in_begin = (uint8_t *)&state;
-  uint8_t         *in_end   = in_begin + sizeof(GameState);
+  const GameKey &key = game.game_key();
+  uint8_t        digest[32];
+  uint8_t       *in_begin = (uint8_t *)&key;
+  uint8_t       *in_end   = in_begin + sizeof(GameKey);
   picosha2::hash256(in_begin, in_end, digest, digest + 32);
   std::snprintf(
       buf, buflen, "%08x%08x", *(uint32_t *)&digest[0], *(uint32_t *)&digest[4]

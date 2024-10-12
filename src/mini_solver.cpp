@@ -24,7 +24,7 @@ Bounds MiniSolver::compute_bounds(int max_depth) {
   assert(game_.start_of_trick());
 
   Cards ignorable_cards = game_.ignorable_cards();
-  auto  it              = tpn_table_.find(game_.game_state());
+  auto  it              = tpn_table_.find(game_.game_key());
   if (it != tpn_table_.end() && it->second.max_depth == max_depth) {
     return it->second;
   }
@@ -125,7 +125,7 @@ Bounds MiniSolver::compute_bounds(int max_depth) {
     // - finesses?
   }
 
-  tpn_table_[game_.game_state()] = bounds;
+  tpn_table_[game_.game_key()] = bounds;
   return bounds;
 }
 
