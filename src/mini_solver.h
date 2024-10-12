@@ -11,7 +11,7 @@ struct Bounds {
   Card   best_play;
 };
 
-typedef absl::flat_hash_map<GameState, Bounds> TpnTable;
+typedef absl::flat_hash_map<GameKey, Bounds> TpnTable;
 
 class MiniSolver {
 public:

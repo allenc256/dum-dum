@@ -181,17 +181,23 @@ private:
 
 std::ostream &operator<<(std::ostream &os, const Trick &t);
 
-struct GameState {
-  std::array<Cards, 4> hands;
-  Seat                 next_seat;
+class Game;
 
-  template <typename H> friend H AbslHashValue(H h, const GameState &s) {
-    return H::combine(std::move(h), s.hands, s.next_seat);
+class GameKey {
+public:
+  GameKey(Game &game);
+
+  template <typename H> friend H AbslHashValue(H h, const GameKey &k) {
+    return H::combine(std::move(h), k.hands_, k.next_seat_);
   }
 
-  friend bool operator==(const GameState &s1, const GameState &s2) {
-    return s1.hands == s2.hands && s1.next_seat == s2.next_seat;
+  friend bool operator==(const GameKey &lhs, const GameKey &rhs) {
+    return lhs.hands_ == rhs.hands_ && lhs.next_seat_ == rhs.next_seat_;
   }
+
+private:
+  std::array<Cards, 4> hands_;
+  Seat                 next_seat_;
 };
 
 class Game {
@@ -234,38 +240,48 @@ public:
   bool  valid_play(Card c) const;
   Cards valid_plays() const;
 
-  Cards ignorable_cards() const {
-    Cards in_play_cards = current_trick().all_cards();
-    for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
-      in_play_cards.add_all(hands_[seat]);
+  Cards ignorable_cards() {
+    auto &cached = ignorable_stack_[plays_made_];
+    if (!cached.has_value()) {
+      Cards in_play_cards = current_trick().all_cards();
+      for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
+        in_play_cards.add_all(hands_[seat]);
+      }
+      cached = in_play_cards.complement();
     }
-    return in_play_cards.complement();
+    return *cached;
   }
 
-  const GameState &game_state() {
+  const GameKey &game_key() {
     assert(start_of_trick());
-    if (!game_state_valid_) {
-      Cards ignorable       = ignorable_cards();
-      game_state_.next_seat = next_seat_;
-      for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
-        game_state_.hands[seat] = hands_[seat].collapse(ignorable);
-      }
-      game_state_valid_ = true;
+    auto &cached = key_stack_[tricks_taken_];
+    if (!cached.has_value()) {
+      cached.emplace(*this);
     }
-    return game_state_;
+    return *cached;
   }
 
 private:
-  Cards     hands_[4];
-  Suit      trump_suit_;
-  Seat      lead_seat_;
-  Seat      next_seat_;
-  Trick     tricks_[14];
-  int       tricks_taken_;
-  int       tricks_max_;
-  int       tricks_taken_by_ns_;
-  GameState game_state_;
-  bool      game_state_valid_;
+  void finish_play();
+
+  Cards                  hands_[4];
+  Suit                   trump_suit_;
+  Seat                   lead_seat_;
+  Seat                   next_seat_;
+  Trick                  tricks_[14];
+  int                    tricks_taken_;
+  int                    tricks_max_;
+  int                    tricks_taken_by_ns_;
+  int                    plays_made_;
+  std::optional<Cards>   ignorable_stack_[53];
+  std::optional<GameKey> key_stack_[14];
 
   friend std::ostream &operator<<(std::ostream &os, const Game &g);
 };
+
+inline GameKey::GameKey(Game &game) : next_seat_(game.next_seat()) {
+  Cards ignorable = game.ignorable_cards();
+  for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
+    hands_[seat] = game.hand(seat).collapse(ignorable);
+  }
+}

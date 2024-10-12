@@ -49,13 +49,12 @@ private:
   int solve_internal(int alpha, int beta, int max_depth);
 
   struct SearchState {
-    Cards ignorable;
-    Cards already_searched;
     bool  maximizing;
     int   alpha;
     int   beta;
     int   best_tricks_by_ns;
     int   max_depth;
+    Cards already_searched;
     Card  best_play;
   };
 

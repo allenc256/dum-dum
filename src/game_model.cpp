@@ -123,7 +123,7 @@ Game::Game(Suit trump_suit, Seat lead_seat, Cards hands[4])
       next_seat_(lead_seat),
       tricks_taken_(0),
       tricks_taken_by_ns_(0),
-      game_state_valid_(false) {
+      plays_made_(0) {
   tricks_max_ = hands[0].count();
   for (int i = 1; i < 4; i++) {
     if (hands[i].count() != tricks_max_) {
@@ -161,34 +161,25 @@ bool Game::valid_play(Card c) const {
 
 void Game::play(Card c) {
   assert(valid_play(c));
-
   Trick &t = current_trick();
-
   if (t.started()) {
     t.play_continue(c);
   } else {
     t.play_start(trump_suit_, next_seat_, c);
   }
-
   hands_[next_seat_].remove(c);
-
-  if (t.finished()) {
-    next_seat_ = t.winning_seat();
-    if (next_seat_ == NORTH || next_seat_ == SOUTH) {
-      tricks_taken_by_ns_++;
-    }
-    tricks_taken_++;
-  } else {
-    next_seat_ = t.next_seat();
-  }
-
-  game_state_valid_ = false;
+  finish_play();
 }
 
 void Game::play_null() {
   Trick &t = current_trick();
   assert(t.started());
   t.play_null();
+  finish_play();
+}
+
+void Game::finish_play() {
+  Trick &t = current_trick();
 
   if (t.finished()) {
     next_seat_ = t.winning_seat();
@@ -196,11 +187,15 @@ void Game::play_null() {
       tricks_taken_by_ns_++;
     }
     tricks_taken_++;
+    assert(tricks_taken_ <= 13);
+    assert(!key_stack_[tricks_taken_].has_value());
   } else {
     next_seat_ = t.next_seat();
   }
 
-  game_state_valid_ = false;
+  plays_made_++;
+  assert(plays_made_ <= 52);
+  assert(!ignorable_stack_[plays_made_].has_value());
 }
 
 void Game::unplay() {
@@ -220,23 +215,27 @@ void Game::unplay() {
     }
   } else {
     if (tricks_taken_ > 0) {
-      tricks_taken_--;
-      Trick &t = current_trick();
+      Trick &t = tricks_[tricks_taken_ - 1];
       assert(t.finished());
-      Seat winner = t.winning_seat();
-      if (winner == NORTH || winner == SOUTH) {
-        tricks_taken_by_ns_--;
-      }
-      Trick::Unplay u = t.unplay();
-      next_seat_      = t.next_seat();
+      Seat          winner = t.winning_seat();
+      Trick::Unplay u      = t.unplay();
+      next_seat_           = t.next_seat();
       if (!u.was_null_play) {
         hands_[next_seat_].add(u.card);
       }
+      if (winner == NORTH || winner == SOUTH) {
+        tricks_taken_by_ns_--;
+      }
+      key_stack_[tricks_taken_].reset();
+      tricks_taken_--;
     } else {
       throw std::runtime_error("no cards played");
     }
   }
-  game_state_valid_ = false;
+
+  assert(plays_made_ > 0);
+  ignorable_stack_[plays_made_].reset();
+  plays_made_--;
 }
 
 Cards Game::valid_plays() const {
