@@ -181,23 +181,33 @@ private:
 
 std::ostream &operator<<(std::ostream &os, const Trick &t);
 
-class Game;
-
 class GameKey {
 public:
-  GameKey(Game &game);
+  GameKey(Cards west, Cards north, Cards east, Cards south, Seat next_seat)
+      : west_(west),
+        north_(north),
+        east_(east),
+        south_(south),
+        next_seat_(next_seat) {}
 
   template <typename H> friend H AbslHashValue(H h, const GameKey &k) {
-    return H::combine(std::move(h), k.hands_, k.next_seat_);
+    return H::combine(
+        std::move(h), k.west_, k.north_, k.east_, k.south_, k.next_seat_
+    );
   }
 
   friend bool operator==(const GameKey &lhs, const GameKey &rhs) {
-    return lhs.hands_ == rhs.hands_ && lhs.next_seat_ == rhs.next_seat_;
+    return lhs.west_ == rhs.west_ && lhs.north_ == rhs.north_ &&
+           lhs.east_ == rhs.east_ && lhs.south_ == rhs.south_ &&
+           lhs.next_seat_ == rhs.next_seat_;
   }
 
 private:
-  std::array<Cards, 4> hands_;
-  Seat                 next_seat_;
+  Cards west_;
+  Cards north_;
+  Cards east_;
+  Cards south_;
+  Seat  next_seat_;
 };
 
 class Game {
@@ -252,13 +262,28 @@ public:
     return *cached;
   }
 
-  const GameKey &game_key() {
+  const GameKey &normalized_key() {
     assert(start_of_trick());
-    auto &cached = key_stack_[tricks_taken_];
+    auto &cached = norm_key_stack_[tricks_taken_];
     if (!cached.has_value()) {
-      cached.emplace(*this);
+      Cards ignorable = ignorable_cards();
+      cached.emplace(
+          hands_[WEST].normalize(ignorable),
+          hands_[NORTH].normalize(ignorable),
+          hands_[EAST].normalize(ignorable),
+          hands_[SOUTH].normalize(ignorable),
+          next_seat_
+      );
     }
     return *cached;
+  }
+
+  Card normalize_card(Card card) {
+    return Cards::normalize_card(card, ignorable_cards());
+  }
+
+  Card denormalize_card([[maybe_unused]] Card card) {
+    return Cards::denormalize_card(card, ignorable_cards());
   }
 
 private:
@@ -274,14 +299,7 @@ private:
   int                    tricks_taken_by_ns_;
   int                    plays_made_;
   std::optional<Cards>   ignorable_stack_[53];
-  std::optional<GameKey> key_stack_[14];
+  std::optional<GameKey> norm_key_stack_[14];
 
   friend std::ostream &operator<<(std::ostream &os, const Game &g);
 };
-
-inline GameKey::GameKey(Game &game) : next_seat_(game.next_seat()) {
-  Cards ignorable = game.ignorable_cards();
-  for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
-    hands_[seat] = game.hand(seat).collapse(ignorable);
-  }
-}

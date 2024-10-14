@@ -134,7 +134,7 @@ public:
     return count;
   }
 
-  Cards collapse(Cards ignorable) const {
+  Cards normalize(Cards ignorable) const {
     if (!ignorable.bits_) {
       return *this;
     }
@@ -212,6 +212,35 @@ public:
   static Cards lower_ranking(Card card) {
     uint64_t rank_bits = (SUIT_MASK >> ((13 - card.rank()) * 4)) & ALL_MASK;
     return Cards(rank_bits << card.suit());
+  }
+
+  static Card normalize_card(Card card, Cards ignorable) {
+    assert(!ignorable.contains(card));
+    int offset = higher_ranking(card).intersect(ignorable).count();
+    return Card((Rank)(card.rank() + offset), card.suit());
+  }
+
+  static Card denormalize_card(Card norm_card, Cards ignorable) {
+    uint64_t mask = 0b1000000000000000000000000000000000000000000000000ull
+                    << norm_card.suit();
+    uint64_t present = ~ignorable.bits_;
+    int      count   = 13 - norm_card.rank();
+    int      rank    = 12;
+
+    while (true) {
+      if (mask & present) {
+        count--;
+      }
+      if (count <= 0) {
+        break;
+      }
+      rank--;
+      mask >>= 4;
+    }
+
+    Card result = Card((Rank)rank, norm_card.suit());
+    assert(!ignorable.contains(result));
+    return result;
   }
 
 private:

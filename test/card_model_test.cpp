@@ -147,20 +147,20 @@ TEST(Cards, disjoint) {
 
 TEST(Cards, collapse) {
   EXPECT_EQ(
-      Cards("♠ - ♥ - ♦ - ♣ K").collapse(Cards("♠ - ♥ - ♦ - ♣ A")),
+      Cards("♠ - ♥ - ♦ - ♣ K").normalize(Cards("♠ - ♥ - ♦ - ♣ A")),
       Cards("♠ - ♥ - ♦ - ♣ A")
   );
   EXPECT_EQ(
-      Cards("♠ - ♥ - ♦ - ♣ Q").collapse(Cards("♠ - ♥ - ♦ - ♣ A")),
+      Cards("♠ - ♥ - ♦ - ♣ Q").normalize(Cards("♠ - ♥ - ♦ - ♣ A")),
       Cards("♠ - ♥ - ♦ - ♣ K")
   );
   EXPECT_EQ(
-      Cards("♠ J8 ♥ - ♦ T3 ♣ -").collapse(Cards("♠ KT9 ♥ - ♦ 74 ♣ -")),
+      Cards("♠ J8 ♥ - ♦ T3 ♣ -").normalize(Cards("♠ KT9 ♥ - ♦ 74 ♣ -")),
       Cards("♠ QJ ♥ - ♦ T5 ♣ -")
   );
   Cards c = Cards("♠ KJ76 ♥ A ♦ 543 ♣ 2");
-  EXPECT_EQ(c.collapse(c.complement()), Cards("♠ AKQJ ♥ A ♦ AKQ ♣ A"));
-  EXPECT_EQ(c.collapse(Cards()), c);
+  EXPECT_EQ(c.normalize(c.complement()), Cards("♠ AKQJ ♥ A ♦ AKQ ♣ A"));
+  EXPECT_EQ(c.normalize(Cards()), c);
 }
 
 TEST(Cards, prune_equivalent) {
@@ -187,4 +187,25 @@ TEST(Cards, top_ranks) {
   EXPECT_EQ(Cards("♠ - ♥ - ♦ - ♣ AQ").top_ranks(CLUBS), 1);
   EXPECT_EQ(Cards("♠ AKQJ ♥ - ♦ - ♣ -").top_ranks(SPADES), 4);
   EXPECT_EQ(Cards("♠ AKJ ♥ - ♦ - ♣ -").top_ranks(SPADES), 2);
+}
+
+void test_normalize_card(Card before, Card after, Cards ignorable) {
+  EXPECT_EQ(Cards::normalize_card(before, ignorable), after);
+  EXPECT_EQ(Cards::denormalize_card(after, ignorable), before);
+}
+
+TEST(Cards, normalize_card_none) {
+  test_normalize_card(Card("2♣"), Card("2♣"), Cards("♠ A ♥ A ♦ A ♣ -"));
+  test_normalize_card(Card("A♠"), Card("A♠"), Cards("♠ - ♥ - ♦ - ♣ -"));
+}
+
+TEST(Cards, normalize_card_all) {
+  test_normalize_card(Card("5♣"), Card("A♣"), Cards({"5♣"}).complement());
+  test_normalize_card(Card("2♠"), Card("A♠"), Cards({"2♠"}).complement());
+}
+
+TEST(Cards, normalize_card_some) {
+  test_normalize_card(Card("5♣"), Card("8♣"), Cards("♠ - ♥ - ♦ - ♣ 876"));
+  test_normalize_card(Card("5♣"), Card("7♣"), Cards("♠ - ♥ - ♦ - ♣ 86"));
+  test_normalize_card(Card("K♣"), Card("A♣"), Cards("♠ - ♥ - ♦ - ♣ A"));
 }
