@@ -6,6 +6,7 @@ Solver::Solver(Game g)
     : game_(g),
       search_ply_(0),
       states_explored_(0),
+      tpn_table_(game_),
       mini_solver_(game_, tpn_table_),
       trace_ostream_(nullptr),
       trace_lineno_(0) {
@@ -45,28 +46,27 @@ int Solver::solve_internal(int alpha, int beta, int max_depth) {
     return game_.tricks_taken_by_ns();
   }
 
-  bool   maximizing = game_.next_seat() == NORTH || game_.next_seat() == SOUTH;
-  Bounds bounds;
+  bool maximizing = game_.next_seat() == NORTH || game_.next_seat() == SOUTH;
+  TpnTableValue tt_value;
 
   if (game_.start_of_trick()) {
     if (tpn_table_enabled_) {
-      bounds    = compute_initial_bounds(max_depth);
-      int lower = bounds.lower + game_.tricks_taken_by_ns();
-      int upper = bounds.upper + game_.tricks_taken_by_ns();
-      if (lower >= beta) {
-        TRACE("prune", alpha, beta, lower);
-        if (search_ply_ == 0 && lower == upper) {
-          best_play_ = bounds.best_play;
+      tt_value = compute_initial_value(max_depth);
+      if (tt_value.lower_bound() >= beta || tt_value.has_tight_bounds()) {
+        TRACE("prune", alpha, beta, tt_value.lower_bound());
+        if (search_ply_ == 0) {
+          best_play_ = tt_value.pv_play();
         }
-        return lower;
+        return tt_value.lower_bound();
       }
-      if (upper <= alpha) {
-        TRACE("prune", alpha, beta, upper);
-        if (search_ply_ == 0 && lower == upper) {
-          best_play_ = bounds.best_play;
+      if (tt_value.upper_bound() <= alpha) {
+        TRACE("prune", alpha, beta, tt_value.upper_bound());
+        if (search_ply_ == 0) {
+          best_play_ = tt_value.pv_play();
         }
-        return upper;
+        return tt_value.upper_bound();
       }
+      assert(!tt_value.has_tight_bounds());
     }
 
     TRACE("start", alpha, beta, -1);
@@ -85,22 +85,22 @@ int Solver::solve_internal(int alpha, int beta, int max_depth) {
     TRACE("end", alpha, beta, search_state.best_tricks_by_ns);
 
     if (tpn_table_enabled_) {
-      int8_t best    = (int8_t)search_state.best_tricks_by_ns;
-      int8_t taken   = (int8_t)game_.tricks_taken_by_ns();
-      bool   changed = false;
-      if (best < beta) {
-        bounds.upper     = best - taken;
-        bounds.best_play = search_state.best_play;
-        changed          = true;
+      bool changed = false;
+      if (search_state.best_tricks_by_ns < beta) {
+        if (tt_value.update_upper_bound(search_state.best_tricks_by_ns)) {
+          changed = true;
+        }
       }
-      if (best > alpha) {
-        bounds.lower     = best - taken;
-        bounds.best_play = search_state.best_play;
-        changed          = true;
+      if (search_state.best_tricks_by_ns > alpha) {
+        if (tt_value.update_lower_bound(search_state.best_tricks_by_ns)) {
+          changed = true;
+        }
       }
       if (changed) {
-        assert(bounds.lower <= bounds.upper);
-        tpn_table_[game_.game_key()] = bounds;
+        if (tt_value.has_tight_bounds()) {
+          tt_value.update_pv_play(search_state.best_play);
+        }
+        tpn_table_.update_value(tt_value);
       }
     }
   }
@@ -114,19 +114,17 @@ int Solver::solve_internal(int alpha, int beta, int max_depth) {
   return search_state.best_tricks_by_ns;
 }
 
-Bounds Solver::compute_initial_bounds(int max_depth) {
+TpnTableValue Solver::compute_initial_value(int max_depth) {
   if (mini_solver_enabled_) {
-    return mini_solver_.compute_bounds(max_depth);
-  }
-  auto it = tpn_table_.find(game_.game_key());
-  if (it != tpn_table_.end() && it->second.max_depth == max_depth) {
-    return it->second;
+    return mini_solver_.compute_value(max_depth);
+  } else if (TpnTableValue value; tpn_table_.lookup_value(value, max_depth)) {
+    return value;
   } else {
-    return {
-        .lower     = 0,
-        .upper     = (int8_t)game_.tricks_left(),
-        .max_depth = (int8_t)max_depth
-    };
+    return TpnTableValue(
+        game_.tricks_taken_by_ns(),
+        game_.tricks_taken_by_ns() + game_.tricks_left(),
+        max_depth
+    );
   }
 }
 
@@ -244,7 +242,7 @@ static void sha256_hash(Game &game, char *buf, size_t buflen) {
     buf[0] = 0;
     return;
   }
-  const GameKey &key = game.game_key();
+  const GameKey &key = game.normalized_key();
   uint8_t        digest[32];
   uint8_t       *in_begin = (uint8_t *)&key;
   uint8_t       *in_end   = in_begin + sizeof(GameKey);

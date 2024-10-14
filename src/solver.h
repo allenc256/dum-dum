@@ -44,7 +44,7 @@ public:
   Result solve(int alpha, int beta, int max_depth);
 
 private:
-  Bounds compute_initial_bounds(int max_depth);
+  TpnTableValue compute_initial_value(int max_depth);
 
   int solve_internal(int alpha, int beta, int max_depth);
 

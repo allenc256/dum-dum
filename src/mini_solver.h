@@ -1,17 +1,9 @@
 #pragma once
 
 #include "game_model.h"
+#include "tpn_table.h"
 
 #include <absl/container/flat_hash_map.h>
-
-struct Bounds {
-  int8_t lower;
-  int8_t upper;
-  int8_t max_depth;
-  Card   best_play;
-};
-
-typedef absl::flat_hash_map<GameKey, Bounds> TpnTable;
 
 class MiniSolver {
 public:
@@ -19,7 +11,7 @@ public:
       : game_(game),
         tpn_table_(tpn_table) {}
 
-  Bounds compute_bounds(int max_depth);
+  TpnTableValue compute_value(int max_depth);
 
 private:
   Card play_my_lowest(Suit suit);

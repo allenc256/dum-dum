@@ -188,7 +188,7 @@ void Game::finish_play() {
     }
     tricks_taken_++;
     assert(tricks_taken_ <= 13);
-    assert(!key_stack_[tricks_taken_].has_value());
+    assert(!norm_key_stack_[tricks_taken_].has_value());
   } else {
     next_seat_ = t.next_seat();
   }
@@ -226,7 +226,7 @@ void Game::unplay() {
       if (winner == NORTH || winner == SOUTH) {
         tricks_taken_by_ns_--;
       }
-      key_stack_[tricks_taken_].reset();
+      norm_key_stack_[tricks_taken_].reset();
       tricks_taken_--;
     } else {
       throw std::runtime_error("no cards played");
