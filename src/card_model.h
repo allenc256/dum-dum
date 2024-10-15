@@ -75,81 +75,6 @@ inline bool operator==(const Card &lhs, const Card &rhs) {
   return lhs.rank() == rhs.rank() && lhs.suit() == rhs.suit();
 }
 
-class SuitNormalizer {
-public:
-  SuitNormalizer()
-      : norm_map_(IDENTITY_MAP),
-        denorm_map_(IDENTITY_MAP),
-        removed_mask_(0) {}
-
-  bool removed_rank(Rank rank) const { return removed_mask_ & (1 << rank); }
-
-  Rank norm_rank(Rank rank) const {
-    assert(!removed_rank(rank));
-    return (Rank)((norm_map_ >> (rank * 4)) & 0b1111);
-  }
-
-  Rank denorm_rank(Rank rank) const {
-    return (Rank)((denorm_map_ >> (rank * 4)) & 0b1111);
-  }
-
-  void remove_rank(Rank rank) {
-    assert(!removed_rank(rank));
-    removed_mask_ |= 1 << rank;
-    Rank     nr = norm_rank(rank);
-    uint64_t m  = MASK >> ((12 - rank) * 4);
-    uint64_t nm = MASK >> ((12 - nr) * 4);
-    norm_map_ += ONES & m;
-    denorm_map_ = (denorm_map_ & ~nm) | (((denorm_map_ & nm) << 4) & nm);
-  }
-
-  void add_rank(Rank rank) {
-    assert(removed_rank(rank));
-    removed_mask_ &= ~(1 << rank);
-    uint64_t m = MASK >> ((12 - rank) * 4);
-    norm_map_ -= ONES & m;
-    Rank     nr = norm_rank(rank);
-    uint64_t nm = MASK >> ((12 - nr) * 4);
-    denorm_map_ =
-        (denorm_map_ & ~nm) | ((denorm_map_ & nm) >> 4) | (rank << (nr * 4));
-  }
-
-private:
-  static constexpr uint64_t ONES         = 0x0001111111111111ull;
-  static constexpr uint64_t IDENTITY_MAP = 0x000cba9876543210ull;
-  static constexpr uint64_t MASK         = 0x000fffffffffffffull;
-
-  uint64_t norm_map_;
-  uint64_t denorm_map_;
-  uint16_t removed_mask_;
-};
-
-class CardNormalizer {
-public:
-  bool removed(Card card) const {
-    return suit_normalizer_[card.suit()].removed_rank(card.rank());
-  }
-
-  Card norm(Card card) {
-    Rank norm_rank = suit_normalizer_[card.suit()].norm_rank(card.rank());
-    return Card(norm_rank, card.suit());
-  }
-
-  Card denorm(Card card) {
-    Rank denorm_rank = suit_normalizer_[card.suit()].denorm_rank(card.rank());
-    return Card(denorm_rank, card.suit());
-  }
-
-  void remove(Card card) {
-    suit_normalizer_[card.suit()].remove_rank(card.rank());
-  }
-
-  void add(Card card) { suit_normalizer_[card.suit()].add_rank(card.rank()); }
-
-private:
-  SuitNormalizer suit_normalizer_[4];
-};
-
 class Cards {
 public:
   class Iter {
@@ -209,6 +134,23 @@ public:
       count++;
     }
     return count;
+  }
+
+  Cards normalize(uint16_t removed_ranks_mask) const {
+    uint64_t b = bits_;
+    uint64_t m = 0xfffffffffffffull;
+    uint16_t r = (uint16_t)(removed_ranks_mask << 3);
+
+    while (r) {
+      int keep = std::countl_zero(r);
+      m >>= keep * 4;
+      r <<= keep;
+      int drop = std::countl_one(r);
+      b        = (b & ~m) | (((b & m) << 4) & m);
+      r <<= drop;
+    }
+
+    return Cards(b);
   }
 
   Cards normalize(Cards ignorable) const {
@@ -291,35 +233,6 @@ public:
     return Cards(rank_bits << card.suit());
   }
 
-  static Card normalize_card(Card card, Cards ignorable) {
-    assert(!ignorable.contains(card));
-    int offset = higher_ranking(card).intersect(ignorable).count();
-    return Card((Rank)(card.rank() + offset), card.suit());
-  }
-
-  static Card denormalize_card(Card norm_card, Cards ignorable) {
-    uint64_t mask = 0b1000000000000000000000000000000000000000000000000ull
-                    << norm_card.suit();
-    uint64_t present = ~ignorable.bits_;
-    int      count   = 13 - norm_card.rank();
-    int      rank    = 12;
-
-    while (true) {
-      if (mask & present) {
-        count--;
-      }
-      if (count <= 0) {
-        break;
-      }
-      rank--;
-      mask >>= 4;
-    }
-
-    Card result = Card((Rank)rank, norm_card.suit());
-    assert(!ignorable.contains(result));
-    return result;
-  }
-
 private:
   uint64_t bits_;
 
@@ -349,3 +262,76 @@ std::istream &operator>>(std::istream &is, Cards &c);
 std::ostream &operator<<(std::ostream &os, Cards c);
 
 inline bool operator==(Cards c1, Cards c2) { return c1.bits_ == c2.bits_; }
+
+class SuitNormalizer {
+public:
+  SuitNormalizer() : norm_map_(IDENTITY_MAP), denorm_map_(IDENTITY_MAP) {}
+
+  Rank normalize(Rank rank) const {
+    return (Rank)((norm_map_ >> (rank * 4)) & 0b1111);
+  }
+
+  Rank denormalize(Rank rank) const {
+    return (Rank)((denorm_map_ >> (rank * 4)) & 0b1111);
+  }
+
+  void remove(Rank rank) {
+    Rank     nr = normalize(rank);
+    uint64_t m  = MASK >> ((12 - rank) * 4);
+    uint64_t nm = MASK >> ((12 - nr) * 4);
+    norm_map_ += ONES & m;
+    denorm_map_ = (denorm_map_ & ~nm) | (((denorm_map_ & nm) << 4) & nm);
+  }
+
+  void add(Rank rank) {
+    uint64_t m = MASK >> ((12 - rank) * 4);
+    norm_map_ -= ONES & m;
+    Rank     nr = normalize(rank);
+    uint64_t nm = MASK >> ((12 - nr) * 4);
+    denorm_map_ =
+        (denorm_map_ & ~nm) | ((denorm_map_ & nm) >> 4) | (rank << (nr * 4));
+  }
+
+private:
+  static constexpr uint64_t ONES         = 0x0001111111111111ull;
+  static constexpr uint64_t IDENTITY_MAP = 0x000cba9876543210ull;
+  static constexpr uint64_t MASK         = 0x000fffffffffffffull;
+
+  uint64_t norm_map_;
+  uint64_t denorm_map_;
+};
+
+class CardNormalizer {
+public:
+  Card normalize(Card card) const {
+    Rank r = norm_[card.suit()].normalize(card.rank());
+    return Card(r, card.suit());
+  }
+
+  Card denormalize(Card card) const {
+    Rank r = norm_[card.suit()].denormalize(card.rank());
+    return Card(r, card.suit());
+  }
+
+  Cards normalize(Cards cards) const { return cards.normalize(removed_); }
+
+  Cards prune_equivalent(Cards cards) const {
+    return cards.prune_equivalent(removed_);
+  }
+
+  void remove(Card card) {
+    assert(!removed_.contains(card));
+    removed_.add(card);
+    norm_[card.suit()].remove(card.rank());
+  }
+
+  void add(Card card) {
+    assert(removed_.contains(card));
+    removed_.remove(card);
+    norm_[card.suit()].add(card.rank());
+  }
+
+private:
+  Cards          removed_;
+  SuitNormalizer norm_[4];
+};

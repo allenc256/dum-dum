@@ -184,8 +184,7 @@ bool Solver::search_specific_cards(SearchState &s, Cards c, Order o) {
   if (c.empty()) {
     return false;
   }
-  s.already_searched.add_all(c);
-  c = c.prune_equivalent(game_.ignorable_cards());
+  c = game_.prune_equivalent_cards(c);
   if (o == HIGH_TO_LOW) {
     for (auto i = c.iter_highest(); i.valid(); i = c.iter_lower(i)) {
       if (search_specific_card(s, i.card())) {
