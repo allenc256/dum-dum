@@ -5,6 +5,7 @@
 
 #include <absl/container/flat_hash_map.h>
 #include <array>
+#include <ostream>
 #include <vector>
 
 class Solver {

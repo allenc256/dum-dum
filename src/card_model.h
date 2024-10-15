@@ -3,8 +3,10 @@
 #include <bit>
 #include <cassert>
 #include <cstdint>
+#include <initializer_list>
 #include <iostream>
 #include <stdexcept>
+#include <string_view>
 
 class ParseFailure : public std::runtime_error {
 public:
