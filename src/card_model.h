@@ -288,8 +288,8 @@ public:
     norm_map_ -= ONES & m;
     Rank     nr = normalize(rank);
     uint64_t nm = MASK >> ((12 - nr) * 4);
-    denorm_map_ =
-        (denorm_map_ & ~nm) | ((denorm_map_ & nm) >> 4) | (rank << (nr * 4));
+    denorm_map_ = (denorm_map_ & ~nm) | ((denorm_map_ & nm) >> 4) |
+                  ((uint64_t)rank << (nr * 4));
   }
 
 private:
@@ -329,6 +329,13 @@ public:
     assert(removed_.contains(card));
     removed_.remove(card);
     norm_[card.suit()].add(card.rank());
+  }
+
+  void remove_all(Cards cards) {
+    for (auto it = cards.iter_highest(); it.valid();
+         it      = cards.iter_lower(it)) {
+      remove(it.card());
+    }
   }
 
 private:

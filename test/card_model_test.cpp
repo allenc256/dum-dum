@@ -218,38 +218,82 @@ TEST(SuitNormalizer, empty) {
   }
 }
 
-TEST(SuitNormalizer, add_remove_random) {
-  std::uniform_int_distribution dist(0, 12);
+class NaiveNormalizer {
+public:
+  NaiveNormalizer(std::default_random_engine &rand)
+      : rand_(rand),
+        card_dist_(0, 12),
+        removed_{false},
+        removed_count_(0) {}
 
-  for (int seed = 0; seed < 100; seed++) {
-    SCOPED_TRACE(testing::Message() << "seed " << seed);
+  Rank remove_random() {
+    assert(removed_count_ < 13);
+    while (true) {
+      Rank to_remove = (Rank)card_dist_(rand_);
+      if (removed_[to_remove]) {
+        continue;
+      }
+      removed_[to_remove] = true;
+      removed_count_++;
+      return to_remove;
+    }
+  }
 
-    SuitNormalizer             normalizer;
-    std::default_random_engine rand(seed);
-    bool                       removed[13] = {false};
-    int                        normalized[13];
+  Rank add_random() {
+    assert(removed_count_ > 0);
+    while (true) {
+      Rank to_add = (Rank)card_dist_(rand_);
+      if (!removed_[to_add]) {
+        continue;
+      }
+      removed_[to_add] = false;
+      removed_count_--;
+      return to_add;
+    }
+  }
 
-    for (int i = 0; i < 4; i++) {
-      int to_remove = dist(rand);
-      if (!removed[to_remove]) {
-        removed[to_remove] = true;
-        normalizer.remove((Rank)to_remove);
+  Rank normalize(Rank rank) const {
+    assert(!removed_[rank]);
+    int result = rank;
+    for (int r = rank + 1; r < 13; r++) {
+      if (removed_[r]) {
+        result++;
       }
     }
+    return (Rank)result;
+  }
 
-    for (int i = 0; i < 13; i++) {
-      normalized[i] = i;
-      for (int j = i + 1; j < 13; j++) {
-        if (removed[j]) {
-          normalized[i]++;
-        }
-      }
+  bool is_removed(Rank rank) const { return removed_[rank]; }
+  int  removed_count() const { return removed_count_; }
+
+private:
+  std::default_random_engine        &rand_;
+  std::uniform_int_distribution<int> card_dist_;
+  std::array<bool, 13>               removed_;
+  int                                removed_count_;
+};
+
+TEST(SuitNormalizer, add_remove_random) {
+  std::default_random_engine     rand(123);
+  std::uniform_real_distribution uniform(0.0, 1.0);
+  NaiveNormalizer                n1(rand);
+  SuitNormalizer                 n2;
+
+  for (int i = 0; i < 500; i++) {
+    float p      = (float)n1.removed_count() / 13.0;
+    bool  remove = uniform(rand) > p;
+
+    if (remove) {
+      n2.remove(n1.remove_random());
+    } else {
+      n2.add(n1.add_random());
     }
 
     for (Rank rank = RANK_2; rank <= ACE; rank++) {
-      if (!removed[rank]) {
-        EXPECT_EQ(normalizer.normalize(rank), normalized[rank]);
-        EXPECT_EQ(normalizer.denormalize((Rank)normalized[rank]), rank);
+      if (!n1.is_removed(rank)) {
+        Rank nr = n1.normalize(rank);
+        ASSERT_EQ(n2.normalize(rank), nr);
+        ASSERT_EQ(n2.denormalize(nr), rank);
       }
     }
   }
