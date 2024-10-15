@@ -13,13 +13,13 @@ Solver::Solver(Game g)
 
 Solver::~Solver() {}
 
-Solver::Result Solver::solve() {
+Solver::Result Solver::solve() { return solve(-1, game_.tricks_max() + 1); }
+
+Solver::Result Solver::solve(int alpha, int beta) {
   states_explored_ = 0;
   Card best_play;
-  int  tricks_taken_by_ns =
-      mtdf_enabled_ ? solve_mtdf(&best_play)
-                     : solve_internal(-1, game_.tricks_max() + 1, &best_play);
-  int tricks_taken_by_ew = game_.tricks_max() - tricks_taken_by_ns;
+  int  tricks_taken_by_ns = solve_internal(alpha, beta, &best_play);
+  int  tricks_taken_by_ew = game_.tricks_max() - tricks_taken_by_ns;
   return {
       .tricks_taken_by_ns = tricks_taken_by_ns,
       .tricks_taken_by_ew = tricks_taken_by_ew,
@@ -27,25 +27,6 @@ Solver::Result Solver::solve() {
       .states_explored    = states_explored_,
       .states_memoized    = (int64_t)tpn_table_.size(),
   };
-}
-
-int Solver::solve_mtdf(Card *best_play) {
-  assert(mtdf_enabled_);
-  states_explored_ = 0;
-  int lower        = -1;
-  int upper        = game_.tricks_max() + 1;
-  int g            = game_.tricks_max() / 2;
-  do {
-    int beta = g == lower ? g + 1 : g;
-    g        = solve_internal(beta - 1, beta, nullptr);
-    if (g < beta) {
-      upper = g;
-    } else {
-      lower = g;
-    }
-  } while (lower < upper);
-  solve_internal(g - 1, g + 1, best_play);
-  return g;
 }
 
 #define TRACE(tag, alpha, beta, tricks_taken_by_ns)                            \
@@ -64,10 +45,9 @@ int Solver::solve_internal(int alpha, int beta, Card *best_play) {
   Bounds bounds;
 
   if (game_.start_of_trick()) {
-    if (tpn_table_enabled_) {
-      bounds = compute_initial_bounds();
-
-      if (!best_play && ab_pruning_enabled_) {
+    if (!best_play) {
+      if (tpn_table_enabled_) {
+        bounds    = compute_initial_bounds();
         int lower = bounds.lower + game_.tricks_taken_by_ns();
         int upper = bounds.upper + game_.tricks_taken_by_ns();
         if (lower >= beta) {

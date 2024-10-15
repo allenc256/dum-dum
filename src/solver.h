@@ -25,14 +25,12 @@ public:
     tpn_table_enabled_     = enabled;
     move_ordering_enabled_ = enabled;
     mini_solver_enabled_   = enabled;
-    mtdf_enabled_          = enabled;
   }
 
   void enable_ab_pruning(bool enabled) { ab_pruning_enabled_ = enabled; }
   void enable_tpn_table(bool enabled) { tpn_table_enabled_ = enabled; }
   void enable_move_ordering(bool enabled) { move_ordering_enabled_ = enabled; }
   void enable_mini_solver(bool enabled) { mini_solver_enabled_ = enabled; }
-  void enable_mtdf(bool enabled) { mtdf_enabled_ = enabled; }
 
   void enable_tracing(std::ostream *os) {
     trace_ostream_ = os;
@@ -43,11 +41,11 @@ public:
   const Game &game() const { return game_; }
 
   Result solve();
+  Result solve(int alpha, int beta);
 
 private:
   Bounds compute_initial_bounds();
 
-  int solve_mtdf(Card *best_play);
   int solve_internal(int alpha, int beta, Card *best_play);
 
   struct SearchState {
@@ -76,7 +74,6 @@ private:
   bool          tpn_table_enabled_;
   bool          move_ordering_enabled_;
   bool          mini_solver_enabled_;
-  bool          mtdf_enabled_;
   std::ostream *trace_ostream_;
   int64_t       trace_lineno_;
 };
