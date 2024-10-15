@@ -30,7 +30,7 @@ void benchmark(int num_games, int cards_per_hand) {
             .count();
 
     std::printf(
-        "%20d,%20d,%20ld,%20ld,%20ld\n",
+        "%20d,%20d,%20lld,%20lld,%20lld\n",
         i,
         r.tricks_taken_by_ns,
         r.states_explored,

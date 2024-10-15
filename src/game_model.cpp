@@ -137,6 +137,13 @@ Game::Game(Suit trump_suit, Seat lead_seat, Cards hands[4])
       }
     }
   }
+
+  Cards present;
+  for (int i = 0; i < 4; i++) {
+    hands_[i] = hands[i];
+    present.add_all(hands[i]);
+  }
+  card_normalizer_.remove_all(present.complement());
 }
 
 bool Game::valid_play(Card c) const {
