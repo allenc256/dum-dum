@@ -51,6 +51,55 @@ TEST(Card, istream) {
 
 TEST(Card, ostream) { EXPECT_EQ(to_string(Card(RANK_5, DIAMONDS)), "5♦"); }
 
+TEST(SuitNormalizer, empty) {
+  SuitNormalizer sn;
+  for (Rank r = RANK_2; r <= ACE; r++) {
+    EXPECT_EQ(sn.norm_rank(r), r);
+    EXPECT_EQ(sn.denorm_rank(r), r);
+    EXPECT_FALSE(sn.removed_rank(r));
+  }
+}
+
+TEST(SuitNormalizer, add_remove_rank) {
+  SuitNormalizer sn;
+  sn.remove_rank(RANK_5);
+  sn.remove_rank(RANK_6);
+  sn.remove_rank(RANK_3);
+
+  EXPECT_TRUE(sn.removed_rank(RANK_3));
+  EXPECT_TRUE(sn.removed_rank(RANK_5));
+  EXPECT_TRUE(sn.removed_rank(RANK_6));
+
+  EXPECT_EQ(sn.norm_rank(RANK_2), RANK_5);
+  EXPECT_EQ(sn.norm_rank(RANK_4), RANK_6);
+  EXPECT_EQ(sn.norm_rank(RANK_7), RANK_7);
+  EXPECT_EQ(sn.denorm_rank(RANK_5), RANK_2);
+  EXPECT_EQ(sn.denorm_rank(RANK_6), RANK_4);
+  EXPECT_EQ(sn.denorm_rank(RANK_7), RANK_7);
+
+  sn.add_rank(RANK_3);
+
+  EXPECT_FALSE(sn.removed_rank(RANK_3));
+  EXPECT_TRUE(sn.removed_rank(RANK_5));
+  EXPECT_TRUE(sn.removed_rank(RANK_6));
+
+  EXPECT_EQ(sn.norm_rank(RANK_2), RANK_4);
+  EXPECT_EQ(sn.norm_rank(RANK_4), RANK_6);
+  EXPECT_EQ(sn.norm_rank(RANK_7), RANK_7);
+  EXPECT_EQ(sn.denorm_rank(RANK_4), RANK_2);
+  EXPECT_EQ(sn.denorm_rank(RANK_6), RANK_4);
+  EXPECT_EQ(sn.denorm_rank(RANK_7), RANK_7);
+
+  sn.add_rank(RANK_6);
+  sn.add_rank(RANK_5);
+
+  for (Rank r = RANK_2; r <= ACE; r++) {
+    EXPECT_EQ(sn.norm_rank(r), r);
+    EXPECT_EQ(sn.denorm_rank(r), r);
+    EXPECT_FALSE(sn.removed_rank(r));
+  }
+}
+
 void test_read_write_cards(std::string s) {
   EXPECT_EQ(to_string(from_string<Cards>(s)), s);
 }
