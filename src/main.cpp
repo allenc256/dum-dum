@@ -30,7 +30,7 @@ void benchmark(int num_games, int cards_per_hand) {
             .count();
 
     std::printf(
-        "%20d,%20d,%20lld,%20lld,%20lld\n",
+        "%20d,%20d,%20ld,%20ld,%20ld\n",
         i,
         r.tricks_taken_by_ns,
         r.states_explored,
@@ -63,9 +63,10 @@ void solve_seed(int seed, int cards_per_hand) {
     r = s.solve();
   }
   std::cout << std::left;
+  char buf[256];
   for (int i = 0; i < s.game().tricks_taken(); i++) {
-    std::cout << std::setw(20) << std::format("trick_{}:", i)
-              << s.game().trick(i) << std::endl;
+    snprintf(buf, sizeof(buf), "trick_%d:", i);
+    std::cout << std::setw(20) << buf << s.game().trick(i) << std::endl;
   }
 }
 

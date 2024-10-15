@@ -265,7 +265,7 @@ void Solver::trace(
   std::snprintf(
       line_buf,
       sizeof(line_buf),
-      "%-7llu %-8s %16s %2d %2d %2d %s",
+      "%-7lu %-8s %16s %2d %2d %2d %s",
       trace_lineno_,
       tag,
       hash_buf,
