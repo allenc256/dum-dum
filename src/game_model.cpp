@@ -137,13 +137,6 @@ Game::Game(Suit trump_suit, Seat lead_seat, Cards hands[4])
       }
     }
   }
-
-  Cards present_cards;
-  for (int i = 0; i < 4; i++) {
-    hands_[i] = hands[i];
-    present_cards.add_all(hands[i]);
-  }
-  ignorable_cards_ = present_cards.complement();
 }
 
 bool Game::valid_play(Card c) const {
@@ -170,7 +163,7 @@ void Game::play(Card c) {
     t.play_start(trump_suit_, next_seat_, c);
   }
   hands_[next_seat_].remove(c);
-  ignorable_cards_.add(c);
+  card_normalizer_.remove(c);
   finish_play();
 }
 
@@ -211,7 +204,7 @@ void Game::unplay() {
     }
     if (!u.was_null_play) {
       hands_[next_seat_].add(u.card);
-      ignorable_cards_.remove(u.card);
+      card_normalizer_.add(u.card);
     }
   } else {
     if (tricks_taken_ > 0) {
@@ -222,7 +215,7 @@ void Game::unplay() {
       next_seat_           = t.next_seat();
       if (!u.was_null_play) {
         hands_[next_seat_].add(u.card);
-        ignorable_cards_.remove(u.card);
+        card_normalizer_.add(u.card);
       }
       if (winner == NORTH || winner == SOUTH) {
         tricks_taken_by_ns_--;

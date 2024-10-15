@@ -253,30 +253,31 @@ public:
   bool  valid_play(Card c) const;
   Cards valid_plays() const;
 
-  Cards ignorable_cards() const { return ignorable_cards_; }
-
   const GameKey &normalized_key() {
     assert(start_of_trick());
     auto &cached = norm_key_stack_[tricks_taken_];
     if (!cached.has_value()) {
-      Cards ignorable = ignorable_cards();
       cached.emplace(
-          hands_[WEST].normalize(ignorable),
-          hands_[NORTH].normalize(ignorable),
-          hands_[EAST].normalize(ignorable),
-          hands_[SOUTH].normalize(ignorable),
+          card_normalizer_.normalize(hands_[WEST]),
+          card_normalizer_.normalize(hands_[NORTH]),
+          card_normalizer_.normalize(hands_[EAST]),
+          card_normalizer_.normalize(hands_[SOUTH]),
           next_seat_
       );
     }
     return *cached;
   }
 
-  Card normalize_card(Card card) {
-    return Cards::normalize_card(card, ignorable_cards());
+  Cards prune_equivalent_cards(Cards cards) const {
+    return card_normalizer_.prune_equivalent(cards);
   }
 
-  Card denormalize_card([[maybe_unused]] Card card) {
-    return Cards::denormalize_card(card, ignorable_cards());
+  Card normalize_card(Card card) const {
+    return card_normalizer_.normalize(card);
+  }
+
+  Card denormalize_card(Card card) const {
+    return card_normalizer_.denormalize(card);
   }
 
 private:
@@ -290,7 +291,7 @@ private:
   int                    tricks_taken_;
   int                    tricks_max_;
   int                    tricks_taken_by_ns_;
-  Cards                  ignorable_cards_;
+  CardNormalizer         card_normalizer_;
   std::optional<GameKey> norm_key_stack_[14];
 
   friend std::ostream &operator<<(std::ostream &os, const Game &g);

@@ -1,8 +1,10 @@
 #include "card_model.h"
 #include "test_util.h"
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <iostream>
+#include <random>
 #include <vector>
 
 using ::testing::ElementsAreArray;
@@ -50,55 +52,6 @@ TEST(Card, istream) {
 }
 
 TEST(Card, ostream) { EXPECT_EQ(to_string(Card(RANK_5, DIAMONDS)), "5♦"); }
-
-TEST(SuitNormalizer, empty) {
-  SuitNormalizer sn;
-  for (Rank r = RANK_2; r <= ACE; r++) {
-    EXPECT_EQ(sn.norm_rank(r), r);
-    EXPECT_EQ(sn.denorm_rank(r), r);
-    EXPECT_FALSE(sn.removed_rank(r));
-  }
-}
-
-TEST(SuitNormalizer, add_remove_rank) {
-  SuitNormalizer sn;
-  sn.remove_rank(RANK_5);
-  sn.remove_rank(RANK_6);
-  sn.remove_rank(RANK_3);
-
-  EXPECT_TRUE(sn.removed_rank(RANK_3));
-  EXPECT_TRUE(sn.removed_rank(RANK_5));
-  EXPECT_TRUE(sn.removed_rank(RANK_6));
-
-  EXPECT_EQ(sn.norm_rank(RANK_2), RANK_5);
-  EXPECT_EQ(sn.norm_rank(RANK_4), RANK_6);
-  EXPECT_EQ(sn.norm_rank(RANK_7), RANK_7);
-  EXPECT_EQ(sn.denorm_rank(RANK_5), RANK_2);
-  EXPECT_EQ(sn.denorm_rank(RANK_6), RANK_4);
-  EXPECT_EQ(sn.denorm_rank(RANK_7), RANK_7);
-
-  sn.add_rank(RANK_3);
-
-  EXPECT_FALSE(sn.removed_rank(RANK_3));
-  EXPECT_TRUE(sn.removed_rank(RANK_5));
-  EXPECT_TRUE(sn.removed_rank(RANK_6));
-
-  EXPECT_EQ(sn.norm_rank(RANK_2), RANK_4);
-  EXPECT_EQ(sn.norm_rank(RANK_4), RANK_6);
-  EXPECT_EQ(sn.norm_rank(RANK_7), RANK_7);
-  EXPECT_EQ(sn.denorm_rank(RANK_4), RANK_2);
-  EXPECT_EQ(sn.denorm_rank(RANK_6), RANK_4);
-  EXPECT_EQ(sn.denorm_rank(RANK_7), RANK_7);
-
-  sn.add_rank(RANK_6);
-  sn.add_rank(RANK_5);
-
-  for (Rank r = RANK_2; r <= ACE; r++) {
-    EXPECT_EQ(sn.norm_rank(r), r);
-    EXPECT_EQ(sn.denorm_rank(r), r);
-    EXPECT_FALSE(sn.removed_rank(r));
-  }
-}
 
 void test_read_write_cards(std::string s) {
   EXPECT_EQ(to_string(from_string<Cards>(s)), s);
@@ -212,6 +165,25 @@ TEST(Cards, collapse) {
   EXPECT_EQ(c.normalize(Cards()), c);
 }
 
+TEST(Cards, normalize_empty) {
+  EXPECT_EQ(Cards("♠ - ♥ - ♦ - ♣ K").normalize(0), Cards("♠ - ♥ - ♦ - ♣ K"));
+}
+
+TEST(Cards, normalize) {
+  EXPECT_EQ(
+      Cards("♠ K ♥ Q ♦ 432 ♣ K").normalize(0b1000000000000),
+      Cards("♠ A ♥ K ♦ 543 ♣ A")
+  );
+  EXPECT_EQ(
+      Cards("♠ K ♥ Q ♦ 543 ♣ K").normalize(0b0000000000001),
+      Cards("♠ K ♥ Q ♦ 543 ♣ K")
+  );
+  EXPECT_EQ(
+      Cards("♠ AJ84 ♥ - ♦ - ♣ KJ").normalize(0b0010010010000),
+      Cards("♠ AQT7 ♥ - ♦ - ♣ KQ")
+  );
+}
+
 TEST(Cards, prune_equivalent) {
   EXPECT_EQ(
       Cards("♠ - ♥ - ♦ - ♣ AK").prune_equivalent(Cards()),
@@ -238,23 +210,47 @@ TEST(Cards, top_ranks) {
   EXPECT_EQ(Cards("♠ AKJ ♥ - ♦ - ♣ -").top_ranks(SPADES), 2);
 }
 
-void test_normalize_card(Card before, Card after, Cards ignorable) {
-  EXPECT_EQ(Cards::normalize_card(before, ignorable), after);
-  EXPECT_EQ(Cards::denormalize_card(after, ignorable), before);
+TEST(SuitNormalizer, empty) {
+  SuitNormalizer sn;
+  for (Rank r = RANK_2; r <= ACE; r++) {
+    EXPECT_EQ(sn.normalize(r), r);
+    EXPECT_EQ(sn.denormalize(r), r);
+  }
 }
 
-TEST(Cards, normalize_card_none) {
-  test_normalize_card(Card("2♣"), Card("2♣"), Cards("♠ A ♥ A ♦ A ♣ -"));
-  test_normalize_card(Card("A♠"), Card("A♠"), Cards("♠ - ♥ - ♦ - ♣ -"));
-}
+TEST(SuitNormalizer, add_remove_random) {
+  std::uniform_int_distribution dist(0, 12);
 
-TEST(Cards, normalize_card_all) {
-  test_normalize_card(Card("5♣"), Card("A♣"), Cards({"5♣"}).complement());
-  test_normalize_card(Card("2♠"), Card("A♠"), Cards({"2♠"}).complement());
-}
+  for (int seed = 0; seed < 100; seed++) {
+    SCOPED_TRACE(testing::Message() << "seed " << seed);
 
-TEST(Cards, normalize_card_some) {
-  test_normalize_card(Card("5♣"), Card("8♣"), Cards("♠ - ♥ - ♦ - ♣ 876"));
-  test_normalize_card(Card("5♣"), Card("7♣"), Cards("♠ - ♥ - ♦ - ♣ 86"));
-  test_normalize_card(Card("K♣"), Card("A♣"), Cards("♠ - ♥ - ♦ - ♣ A"));
+    SuitNormalizer             normalizer;
+    std::default_random_engine rand(seed);
+    bool                       removed[13] = {false};
+    int                        normalized[13];
+
+    for (int i = 0; i < 4; i++) {
+      int to_remove = dist(rand);
+      if (!removed[to_remove]) {
+        removed[to_remove] = true;
+        normalizer.remove((Rank)to_remove);
+      }
+    }
+
+    for (int i = 0; i < 13; i++) {
+      normalized[i] = i;
+      for (int j = i + 1; j < 13; j++) {
+        if (removed[j]) {
+          normalized[i]++;
+        }
+      }
+    }
+
+    for (Rank rank = RANK_2; rank <= ACE; rank++) {
+      if (!removed[rank]) {
+        EXPECT_EQ(normalizer.normalize(rank), normalized[rank]);
+        EXPECT_EQ(normalizer.denormalize((Rank)normalized[rank]), rank);
+      }
+    }
+  }
 }

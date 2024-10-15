@@ -55,8 +55,6 @@ TpnTableValue MiniSolver::compute_value(int max_depth) {
     partner_trumps = game_.hand(partner).intersect(game_.trump_suit());
   }
 
-  Cards ignorable = game_.ignorable_cards();
-
   for (Suit suit = FIRST_SUIT; suit <= LAST_SUIT; suit++) {
     Cards my_cards       = game_.hand(me).intersect(suit);
     Cards left_cards     = game_.hand(left).intersect(suit);
@@ -77,10 +75,8 @@ TpnTableValue MiniSolver::compute_value(int max_depth) {
       poss_winners = Cards::all(suit);
     }
 
-    Cards my_poss_winners =
-        my_cards.intersect(poss_winners).prune_equivalent(ignorable);
-    Cards partner_poss_winners =
-        partner_cards.intersect(poss_winners).prune_equivalent(ignorable);
+    Cards my_poss_winners      = my_cards.intersect(poss_winners);
+    Cards partner_poss_winners = partner_cards.intersect(poss_winners);
 
     for (auto it = my_poss_winners.iter_highest();
          it.valid() && !value.has_tight_bounds();
