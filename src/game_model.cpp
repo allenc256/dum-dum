@@ -122,8 +122,7 @@ Game::Game(Suit trump_suit, Seat lead_seat, Cards hands[4])
       lead_seat_(lead_seat),
       next_seat_(lead_seat),
       tricks_taken_(0),
-      tricks_taken_by_ns_(0),
-      plays_made_(0) {
+      tricks_taken_by_ns_(0) {
   tricks_max_ = hands[0].count();
   for (int i = 1; i < 4; i++) {
     if (hands[i].count() != tricks_max_) {
@@ -139,9 +138,12 @@ Game::Game(Suit trump_suit, Seat lead_seat, Cards hands[4])
     }
   }
 
+  Cards present_cards;
   for (int i = 0; i < 4; i++) {
     hands_[i] = hands[i];
+    present_cards.add_all(hands[i]);
   }
+  ignorable_cards_ = present_cards.complement();
 }
 
 bool Game::valid_play(Card c) const {
@@ -168,6 +170,7 @@ void Game::play(Card c) {
     t.play_start(trump_suit_, next_seat_, c);
   }
   hands_[next_seat_].remove(c);
+  ignorable_cards_.add(c);
   finish_play();
 }
 
@@ -192,10 +195,6 @@ void Game::finish_play() {
   } else {
     next_seat_ = t.next_seat();
   }
-
-  plays_made_++;
-  assert(plays_made_ <= 52);
-  assert(!ignorable_stack_[plays_made_].has_value());
 }
 
 void Game::unplay() {
@@ -212,6 +211,7 @@ void Game::unplay() {
     }
     if (!u.was_null_play) {
       hands_[next_seat_].add(u.card);
+      ignorable_cards_.remove(u.card);
     }
   } else {
     if (tricks_taken_ > 0) {
@@ -222,6 +222,7 @@ void Game::unplay() {
       next_seat_           = t.next_seat();
       if (!u.was_null_play) {
         hands_[next_seat_].add(u.card);
+        ignorable_cards_.remove(u.card);
       }
       if (winner == NORTH || winner == SOUTH) {
         tricks_taken_by_ns_--;
@@ -232,10 +233,6 @@ void Game::unplay() {
       throw std::runtime_error("no cards played");
     }
   }
-
-  assert(plays_made_ > 0);
-  ignorable_stack_[plays_made_].reset();
-  plays_made_--;
 }
 
 Cards Game::valid_plays() const {

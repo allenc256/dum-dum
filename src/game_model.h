@@ -250,17 +250,7 @@ public:
   bool  valid_play(Card c) const;
   Cards valid_plays() const;
 
-  Cards ignorable_cards() {
-    auto &cached = ignorable_stack_[plays_made_];
-    if (!cached.has_value()) {
-      Cards in_play_cards = current_trick().all_cards();
-      for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
-        in_play_cards.add_all(hands_[seat]);
-      }
-      cached = in_play_cards.complement();
-    }
-    return *cached;
-  }
+  Cards ignorable_cards() const { return ignorable_cards_; }
 
   const GameKey &normalized_key() {
     assert(start_of_trick());
@@ -297,8 +287,7 @@ private:
   int                    tricks_taken_;
   int                    tricks_max_;
   int                    tricks_taken_by_ns_;
-  int                    plays_made_;
-  std::optional<Cards>   ignorable_stack_[53];
+  Cards                  ignorable_cards_;
   std::optional<GameKey> norm_key_stack_[14];
 
   friend std::ostream &operator<<(std::ostream &os, const Game &g);
