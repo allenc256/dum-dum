@@ -74,7 +74,7 @@ static void check_trick(const Trick &t, CheckTrickArgs args) {
     EXPECT_EQ(t.winning_seat(), args.winning_seat);
   }
   for (int i = 0; i < t.card_count(); i++) {
-    EXPECT_EQ(t.is_null_play(i), args.is_null_play[i]);
+    EXPECT_EQ(!t.has_card(i), args.is_null_play[i]);
   }
 }
 

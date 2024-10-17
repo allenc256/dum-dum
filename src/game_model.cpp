@@ -36,10 +36,10 @@ std::ostream &operator<<(std::ostream &os, const Trick &t) {
     os << '-';
   } else {
     for (int i = 0; i < t.card_count(); i++) {
-      if (t.is_null_play(i)) {
-        os << "??";
-      } else {
+      if (t.has_card(i)) {
         os << t.card(i);
+      } else {
+        os << "??";
       }
     }
     if (t.finished()) {
@@ -164,7 +164,7 @@ void Game::finish_play() {
       tricks_taken_by_ns_++;
     }
     for (int i = 0; i < 4; i++) {
-      if (!t.is_null_play(i)) {
+      if (t.has_card(i)) {
         card_normalizer_.remove(t.card(i));
       }
     }
@@ -180,7 +180,7 @@ void Game::unplay() {
   Trick &t = current_trick();
   if (t.started()) {
     assert(!t.finished());
-    Trick::Unplay u = t.unplay();
+    std::optional<Card> c = t.unplay();
     if (t.started()) {
       next_seat_ = t.next_seat();
     } else if (tricks_taken_ > 0) {
@@ -188,23 +188,23 @@ void Game::unplay() {
     } else {
       next_seat_ = lead_seat_;
     }
-    if (!u.was_null_play) {
-      hands_[next_seat_].add(u.card);
+    if (c.has_value()) {
+      hands_[next_seat_].add(*c);
     }
   } else {
     if (tricks_taken_ > 0) {
       Trick &t = tricks_[tricks_taken_ - 1];
       assert(t.finished());
       for (int i = 0; i < 4; i++) {
-        if (!t.is_null_play(i)) {
+        if (t.has_card(i)) {
           card_normalizer_.add(t.card(i));
         }
       }
-      Seat          winner = t.winning_seat();
-      Trick::Unplay u      = t.unplay();
-      next_seat_           = t.next_seat();
-      if (!u.was_null_play) {
-        hands_[next_seat_].add(u.card);
+      Seat                winner = t.winning_seat();
+      std::optional<Card> card   = t.unplay();
+      next_seat_                 = t.next_seat();
+      if (card.has_value()) {
+        hands_[next_seat_].add(*card);
       }
       if (winner == NORTH || winner == SOUTH) {
         tricks_taken_by_ns_--;

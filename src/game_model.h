@@ -44,19 +44,19 @@ public:
         lead_suit_(NO_TRUMP),
         card_count_(0) {}
 
+  bool has_card(int index) const {
+    assert(index >= 0 && index < card_count_);
+    return cards_[index].has_value();
+  }
+
   Card card(int index) const {
-    assert(index >= 0 && index < 4);
-    return cards_[index];
+    assert(has_card(index));
+    return *cards_[index];
   }
 
   int  card_count() const { return card_count_; }
   bool started() const { return card_count_ > 0; }
   bool finished() const { return card_count_ >= 4; }
-
-  bool is_null_play(int index) const {
-    assert(index >= 0 && index < card_count_);
-    return null_play_[index];
-  }
 
   Seat lead_seat() const {
     assert(started());
@@ -85,20 +85,14 @@ public:
 
   Card winning_card() const {
     assert(started());
-    return cards_[winning_index()];
+    int i = winning_index();
+    assert(cards_[i].has_value());
+    return *cards_[i];
   }
 
   int winning_index() const {
     assert(started());
     return winning_index_[card_count_ - 1];
-  }
-
-  Cards all_cards() const {
-    Cards c;
-    for (int i = 0; i < card_count_; i++) {
-      c.add(cards_[i]);
-    }
-    return c;
   }
 
   Cards valid_plays(Cards hand) const {
@@ -124,7 +118,6 @@ public:
     card_count_       = 1;
     winning_cards_[0] = compute_winning_cards(c);
     winning_index_[0] = 0;
-    null_play_[0]     = false;
   }
 
   void play_continue(Card c) {
@@ -136,8 +129,7 @@ public:
       winning_index_[card_count_] = winning_index();
       winning_cards_[card_count_] = winning_cards();
     }
-    cards_[card_count_]     = c;
-    null_play_[card_count_] = false;
+    cards_[card_count_] = c;
     card_count_++;
   }
 
@@ -145,22 +137,14 @@ public:
     assert(card_count_ > 0 && card_count_ < 4);
     winning_index_[card_count_] = winning_index();
     winning_cards_[card_count_] = winning_cards();
-    cards_[card_count_]         = Card();
-    null_play_[card_count_]     = true;
+    cards_[card_count_]         = std::nullopt;
     card_count_++;
   }
 
-  struct Unplay {
-    bool was_null_play;
-    Card card;
-  };
-
-  Unplay unplay() {
+  std::optional<Card> unplay() {
     assert(card_count_ > 0);
     card_count_--;
-    return {
-        .was_null_play = null_play_[card_count_], .card = cards_[card_count_]
-    };
+    return cards_[card_count_];
   }
 
 private:
@@ -172,14 +156,13 @@ private:
     }
   }
 
-  Suit  trump_suit_;
-  Seat  lead_seat_;
-  Suit  lead_suit_;
-  Card  cards_[4];
-  int   card_count_;
-  int   winning_index_[4];
-  Cards winning_cards_[4];
-  bool  null_play_[4];
+  Suit                trump_suit_;
+  Seat                lead_seat_;
+  Suit                lead_suit_;
+  std::optional<Card> cards_[4];
+  int                 card_count_;
+  int                 winning_index_[4];
+  Cards               winning_cards_[4];
 };
 
 std::ostream &operator<<(std::ostream &os, const Trick &t);
