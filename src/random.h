@@ -37,10 +37,10 @@ public:
   }
 
   Game random_game(int cards_per_hand) {
-    Suit  trump_suit = random_trump_suit();
-    Seat  lead_seat  = random_seat();
     Cards hands[4];
     random_deal(hands, cards_per_hand);
+    Suit trump_suit = random_trump_suit();
+    Seat lead_seat  = random_seat();
     return Game(trump_suit, lead_seat, hands);
   }
 
