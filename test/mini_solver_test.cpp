@@ -1,4 +1,5 @@
 #include "mini_solver.h"
+#include "random.h"
 #include "solver.h"
 
 #include <gmock/gmock.h>
@@ -91,10 +92,8 @@ INSTANTIATE_TEST_SUITE_P(
 );
 
 TEST(MiniSolver, random_test) {
-  std::default_random_engine random(123);
-
   for (int i = 0; i < 100; i++) {
-    Game          g  = Game::random_deal(random, 6);
+    Game          g  = Random(i).random_game(6);
     Solver        s1 = Solver(g);
     TpnTable      tpn_table(g);
     MiniSolver    s2 = MiniSolver(g, tpn_table);

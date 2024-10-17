@@ -215,9 +215,6 @@ private:
 
 class Game {
 public:
-  static Game
-  random_deal(std::default_random_engine &random, int cards_per_hand);
-
   Game(Suit trump_suit, Seat first_lead_seat, Cards hands[4]);
 
   Suit  trump_suit() const { return trump_suit_; }

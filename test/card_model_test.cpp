@@ -1,4 +1,5 @@
 #include "card_model.h"
+#include "random.h"
 #include "test_util.h"
 
 #include <gmock/gmock.h>
@@ -201,15 +202,6 @@ TEST(Cards, prune_equivalent) {
   EXPECT_EQ(c.prune_equivalent(c.complement()), Cards("♠ K ♥ 5 ♦ - ♣ 7"));
 }
 
-TEST(Cards, top_ranks) {
-  EXPECT_EQ(Cards("♠ - ♥ - ♦ - ♣ -").top_ranks(CLUBS), 0);
-  EXPECT_EQ(Cards("♠ - ♥ - ♦ - ♣ 432").top_ranks(CLUBS), 0);
-  EXPECT_EQ(Cards("♠ - ♥ - ♦ - ♣ AKQJ").top_ranks(CLUBS), 4);
-  EXPECT_EQ(Cards("♠ - ♥ - ♦ - ♣ AQ").top_ranks(CLUBS), 1);
-  EXPECT_EQ(Cards("♠ AKQJ ♥ - ♦ - ♣ -").top_ranks(SPADES), 4);
-  EXPECT_EQ(Cards("♠ AKJ ♥ - ♦ - ♣ -").top_ranks(SPADES), 2);
-}
-
 TEST(SuitNormalizer, empty) {
   SuitNormalizer sn;
   for (Rank r = RANK_2; r <= ACE; r++) {
@@ -220,16 +212,15 @@ TEST(SuitNormalizer, empty) {
 
 class NaiveNormalizer {
 public:
-  NaiveNormalizer(std::default_random_engine &rand)
-      : rand_(rand),
-        card_dist_(0, 12),
+  NaiveNormalizer(Random &random)
+      : random_(random),
         removed_{false},
         removed_count_(0) {}
 
   Rank remove_random() {
     assert(removed_count_ < 13);
     while (true) {
-      Rank to_remove = (Rank)card_dist_(rand_);
+      Rank to_remove = random_.random_rank();
       if (removed_[to_remove]) {
         continue;
       }
@@ -242,7 +233,7 @@ public:
   Rank add_random() {
     assert(removed_count_ > 0);
     while (true) {
-      Rank to_add = (Rank)card_dist_(rand_);
+      Rank to_add = random_.random_rank();
       if (!removed_[to_add]) {
         continue;
       }
@@ -267,21 +258,19 @@ public:
   int  removed_count() const { return removed_count_; }
 
 private:
-  std::default_random_engine        &rand_;
-  std::uniform_int_distribution<int> card_dist_;
-  std::array<bool, 13>               removed_;
-  int                                removed_count_;
+  Random               random_;
+  std::array<bool, 13> removed_;
+  int                  removed_count_;
 };
 
 TEST(SuitNormalizer, add_remove_random) {
-  std::default_random_engine     rand(123);
-  std::uniform_real_distribution uniform(0.0, 1.0);
-  NaiveNormalizer                n1(rand);
-  SuitNormalizer                 n2;
+  Random          random(123);
+  NaiveNormalizer n1(random);
+  SuitNormalizer  n2;
 
   for (int i = 0; i < 500; i++) {
     float p      = (float)n1.removed_count() / 13.0;
-    bool  remove = uniform(rand) > p;
+    bool  remove = random.random_uniform() > p;
 
     if (remove) {
       n2.remove(n1.remove_random());

@@ -1,5 +1,7 @@
 #include "game_model.h"
+#include "random.h"
 #include "test_util.h"
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <vector>
@@ -153,25 +155,6 @@ TEST(Trick, play_null) {
   );
 }
 
-TEST(Game, random_deal) {
-  std::default_random_engine random(123);
-  Game                       g = Game::random_deal(random, 13);
-
-  for (int n = 0; n < 100; n++) {
-    for (int i = 0; i < 4; i++) {
-      for (int j = i + 1; j < 4; j++) {
-        ASSERT_TRUE(g.hand((Seat)i).disjoint(g.hand((Seat)j)));
-      }
-    }
-
-    int total = 0;
-    for (int i = 0; i < 4; i++) {
-      total += g.hand((Seat)i).count();
-    }
-    ASSERT_EQ(total, 52);
-  }
-}
-
 TEST(Game, play_unplay) {
   Cards hands[4] = {
       Cards("S A2 H - D - C -"),
@@ -309,9 +292,8 @@ void test_play_unplay_dfs(Game &g) {
 }
 
 TEST(Game, play_unplay_random) {
-  std::default_random_engine random;
-  Game                       g = Game::random_deal(random, 3);
-  for (int i = 0; i < 500; i++) {
+  for (int seed = 0; seed < 500; seed++) {
+    Game g = Random(seed).random_game(3);
     test_play_unplay_dfs(g);
   }
 }

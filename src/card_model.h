@@ -126,16 +126,6 @@ public:
 
   Cards intersect(Suit s) const { return Cards(bits_ & (SUIT_MASK << s)); }
 
-  int top_ranks(Suit s) const {
-    uint64_t bit   = 1ull << (48 + s);
-    int      count = 0;
-    while (bits_ & bit) {
-      bit >>= 4;
-      count++;
-    }
-    return count;
-  }
-
   Cards normalize(uint16_t removed_ranks_mask) const {
     uint64_t b = bits_;
     uint64_t m = 0xfffffffffffffull;
@@ -153,14 +143,14 @@ public:
     return Cards(b);
   }
 
-  Cards normalize(Cards ignorable) const {
-    if (!ignorable.bits_) {
+  Cards normalize(Cards removed) const {
+    if (!removed.bits_) {
       return *this;
     }
-    assert(disjoint(ignorable));
+    assert(disjoint(removed));
     uint64_t bits = bits_;
     for (int i = 1; i < 13; i++) {
-      uint64_t keep_new = (0b1111ull << (i * 4)) & ignorable.bits_;
+      uint64_t keep_new = (0b1111ull << (i * 4)) & removed.bits_;
       keep_new          = keep_new | (keep_new >> 4);
       keep_new          = keep_new | (keep_new >> 8);
       keep_new          = keep_new | (keep_new >> 16);
@@ -171,8 +161,8 @@ public:
     return Cards(bits);
   }
 
-  Cards prune_equivalent(Cards ignorable) const {
-    assert(disjoint(ignorable));
+  Cards prune_equivalent(Cards removed) const {
+    assert(disjoint(removed));
 
     constexpr uint64_t init_mask =
         0b1111000000000000000000000000000000000000000000000000ull;
@@ -183,7 +173,7 @@ public:
 
     for (int i = 0; i < 12; i++) {
       uint64_t next   = next_mask & bits_;
-      uint64_t ignore = next_mask & ignorable.bits_;
+      uint64_t ignore = next_mask & removed.bits_;
       bits |= ~prev & next;
       next_mask >>= 4;
       prev = (next | (prev & ignore)) >> 4;

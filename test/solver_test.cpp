@@ -1,3 +1,4 @@
+#include "random.h"
 #include "solver.h"
 
 #include <gmock/gmock.h>
@@ -26,79 +27,66 @@ void validate_solver(Solver &s1) {
 }
 
 TEST(Solver, ab_pruning) {
-  std::default_random_engine random(123);
-
-  for (int i = 0; i < 100; i++) {
-    Game   g = Game::random_deal(random, DEAL_SIZE);
+  for (int seed = 0; seed < 100; seed++) {
+    Game   g = Random(seed).random_game(DEAL_SIZE);
     Solver s = Solver(g);
     s.enable_all_optimizations(false);
     s.enable_ab_pruning(true);
     ASSERT_NO_FATAL_FAILURE({
-      SCOPED_TRACE(::testing::Message() << "iteration " << i);
+      SCOPED_TRACE(::testing::Message() << "seed " << seed);
       validate_solver(s);
     });
   }
 }
 
 TEST(Solver, mini_solver) {
-  std::default_random_engine random(123);
-
-  for (int i = 0; i < 100; i++) {
-    Game   g = Game::random_deal(random, DEAL_SIZE);
+  for (int seed = 0; seed < 100; seed++) {
+    Game   g = Random(seed).random_game(DEAL_SIZE);
     Solver s = Solver(g);
     s.enable_all_optimizations(false);
     s.enable_ab_pruning(true);
     s.enable_tpn_table(true);
     s.enable_mini_solver(true);
     ASSERT_NO_FATAL_FAILURE({
-      SCOPED_TRACE(
-          ::testing::Message() << "iteration " << i << ":" << std::endl
-                               << g
-      );
+      SCOPED_TRACE(::testing::Message() << "seed " << seed);
       validate_solver(s);
     });
   }
 }
 
 TEST(Solver, tpn_table) {
-  std::default_random_engine random(123);
-
-  for (int i = 0; i < 100; i++) {
-    Game   g = Game::random_deal(random, DEAL_SIZE);
+  for (int seed = 0; seed < 100; seed++) {
+    Game   g = Random(seed).random_game(DEAL_SIZE);
     Solver s = Solver(g);
     s.enable_all_optimizations(false);
     s.enable_tpn_table(true);
     ASSERT_NO_FATAL_FAILURE({
-      SCOPED_TRACE(::testing::Message() << "iteration " << i);
+      SCOPED_TRACE(::testing::Message() << "seed " << seed);
       validate_solver(s);
     });
   }
 }
 
 TEST(Solver, move_ordering) {
-  std::default_random_engine random(123);
-
-  for (int i = 0; i < 100; i++) {
-    Game   g = Game::random_deal(random, DEAL_SIZE);
+  for (int seed = 0; seed < 100; seed++) {
+    Game   g = Random(seed).random_game(DEAL_SIZE);
     Solver s = Solver(g);
     s.enable_all_optimizations(false);
     s.enable_move_ordering(true);
     ASSERT_NO_FATAL_FAILURE({
-      SCOPED_TRACE(::testing::Message() << "iteration " << i);
+      SCOPED_TRACE(::testing::Message() << "seed " << seed);
       validate_solver(s);
     });
   }
 }
 
 TEST(Solver, all_optimizations) {
-  std::default_random_engine random(123);
-
-  for (int i = 0; i < 100; i++) {
-    Game   g = Game::random_deal(random, DEAL_SIZE);
+  for (int seed = 0; seed < 100; seed++) {
+    Game   g = Random(seed).random_game(DEAL_SIZE);
     Solver s = Solver(g);
     s.enable_all_optimizations(true);
     ASSERT_NO_FATAL_FAILURE({
-      SCOPED_TRACE(::testing::Message() << "iteration " << i);
+      SCOPED_TRACE(::testing::Message() << "seed " << seed);
       validate_solver(s);
     });
   }

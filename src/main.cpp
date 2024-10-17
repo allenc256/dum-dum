@@ -1,4 +1,5 @@
 #include "game_model.h"
+#include "random.h"
 #include "solver.h"
 
 #include <bitset>
@@ -18,9 +19,8 @@ void benchmark(int num_games, int cards_per_hand) {
   );
 
   for (int i = 0; i < num_games; i++) {
-    std::default_random_engine random(i);
-    Game                       g = Game::random_deal(random, cards_per_hand);
-    Solver                     s(g);
+    Game   g = Random(i).random_game(cards_per_hand);
+    Solver s(g);
 
     auto begin = std::chrono::steady_clock::now();
     auto r     = s.solve();
@@ -41,9 +41,8 @@ void benchmark(int num_games, int cards_per_hand) {
 }
 
 void solve_seed(int seed, int cards_per_hand) {
-  std::default_random_engine random(seed);
-  Game                       g = Game::random_deal(random, cards_per_hand);
-  Solver                     s(g);
+  Game   g = Random(seed).random_game(cards_per_hand);
+  Solver s(g);
 
   auto begin = std::chrono::steady_clock::now();
   auto r     = s.solve();

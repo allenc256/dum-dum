@@ -1,7 +1,5 @@
 #include "game_model.h"
 
-#include <random>
-
 static void print_chars(std::ostream &os, int n, char ch) {
   for (int i = 0; i < n; i++) {
     os << ch;
@@ -95,28 +93,6 @@ std::ostream &operator<<(std::ostream &os, const Game &g) {
   return os;
 }
 
-Game Game::random_deal(std::default_random_engine &random, int cards_per_hand) {
-  int indexes[52];
-  for (int i = 0; i < 52; i++) {
-    indexes[i] = i;
-  }
-  std::shuffle(indexes, indexes + 52, random);
-
-  Cards c[4];
-  for (int i = 0; i < cards_per_hand; i++) {
-    for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
-      c[seat].add(indexes[i + 13 * seat]);
-    }
-  }
-
-  std::uniform_int_distribution<> sd(0, 4);
-  std::uniform_int_distribution<> dd(0, 3);
-  Suit                            trump_suit = (Suit)sd(random);
-  Seat                            declarer   = (Seat)dd(random);
-
-  return Game(trump_suit, declarer, c);
-}
-
 Game::Game(Suit trump_suit, Seat lead_seat, Cards hands[4])
     : trump_suit_(trump_suit),
       lead_seat_(lead_seat),
@@ -170,7 +146,6 @@ void Game::play(Card c) {
     t.play_start(trump_suit_, next_seat_, c);
   }
   hands_[next_seat_].remove(c);
-  card_normalizer_.remove(c);
   finish_play();
 }
 
@@ -183,11 +158,15 @@ void Game::play_null() {
 
 void Game::finish_play() {
   Trick &t = current_trick();
-
   if (t.finished()) {
     next_seat_ = t.winning_seat();
     if (next_seat_ == NORTH || next_seat_ == SOUTH) {
       tricks_taken_by_ns_++;
+    }
+    for (int i = 0; i < 4; i++) {
+      if (!t.is_null_play(i)) {
+        card_normalizer_.remove(t.card(i));
+      }
     }
     tricks_taken_++;
     assert(tricks_taken_ <= 13);
@@ -211,18 +190,21 @@ void Game::unplay() {
     }
     if (!u.was_null_play) {
       hands_[next_seat_].add(u.card);
-      card_normalizer_.add(u.card);
     }
   } else {
     if (tricks_taken_ > 0) {
       Trick &t = tricks_[tricks_taken_ - 1];
       assert(t.finished());
+      for (int i = 0; i < 4; i++) {
+        if (!t.is_null_play(i)) {
+          card_normalizer_.add(t.card(i));
+        }
+      }
       Seat          winner = t.winning_seat();
       Trick::Unplay u      = t.unplay();
       next_seat_           = t.next_seat();
       if (!u.was_null_play) {
         hands_[next_seat_].add(u.card);
-        card_normalizer_.add(u.card);
       }
       if (winner == NORTH || winner == SOUTH) {
         tricks_taken_by_ns_--;
