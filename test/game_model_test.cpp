@@ -332,3 +332,28 @@ TEST(Game, play_null) {
   EXPECT_EQ(game.tricks_taken_by_ew(), 0);
   EXPECT_FALSE(game.finished());
 }
+
+void test_abs_suit_state(int seed) {
+  Random random(seed);
+  Cards  hands[4];
+  Rank   min_high_rank = random.random_rank();
+
+  random.random_deal(hands, 10);
+
+  for (Suit suit = FIRST_SUIT; suit <= LAST_SUIT; suit++) {
+    AbsSuitState state(min_high_rank, suit, hands);
+    for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
+      Cards cards      = hands[seat].intersect(suit);
+      Cards high_cards = cards.without_lower(min_high_rank);
+      int   low_cards  = cards.subtract(high_cards).count();
+      EXPECT_EQ(state.high_cards(seat, suit), high_cards);
+      EXPECT_EQ(state.low_cards(seat), low_cards);
+    }
+  }
+}
+
+TEST(AbsSuitState, random_deal) {
+  for (int seed = 0; seed < 500; seed++) {
+    test_abs_suit_state(seed);
+  }
+}

@@ -3,8 +3,6 @@
 #include "game_model.h"
 #include "tpn_table.h"
 
-#include <absl/container/flat_hash_map.h>
-
 class MiniSolver {
 public:
   MiniSolver(Game &game, TpnTable &tpn_table)
