@@ -118,7 +118,7 @@ TpnTableValue Solver::compute_initial_value(int max_depth) {
   if (mini_solver_enabled_) {
     return mini_solver_.compute_value(max_depth);
   } else {
-    return tpn_table_.lookup_value(max_depth);
+    return tpn_table_.lookup_value(max_depth).value;
   }
 }
 

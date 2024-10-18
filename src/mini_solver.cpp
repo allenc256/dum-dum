@@ -29,8 +29,8 @@ TpnTableValue MiniSolver::compute_value(int max_depth) {
     );
   }
 
-  TpnTableValue value;
-  if (tpn_table_.lookup_value(value, max_depth)) {
+  auto [found, value] = tpn_table_.lookup_value(max_depth);
+  if (found) {
     return value;
   }
 

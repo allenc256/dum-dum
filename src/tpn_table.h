@@ -70,26 +70,29 @@ class TpnTable {
 public:
   TpnTable(Game &game) : game_(game) {}
 
-  TpnTableValue lookup_value(int max_depth) const {
+  struct LookupResult {
+    bool          found;
     TpnTableValue value;
-    lookup_value(value, max_depth);
-    return value;
-  }
+  };
 
-  bool lookup_value(TpnTableValue &value, int max_depth) const {
+  LookupResult lookup_value(int max_depth) const {
     auto it = table_.find(game_.normalized_key());
     if (it != table_.end() && it->second.max_depth() >= max_depth) {
       const TpnTableValue &norm_value = it->second;
       int lb = norm_value.lower_bound() + game_.tricks_taken_by_ns();
       int ub = norm_value.upper_bound() + game_.tricks_taken_by_ns();
       std::optional<Card> pv_play = denormalize_card(norm_value.pv_play());
-      value                       = TpnTableValue(lb, ub, max_depth, pv_play);
-      return true;
+      return {
+          .found = true,
+          .value = TpnTableValue(lb, ub, max_depth, pv_play),
+      };
     } else {
       int lb = game_.tricks_taken_by_ns();
       int ub = game_.tricks_taken_by_ns() + game_.tricks_left();
-      value  = TpnTableValue(lb, ub, max_depth, std::nullopt);
-      return false;
+      return {
+          .found = false,
+          .value = TpnTableValue(lb, ub, max_depth, std::nullopt)
+      };
     }
   }
 
