@@ -117,14 +117,8 @@ int Solver::solve_internal(int alpha, int beta, int max_depth) {
 TpnTableValue Solver::compute_initial_value(int max_depth) {
   if (mini_solver_enabled_) {
     return mini_solver_.compute_value(max_depth);
-  } else if (TpnTableValue value; tpn_table_.lookup_value(value, max_depth)) {
-    return value;
   } else {
-    return TpnTableValue(
-        game_.tricks_taken_by_ns(),
-        game_.tricks_taken_by_ns() + game_.tricks_left(),
-        max_depth
-    );
+    return tpn_table_.lookup_value(max_depth);
   }
 }
 

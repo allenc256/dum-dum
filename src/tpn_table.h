@@ -70,6 +70,12 @@ class TpnTable {
 public:
   TpnTable(Game &game) : game_(game) {}
 
+  TpnTableValue lookup_value(int max_depth) const {
+    TpnTableValue value;
+    lookup_value(value, max_depth);
+    return value;
+  }
+
   bool lookup_value(TpnTableValue &value, int max_depth) const {
     auto it = table_.find(game_.normalized_key());
     if (it != table_.end() && it->second.max_depth() >= max_depth) {
@@ -80,6 +86,9 @@ public:
       value                       = TpnTableValue(lb, ub, max_depth, pv_play);
       return true;
     } else {
+      int lb = game_.tricks_taken_by_ns();
+      int ub = game_.tricks_taken_by_ns() + game_.tricks_left();
+      value  = TpnTableValue(lb, ub, max_depth, std::nullopt);
       return false;
     }
   }

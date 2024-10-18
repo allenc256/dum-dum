@@ -32,12 +32,6 @@ TpnTableValue MiniSolver::compute_value(int max_depth) {
   TpnTableValue value;
   if (tpn_table_.lookup_value(value, max_depth)) {
     return value;
-  } else {
-    value = TpnTableValue(
-        game_.tricks_taken_by_ns(),
-        game_.tricks_taken_by_ns() + game_.tricks_left(),
-        max_depth
-    );
   }
 
   Seat me         = game_.next_seat();
