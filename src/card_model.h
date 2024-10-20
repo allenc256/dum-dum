@@ -124,8 +124,8 @@ public:
   Cards    subtract(Cards c) const { return Cards(bits_ & ~c.bits_); }
   Cards    honors() const { return Cards(bits_ & HONORS_MASK); }
 
-  Cards without_lower(Rank rank) const {
-    return Cards(bits_ & (ALL_MASK << (rank * 4)));
+  Cards low_cards(Rank rank_cutoff) const {
+    return Cards(bits_ & (ALL_MASK >> ((12 - rank_cutoff) * 4)));
   }
 
   Cards intersect(Suit s) const { return Cards(bits_ & (SUIT_MASK << s)); }

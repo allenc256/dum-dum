@@ -336,18 +336,19 @@ TEST(Game, play_null) {
 void test_abs_suit_state(int seed) {
   Random random(seed);
   Cards  hands[4];
-  Rank   min_high_rank = random.random_rank();
+  Rank   rank_cutoff = random.random_rank();
 
   random.random_deal(hands, 10);
 
   for (Suit suit = FIRST_SUIT; suit <= LAST_SUIT; suit++) {
-    AbsSuitState state(min_high_rank, suit, hands);
+    AbsSuitState state;
+    state.init(rank_cutoff, suit, hands);
     for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
       Cards cards      = hands[seat].intersect(suit);
-      Cards high_cards = cards.without_lower(min_high_rank);
-      int   low_cards  = cards.subtract(high_cards).count();
+      Cards low_cards  = cards.low_cards(rank_cutoff);
+      Cards high_cards = cards.subtract(low_cards);
       EXPECT_EQ(state.high_cards(seat, suit), high_cards);
-      EXPECT_EQ(state.low_cards(seat), low_cards);
+      EXPECT_EQ(state.low_cards(seat), low_cards.count());
     }
   }
 }
@@ -355,5 +356,15 @@ void test_abs_suit_state(int seed) {
 TEST(AbsSuitState, random_deal) {
   for (int seed = 0; seed < 500; seed++) {
     test_abs_suit_state(seed);
+  }
+}
+
+TEST(AbsSuitState, empty) {
+  AbsSuitState state;
+  for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
+    for (Suit suit = FIRST_SUIT; suit <= LAST_SUIT; suit++) {
+      EXPECT_TRUE(state.high_cards(seat, suit).empty());
+    }
+    EXPECT_EQ(state.low_cards(seat), 0);
   }
 }

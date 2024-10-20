@@ -198,46 +198,47 @@ private:
 
 class AbsLevel {
 public:
-  AbsLevel(std::array<Rank, 4> min_high_ranks)
-      : min_high_ranks_(min_high_ranks) {}
+  AbsLevel(std::array<Rank, 4> rank_cutoffs) : rank_cutoffs_(rank_cutoffs) {}
 
-  Rank min_high_rank(Suit suit) const { return min_high_ranks_[suit]; }
+  Rank rank_cutoff(Suit suit) const { return rank_cutoffs_[suit]; }
 
   bool operator==(const AbsLevel &other) const {
-    return min_high_ranks_ == other.min_high_ranks_;
+    return rank_cutoffs_ == other.rank_cutoffs_;
   }
 
   template <typename H> friend H AbslHashValue(H h, const AbsLevel &l) {
-    return H::combine(std::move(h), l.min_high_ranks_);
+    return H::combine(std::move(h), l.rank_cutoffs_);
   }
 
 private:
-  std::array<Rank, 4> min_high_ranks_;
+  std::array<Rank, 4> rank_cutoffs_;
 };
 
 class AbsSuitState {
 public:
-  AbsSuitState(Rank min_high_rank, Suit suit, const Cards hands[4]) {
-    bits_ = (uint64_t)min_high_rank << 60;
+  AbsSuitState() : bits_(0) {}
+
+  void init(Rank rank_cutoff, Suit suit, const Cards hands[4]) {
+    bits_ = (uint64_t)rank_cutoff << 60;
 
     constexpr uint64_t mask_all  = 0x1111111111111ull;
     uint64_t           b0        = (hands[0].bits() >> suit) & mask_all;
     uint64_t           b1        = (hands[1].bits() >> suit) & mask_all;
     uint64_t           b2        = (hands[2].bits() >> suit) & mask_all;
     uint64_t           b3        = (hands[3].bits() >> suit) & mask_all;
-    uint64_t           mask_high = mask_all << (min_high_rank * 4);
+    uint64_t           mask_high = mask_all << ((rank_cutoff + 1) * 4);
     uint64_t           mask_low  = ~mask_high & mask_all;
     bits_ |= (b0 & mask_high) << 8;
     bits_ |= (b1 & mask_high) << 9;
     bits_ |= (b2 & mask_high) << 10;
     bits_ |= (b3 & mask_high) << 11;
 
-    if (min_high_rank == 1) {
+    if (rank_cutoff == 0) {
       bits_ |= std::popcount(b0 & mask_low);
       bits_ |= std::popcount(b1 & mask_low) << 1;
       bits_ |= std::popcount(b2 & mask_low) << 2;
       bits_ |= std::popcount(b3 & mask_low) << 3;
-    } else if (min_high_rank > 1) {
+    } else if (rank_cutoff >= 1) {
       bits_ |= std::popcount(b0 & mask_low);
       bits_ |= std::popcount(b1 & mask_low) << 4;
       bits_ |= std::popcount(b2 & mask_low) << 8;
@@ -245,21 +246,19 @@ public:
     }
   }
 
-  Rank min_high_rank() const { return (Rank)(bits_ >> 60); }
+  Rank rank_cutoff() const { return (Rank)(bits_ >> 60); }
 
   Cards high_cards(Seat seat, Suit suit) const {
-    Rank               r         = min_high_rank();
+    Rank               r         = rank_cutoff();
     constexpr uint64_t mask_all  = 0x1111111111111ull;
-    uint64_t           mask_high = (mask_all << (r * 4)) & mask_all;
+    uint64_t           mask_high = (mask_all << ((r + 1) * 4)) & mask_all;
     uint64_t           b         = ((bits_ >> (seat + 8)) & mask_high) << suit;
     return Cards(b);
   }
 
   int low_cards(Seat seat) const {
-    Rank r = min_high_rank();
+    Rank r = rank_cutoff();
     if (r == 0) {
-      return 0;
-    } else if (r == 1) {
       return (bits_ >> seat) & 0x1;
     } else {
       return (bits_ >> (seat * 4)) & 0xf;
@@ -270,30 +269,31 @@ private:
   // Layout of bits_
   // ---------------
   //
-  // CASE 0: min_high_rank == 0:
-  //
-  //    bits_: 0xrccccccccccccc00
-  //
-  //    r: min_high_rank (1 nibble)
-  //    c: high card bits, interleaved by seat (13 nibbles)
-  //
-  // CASE 1: min_high_rank == 1:
+  // CASE 0: rank_cutoff == 0:
   //
   //    bits_: 0xrcccccccccccc00n
   //
-  //    r: min_high_rank (1 nibble)
-  //    c: high card bits, interleaved by seat (12 nibbles)
-  //    n: low card bits, interleaved by seat (1 nibble)
+  //    r: rank_cutoff (1 nibble)
+  //    c: high card bits (12 nibbles)
+  //    n: low card bits (1 nibble)
   //
-  // CASE 2: min_high_rank >= 2:
+  // CASE 1: rank_cutoff >= 1:
   //
   //    bits_: 0xrcccccccccccnnnn
   //
-  //    r: min_high_rank (1 nibble)
-  //    c: high card bits, interleaved by seat (13 - r nibbles)
-  //    n: low card counts, one nibble per seat (4 nibbles)
+  //    r: rank_cutoff (1 nibble)
+  //    c: high card bits (0 to 11 nibbles)
+  //    n: low card counts (1 nibble per seat, 4 nibbles total)
   //
   uint64_t bits_;
+};
+
+class AbsState {
+public:
+  AbsSuitState &suit_state(Seat seat) { return suit_states_[seat]; }
+
+private:
+  AbsSuitState suit_states_[4];
 };
 
 class Game {
