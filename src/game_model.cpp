@@ -54,20 +54,20 @@ std::ostream &operator<<(std::ostream &os, const Game &g) {
 
   for (Suit suit = LAST_SUIT; suit >= FIRST_SUIT; suit--) {
     print_chars(os, spacing, ' ');
-    print_cards_in_suit(os, g.hands_[NORTH], suit);
+    print_cards_in_suit(os, g.hand(NORTH), suit);
     os << std::endl;
   }
 
   for (Suit suit = LAST_SUIT; suit >= FIRST_SUIT; suit--) {
-    int count = print_cards_in_suit(os, g.hands_[WEST], suit);
+    int count = print_cards_in_suit(os, g.hand(WEST), suit);
     print_chars(os, 2 * spacing - count, ' ');
-    print_cards_in_suit(os, g.hands_[EAST], suit);
+    print_cards_in_suit(os, g.hand(EAST), suit);
     os << std::endl;
   }
 
   for (Suit suit = LAST_SUIT; suit >= FIRST_SUIT; suit--) {
     print_chars(os, spacing, ' ');
-    print_cards_in_suit(os, g.hands_[SOUTH], suit);
+    print_cards_in_suit(os, g.hand(SOUTH), suit);
     os << std::endl;
   }
 
@@ -93,40 +93,30 @@ std::ostream &operator<<(std::ostream &os, const Game &g) {
   return os;
 }
 
-Game::Game(Suit trump_suit, Seat lead_seat, Cards hands[4])
-    : trump_suit_(trump_suit),
+Game::Game(Suit trump_suit, Seat lead_seat, const Hands &hands)
+    : hands_(hands),
+      trump_suit_(trump_suit),
       lead_seat_(lead_seat),
       next_seat_(lead_seat),
       tricks_taken_(0),
+      tricks_max_(hands.hand(WEST).count()),
       tricks_taken_by_ns_(0) {
-  tricks_max_ = hands[0].count();
-  for (int i = 1; i < 4; i++) {
-    if (hands[i].count() != tricks_max_) {
-      throw std::runtime_error("hands must be same size");
-    }
+  if (!hands.all_same_size()) {
+    throw std::runtime_error("hands must be same size");
+  }
+  if (!hands.all_disjoint()) {
+    throw std::runtime_error("hands must be disjoint");
   }
 
-  for (int i = 0; i < 4; i++) {
-    for (int j = i + 1; j < 4; j++) {
-      if (!hands[i].disjoint(hands[j])) {
-        throw std::runtime_error("hands must be disjoint");
-      }
-    }
-  }
-
-  Cards present;
-  for (int i = 0; i < 4; i++) {
-    hands_[i] = hands[i];
-    present.add_all(hands[i]);
-  }
-  card_normalizer_.remove_all(present.complement());
+  Cards missing_cards = hands.all_cards().complement();
+  card_normalizer_.remove_all(missing_cards);
 }
 
 bool Game::valid_play(Card c) const {
   if (tricks_taken_ >= tricks_max_) {
     return false;
   }
-  Cards        cs = hands_[next_seat_];
+  Cards        cs = hand(next_seat_);
   const Trick &t  = current_trick();
   if (!cs.contains(c)) {
     return false;
@@ -145,7 +135,7 @@ void Game::play(Card c) {
   } else {
     t.play_start(trump_suit_, next_seat_, c);
   }
-  hands_[next_seat_].remove(c);
+  hands_.remove_card(next_seat_, c);
   finish_play();
 }
 
@@ -171,6 +161,7 @@ void Game::finish_play() {
     tricks_taken_++;
     assert(tricks_taken_ <= 13);
     assert(!norm_key_stack_[tricks_taken_].has_value());
+    assert(!norm_hands_stack_[tricks_taken_].has_value());
   } else {
     next_seat_ = t.next_seat();
   }
@@ -189,7 +180,7 @@ void Game::unplay() {
       next_seat_ = lead_seat_;
     }
     if (c.has_value()) {
-      hands_[next_seat_].add(*c);
+      hands_.add_card(next_seat_, *c);
     }
   } else {
     if (tricks_taken_ > 0) {
@@ -204,12 +195,13 @@ void Game::unplay() {
       std::optional<Card> card   = t.unplay();
       next_seat_                 = t.next_seat();
       if (card.has_value()) {
-        hands_[next_seat_].add(*card);
+        hands_.add_card(next_seat_, *card);
       }
       if (winner == NORTH || winner == SOUTH) {
         tricks_taken_by_ns_--;
       }
       norm_key_stack_[tricks_taken_].reset();
+      norm_hands_stack_[tricks_taken_].reset();
       tricks_taken_--;
     } else {
       throw std::runtime_error("no cards played");
@@ -222,7 +214,7 @@ Cards Game::valid_plays() const {
     return Cards();
   }
 
-  Cards        c = hands_[next_seat_];
+  Cards        c = hand(next_seat_);
   const Trick &t = current_trick();
   if (t.started()) {
     Cards cs = c.intersect(t.lead_suit());
@@ -231,4 +223,27 @@ Cards Game::valid_plays() const {
     }
   }
   return c;
+}
+
+const GameKey &Game::normalized_key() {
+  assert(start_of_trick());
+  auto &cached = norm_key_stack_[tricks_taken_];
+  if (!cached.has_value()) {
+    cached.emplace(normalized_hands(), next_seat_);
+  }
+  return *cached;
+}
+
+const Hands &Game::normalized_hands() {
+  assert(start_of_trick());
+  auto &cached = norm_hands_stack_[tricks_taken_];
+  if (!cached.has_value()) {
+    cached.emplace(
+        card_normalizer_.normalize(hands_.hand(WEST)),
+        card_normalizer_.normalize(hands_.hand(NORTH)),
+        card_normalizer_.normalize(hands_.hand(EAST)),
+        card_normalizer_.normalize(hands_.hand(SOUTH))
+    );
+  }
+  return *cached;
 }

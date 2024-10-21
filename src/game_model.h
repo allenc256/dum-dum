@@ -167,142 +167,78 @@ private:
 
 std::ostream &operator<<(std::ostream &os, const Trick &t);
 
+class Hands {
+public:
+  Hands() {}
+
+  Hands(Cards west, Cards north, Cards east, Cards south)
+      : hands_{west, north, east, south} {}
+
+  Cards hand(Seat seat) const { return hands_[seat]; }
+  void  add_card(Seat seat, Card c) { hands_[seat].add(c); }
+  void  remove_card(Seat seat, Card c) { hands_[seat].remove(c); }
+
+  bool all_same_size() const {
+    int size = hands_[0].count();
+    for (int i = 1; i < 4; i++) {
+      if (hands_[i].count() != size) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool all_disjoint() const {
+    for (int i = 0; i < 4; i++) {
+      for (int j = i + 1; j < 4; j++) {
+        if (!hands_[i].disjoint(hands_[j])) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  Cards all_cards() const {
+    Cards all;
+    for (int i = 0; i < 4; i++) {
+      all.add_all(hands_[i]);
+    }
+    return all;
+  }
+
+  template <typename H> friend H AbslHashValue(H h, const Hands &hands) {
+    return H::combine(std::move(h), hands.hands_);
+  }
+
+  bool operator==(const Hands &hands) const = default;
+
+private:
+  std::array<Cards, 4> hands_;
+};
+
 class GameKey {
 public:
-  GameKey(Cards west, Cards north, Cards east, Cards south, Seat next_seat)
-      : west_(west),
-        north_(north),
-        east_(east),
-        south_(south),
-        next_seat_(next_seat) {}
+  GameKey(Hands hands, Seat next_seat) : hands_(hands), next_seat_(next_seat) {}
 
   template <typename H> friend H AbslHashValue(H h, const GameKey &k) {
-    return H::combine(
-        std::move(h), k.west_, k.north_, k.east_, k.south_, k.next_seat_
-    );
+    return H::combine(std::move(h), k.hands_);
   }
 
-  friend bool operator==(const GameKey &lhs, const GameKey &rhs) {
-    return lhs.west_ == rhs.west_ && lhs.north_ == rhs.north_ &&
-           lhs.east_ == rhs.east_ && lhs.south_ == rhs.south_ &&
-           lhs.next_seat_ == rhs.next_seat_;
-  }
+  bool operator==(const GameKey &other) const = default;
 
 private:
-  Cards west_;
-  Cards north_;
-  Cards east_;
-  Cards south_;
+  Hands hands_;
   Seat  next_seat_;
-};
-
-class AbsLevel {
-public:
-  AbsLevel(std::array<Rank, 4> rank_cutoffs) : rank_cutoffs_(rank_cutoffs) {}
-
-  Rank rank_cutoff(Suit suit) const { return rank_cutoffs_[suit]; }
-
-  bool operator==(const AbsLevel &other) const {
-    return rank_cutoffs_ == other.rank_cutoffs_;
-  }
-
-  template <typename H> friend H AbslHashValue(H h, const AbsLevel &l) {
-    return H::combine(std::move(h), l.rank_cutoffs_);
-  }
-
-private:
-  std::array<Rank, 4> rank_cutoffs_;
-};
-
-class AbsSuitState {
-public:
-  AbsSuitState() : bits_(0) {}
-
-  void init(Rank rank_cutoff, Suit suit, const Cards hands[4]) {
-    bits_ = (uint64_t)rank_cutoff << 60;
-
-    constexpr uint64_t mask_all  = 0x1111111111111ull;
-    uint64_t           b0        = (hands[0].bits() >> suit) & mask_all;
-    uint64_t           b1        = (hands[1].bits() >> suit) & mask_all;
-    uint64_t           b2        = (hands[2].bits() >> suit) & mask_all;
-    uint64_t           b3        = (hands[3].bits() >> suit) & mask_all;
-    uint64_t           mask_high = mask_all << ((rank_cutoff + 1) * 4);
-    uint64_t           mask_low  = ~mask_high & mask_all;
-    bits_ |= (b0 & mask_high) << 8;
-    bits_ |= (b1 & mask_high) << 9;
-    bits_ |= (b2 & mask_high) << 10;
-    bits_ |= (b3 & mask_high) << 11;
-
-    if (rank_cutoff == 0) {
-      bits_ |= std::popcount(b0 & mask_low);
-      bits_ |= std::popcount(b1 & mask_low) << 1;
-      bits_ |= std::popcount(b2 & mask_low) << 2;
-      bits_ |= std::popcount(b3 & mask_low) << 3;
-    } else if (rank_cutoff >= 1) {
-      bits_ |= std::popcount(b0 & mask_low);
-      bits_ |= std::popcount(b1 & mask_low) << 4;
-      bits_ |= std::popcount(b2 & mask_low) << 8;
-      bits_ |= std::popcount(b3 & mask_low) << 12;
-    }
-  }
-
-  Rank rank_cutoff() const { return (Rank)(bits_ >> 60); }
-
-  Cards high_cards(Seat seat, Suit suit) const {
-    Rank               r         = rank_cutoff();
-    constexpr uint64_t mask_all  = 0x1111111111111ull;
-    uint64_t           mask_high = (mask_all << ((r + 1) * 4)) & mask_all;
-    uint64_t           b         = ((bits_ >> (seat + 8)) & mask_high) << suit;
-    return Cards(b);
-  }
-
-  int low_cards(Seat seat) const {
-    Rank r = rank_cutoff();
-    if (r == 0) {
-      return (bits_ >> seat) & 0x1;
-    } else {
-      return (bits_ >> (seat * 4)) & 0xf;
-    }
-  }
-
-private:
-  // Layout of bits_
-  // ---------------
-  //
-  // CASE 0: rank_cutoff == 0:
-  //
-  //    bits_: 0xrcccccccccccc00n
-  //
-  //    r: rank_cutoff (1 nibble)
-  //    c: high card bits (12 nibbles)
-  //    n: low card bits (1 nibble)
-  //
-  // CASE 1: rank_cutoff >= 1:
-  //
-  //    bits_: 0xrcccccccccccnnnn
-  //
-  //    r: rank_cutoff (1 nibble)
-  //    c: high card bits (0 to 11 nibbles)
-  //    n: low card counts (1 nibble per seat, 4 nibbles total)
-  //
-  uint64_t bits_;
-};
-
-class AbsState {
-public:
-  AbsSuitState &suit_state(Seat seat) { return suit_states_[seat]; }
-
-private:
-  AbsSuitState suit_states_[4];
 };
 
 class Game {
 public:
-  Game(Suit trump_suit, Seat first_lead_seat, Cards hands[4]);
+  Game(Suit trump_suit, Seat first_lead_seat, const Hands &hands);
 
   Suit  trump_suit() const { return trump_suit_; }
   Seat  lead_seat() const { return lead_seat_; }
-  Cards hand(Seat seat) const { return hands_[seat]; }
+  Cards hand(Seat seat) const { return hands_.hand(seat); }
   Seat  next_seat() const { return next_seat_; }
   Seat  next_seat(int i) const { return right_seat(next_seat_, i); }
 
@@ -333,20 +269,8 @@ public:
   bool  valid_play(Card c) const;
   Cards valid_plays() const;
 
-  const GameKey &normalized_key() {
-    assert(start_of_trick());
-    auto &cached = norm_key_stack_[tricks_taken_];
-    if (!cached.has_value()) {
-      cached.emplace(
-          card_normalizer_.normalize(hands_[WEST]),
-          card_normalizer_.normalize(hands_[NORTH]),
-          card_normalizer_.normalize(hands_[EAST]),
-          card_normalizer_.normalize(hands_[SOUTH]),
-          next_seat_
-      );
-    }
-    return *cached;
-  }
+  const GameKey &normalized_key();
+  const Hands   &normalized_hands();
 
   Cards prune_equivalent_cards(Cards cards) const {
     return card_normalizer_.prune_equivalent(cards);
@@ -363,7 +287,7 @@ public:
 private:
   void finish_play();
 
-  Cards                  hands_[4];
+  Hands                  hands_;
   Suit                   trump_suit_;
   Seat                   lead_seat_;
   Seat                   next_seat_;
@@ -373,6 +297,7 @@ private:
   int                    tricks_taken_by_ns_;
   CardNormalizer         card_normalizer_;
   std::optional<GameKey> norm_key_stack_[14];
+  std::optional<Hands>   norm_hands_stack_[14];
 
   friend std::ostream &operator<<(std::ostream &os, const Game &g);
 };

@@ -156,20 +156,20 @@ TEST(Trick, play_null) {
 }
 
 TEST(Game, play_unplay) {
-  Cards hands[4] = {
+  Hands hands(
       Cards("S A2 H - D - C -"),
       Cards("S 93 H - D - C -"),
       Cards("S 5  H 2 D - C -"),
       Cards("S 6  H 3 D - C -")
-  };
+  );
   Game g(HEARTS, WEST, hands);
 
   EXPECT_EQ(g.tricks_taken(), 0);
   EXPECT_EQ(g.next_seat(), WEST);
   EXPECT_EQ(g.tricks_taken_by_ns(), 0);
   EXPECT_EQ(g.tricks_taken_by_ew(), 0);
-  for (int i = 0; i < 4; i++) {
-    EXPECT_EQ(g.hand((Seat)i), hands[i]);
+  for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
+    EXPECT_EQ(g.hand(seat), hands.hand(seat));
   }
 
   g.play(Card("2S"));
@@ -225,15 +225,15 @@ TEST(Game, play_unplay) {
   EXPECT_EQ(g.tricks_taken_by_ns(), 0);
   EXPECT_EQ(g.tricks_taken_by_ew(), 0);
   EXPECT_FALSE(g.finished());
-  for (int i = 0; i < 4; i++) {
-    EXPECT_EQ(g.hand((Seat)i), hands[i]);
+  for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
+    EXPECT_EQ(g.hand(seat), hands.hand(seat));
   }
 
   EXPECT_THROW(g.unplay(), std::runtime_error);
 }
 
 TEST(Game, valid_plays) {
-  Cards hands[4] = {
+  Hands hands = {
       Cards("S A2 H - D - C -"),
       Cards("S 93 H - D - C -"),
       Cards("S 5  H 2 D - C -"),
@@ -299,11 +299,12 @@ TEST(Game, play_unplay_random) {
 }
 
 TEST(Game, play_null) {
-  Cards hands[4];
-  hands[WEST]  = Cards("S 2 H - D - C -");
-  hands[NORTH] = Cards("S - H 2 D - C -");
-  hands[EAST]  = Cards("S A H - D - C -");
-  hands[SOUTH] = Cards("S - H - D 2 C -");
+  Hands hands = {
+      Cards("S 2 H - D - C -"),
+      Cards("S - H 2 D - C -"),
+      Cards("S A H - D - C -"),
+      Cards("S - H - D 2 C -"),
+  };
   Game game(NO_TRUMP, WEST, hands);
 
   game.play(Card("2S"));
@@ -331,40 +332,4 @@ TEST(Game, play_null) {
   EXPECT_EQ(game.tricks_taken_by_ns(), 0);
   EXPECT_EQ(game.tricks_taken_by_ew(), 0);
   EXPECT_FALSE(game.finished());
-}
-
-void test_abs_suit_state(int seed) {
-  Random random(seed);
-  Cards  hands[4];
-  Rank   rank_cutoff = random.random_rank();
-
-  random.random_deal(hands, 10);
-
-  for (Suit suit = FIRST_SUIT; suit <= LAST_SUIT; suit++) {
-    AbsSuitState state;
-    state.init(rank_cutoff, suit, hands);
-    for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
-      Cards cards      = hands[seat].intersect(suit);
-      Cards low_cards  = cards.low_cards(rank_cutoff);
-      Cards high_cards = cards.subtract(low_cards);
-      EXPECT_EQ(state.high_cards(seat, suit), high_cards);
-      EXPECT_EQ(state.low_cards(seat), low_cards.count());
-    }
-  }
-}
-
-TEST(AbsSuitState, random_deal) {
-  for (int seed = 0; seed < 500; seed++) {
-    test_abs_suit_state(seed);
-  }
-}
-
-TEST(AbsSuitState, empty) {
-  AbsSuitState state;
-  for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
-    for (Suit suit = FIRST_SUIT; suit <= LAST_SUIT; suit++) {
-      EXPECT_TRUE(state.high_cards(seat, suit).empty());
-    }
-    EXPECT_EQ(state.low_cards(seat), 0);
-  }
 }

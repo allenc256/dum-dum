@@ -130,3 +130,276 @@ private:
   Game                                       &game_;
   absl::flat_hash_map<GameKey, TpnTableValue> table_;
 };
+
+class SeatShape {
+public:
+  SeatShape() : bits_(0) {}
+
+  SeatShape(Cards hand) {
+    bits_ = 0;
+    for (Suit suit = FIRST_SUIT; suit <= LAST_SUIT; suit++) {
+      bits_ |= hand.intersect(suit).count() << (suit * 4);
+    }
+  }
+
+  int card_count(Suit suit) const { return (bits_ >> (suit * 4)) & 0xf; }
+
+  template <typename H> friend H AbslHashValue(H h, SeatShape s) {
+    return H::combine(std::move(h), s.bits_);
+  }
+
+  bool operator==(const SeatShape &other) const = default;
+
+private:
+  friend struct std::hash<SeatShape>;
+
+  uint16_t bits_;
+};
+
+class SeatShapes {
+public:
+  SeatShapes(const Game &game) {
+    for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
+      seat_shapes_[seat] = SeatShape(game.hand(seat));
+    }
+  }
+
+  template <typename H> friend H AbslHashValue(H h, const SeatShapes &s) {
+    return H::combine(std::move(h), s.seat_shapes_);
+  }
+
+  bool operator==(const SeatShapes &other) const = default;
+
+private:
+  std::array<SeatShape, 4> seat_shapes_;
+};
+
+class AbsLevel {
+public:
+  AbsLevel() : rank_cutoffs_{ACE, ACE, ACE, ACE} {}
+
+  AbsLevel(std::array<Rank, 4> rank_cutoffs) : rank_cutoffs_(rank_cutoffs) {}
+
+  Rank rank_cutoff(Suit suit) const { return rank_cutoffs_[suit]; }
+
+  template <typename H> friend H AbslHashValue(H h, const AbsLevel &l) {
+    return H::combine(std::move(h), l.rank_cutoffs_);
+  }
+
+  bool operator==(const AbsLevel &other) const = default;
+
+private:
+  std::array<Rank, 4> rank_cutoffs_;
+};
+
+class AbsSuitState {
+public:
+  AbsSuitState(Rank rank_cutoff, Suit suit, Game &game)
+      : AbsSuitState(rank_cutoff, suit, game.normalized_hands()) {}
+
+  AbsSuitState(Rank rank_cutoff, Suit suit, const Hands &hands) {
+    bits_ = (uint64_t)rank_cutoff << 60;
+
+    constexpr uint64_t mask_all = 0x1111111111111ull;
+    uint64_t           b0       = (hands.hand(WEST).bits() >> suit) & mask_all;
+    uint64_t           b1       = (hands.hand(NORTH).bits() >> suit) & mask_all;
+    uint64_t           b2       = (hands.hand(EAST).bits() >> suit) & mask_all;
+    uint64_t           b3       = (hands.hand(SOUTH).bits() >> suit) & mask_all;
+    uint64_t           mask_high = mask_all << ((rank_cutoff + 1) * 4);
+    uint64_t           mask_low  = ~mask_high & mask_all;
+    bits_ |= (b0 & mask_high) << 8;
+    bits_ |= (b1 & mask_high) << 9;
+    bits_ |= (b2 & mask_high) << 10;
+    bits_ |= (b3 & mask_high) << 11;
+
+    if (rank_cutoff == 0) {
+      bits_ |= std::popcount(b0 & mask_low);
+      bits_ |= std::popcount(b1 & mask_low) << 1;
+      bits_ |= std::popcount(b2 & mask_low) << 2;
+      bits_ |= std::popcount(b3 & mask_low) << 3;
+    } else if (rank_cutoff >= 1) {
+      bits_ |= std::popcount(b0 & mask_low);
+      bits_ |= std::popcount(b1 & mask_low) << 4;
+      bits_ |= std::popcount(b2 & mask_low) << 8;
+      bits_ |= std::popcount(b3 & mask_low) << 12;
+    }
+  }
+
+  Rank rank_cutoff() const { return (Rank)(bits_ >> 60); }
+
+  Cards high_cards(Seat seat, Suit suit) const {
+    Rank               r         = rank_cutoff();
+    constexpr uint64_t mask_all  = 0x1111111111111ull;
+    uint64_t           mask_high = (mask_all << ((r + 1) * 4)) & mask_all;
+    uint64_t           b         = ((bits_ >> (seat + 8)) & mask_high) << suit;
+    return Cards(b);
+  }
+
+  int low_cards(Seat seat) const {
+    Rank r = rank_cutoff();
+    if (r == 0) {
+      return (bits_ >> seat) & 0x1;
+    } else {
+      return (bits_ >> (seat * 4)) & 0xf;
+    }
+  }
+
+  bool matches(Game &game, Suit suit) const {
+    AbsSuitState state(rank_cutoff(), suit, game);
+    return bits_ == state.bits_;
+  }
+
+  bool operator==(const AbsSuitState &s) const = default;
+
+private:
+  // Layout of bits_
+  // ---------------
+  //
+  // CASE 0: rank_cutoff == 0:
+  //
+  //    bits_: 0xrcccccccccccc00n
+  //
+  //    r: rank_cutoff (1 nibble)
+  //    c: high card bits (12 nibbles)
+  //    n: low card bits (1 nibble)
+  //
+  // CASE 1: rank_cutoff >= 1:
+  //
+  //    bits_: 0xrcccccccccccnnnn
+  //
+  //    r: rank_cutoff (1 nibble)
+  //    c: high card bits (0 to 11 nibbles)
+  //    n: low card counts (1 nibble per seat, 4 nibbles total)
+  //
+  uint64_t bits_;
+};
+
+class AbsState {
+public:
+  AbsState(AbsLevel level, Game &game)
+      : suit_states_{
+            make_suit_state(level, game, 0),
+            make_suit_state(level, game, 1),
+            make_suit_state(level, game, 2),
+            make_suit_state(level, game, 3),
+        } {}
+
+  bool matches(Game &game) const {
+    for (Suit suit = FIRST_SUIT; suit <= LAST_SUIT; suit++) {
+      if (!suit_states_[suit].matches(game, suit)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool operator==(const AbsState &s) const = default;
+
+private:
+  static AbsSuitState make_suit_state(AbsLevel level, Game &game, int index) {
+    return AbsSuitState(level.rank_cutoff((Suit)index), (Suit)index, game);
+  }
+
+  AbsSuitState suit_states_[4];
+};
+
+class TpnTable2 {
+public:
+  TpnTable2(Game &game) : game_(game) {}
+
+  TpnTableValue lookup_value(int alpha, int beta, int max_depth) {
+    int normed_alpha = alpha - game_.tricks_taken_by_ns();
+    int normed_beta  = beta - game_.tricks_taken_by_ns();
+    return denorm_value(
+        lookup_value_normed(normed_alpha, normed_beta, max_depth)
+    );
+  }
+
+  void upsert_value(const AbsState &state, const TpnTableValue &value) {
+    upsert_value_normed(state, norm_value(value));
+  }
+
+private:
+  TpnTableValue lookup_value_normed(int alpha, int beta, int max_depth) const {
+    int        best_lb = 0;
+    int        best_ub = game_.tricks_left();
+    SeatShapes key(game_);
+    auto       range = multimap_.equal_range(key);
+    for (auto i = range.first; i != range.second; ++i) {
+      auto &[s, v] = i->second;
+      if (s.matches(game_) && v.max_depth() >= max_depth) {
+        if (v.has_tight_bounds()) {
+          return v;
+        }
+        best_lb = std::max(best_lb, v.lower_bound());
+        best_ub = std::min(best_ub, v.upper_bound());
+        if (best_lb >= beta || best_ub <= alpha) {
+          break;
+        }
+      }
+    }
+    return TpnTableValue(best_lb, best_ub, max_depth, std::nullopt);
+  }
+
+  void upsert_value_normed(const AbsState &state, const TpnTableValue &value) {
+    SeatShapes key(game_);
+    auto       range = multimap_.equal_range(key);
+    for (auto i = range.first; i != range.second; ++i) {
+      auto &[s, nv] = i->second;
+      if (s == state) {
+        i->second.value = value;
+        return;
+      }
+    }
+    multimap_.emplace(
+        std::piecewise_construct,
+        std::forward_as_tuple(key),
+        std::forward_as_tuple(state, value)
+    );
+  }
+
+  TpnTableValue norm_value(const TpnTableValue &value) {
+    int  lb      = value.lower_bound() - game_.tricks_taken_by_ns();
+    int  ub      = value.upper_bound() - game_.tricks_taken_by_ns();
+    auto pv_play = norm_card(value.pv_play());
+    return TpnTableValue(lb, ub, value.max_depth(), pv_play);
+  }
+
+  TpnTableValue denorm_value([[maybe_unused]] const TpnTableValue &value) {
+    int  lb      = value.lower_bound() + game_.tricks_taken_by_ns();
+    int  ub      = value.upper_bound() + game_.tricks_taken_by_ns();
+    auto pv_play = denorm_card(value.pv_play());
+    return TpnTableValue(lb, ub, value.max_depth(), pv_play);
+  }
+
+  std::optional<Card> norm_card(const std::optional<Card> &card) const {
+    if (card.has_value()) {
+      return game_.normalize_card(*card);
+    } else {
+      return std::nullopt;
+    }
+  }
+
+  std::optional<Card> denorm_card(const std::optional<Card> &card) const {
+    if (card.has_value()) {
+      return game_.denormalize_card(*card);
+    } else {
+      return std::nullopt;
+    }
+  }
+
+  struct Entry {
+    AbsState      state;
+    TpnTableValue value;
+
+    Entry(const AbsState &state_, const TpnTableValue &value_)
+        : state(state_),
+          value(value_) {}
+  };
+
+  using Multimap =
+      std::unordered_multimap<SeatShapes, Entry, absl::Hash<SeatShapes>>;
+
+  Game    &game_;
+  Multimap multimap_;
+};

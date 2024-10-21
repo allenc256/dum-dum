@@ -19,8 +19,8 @@ struct MiniSolverTestCase {
 class MiniSolverTest : public testing::TestWithParam<MiniSolverTestCase> {};
 
 TEST_P(MiniSolverTest, test_case) {
-  const MiniSolverTestCase &p        = GetParam();
-  Cards                     hands[4] = {p.west, p.north, p.east, p.south};
+  const MiniSolverTestCase &p     = GetParam();
+  Hands                     hands = {p.west, p.north, p.east, p.south};
   Game                      g(p.trump_suit, p.lead_seat, hands);
   TpnTable                  tpn_table(g);
   MiniSolver                s(g, tpn_table);
