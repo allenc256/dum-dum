@@ -6,22 +6,13 @@
 #include <gtest/gtest.h>
 #include <vector>
 
-Trick make_trick(Suit trump_suit, Seat lead, std::vector<std::string> cards) {
-  Trick t;
-  t.play_start(trump_suit, lead, Card(cards[0]));
-  for (int i = 1; i < cards.size(); i++) {
-    t.play_continue(Card(cards[i]));
-  }
-  return t;
-}
-
 void test_trick(
-    Suit                     trump_suit,
-    Seat                     lead,
-    std::vector<std::string> cards,
-    Seat                     expected_winner
+    Suit                        trump_suit,
+    Seat                        lead,
+    Seat                        expected_winner,
+    std::initializer_list<Card> cards
 ) {
-  Trick t = make_trick(trump_suit, lead, cards);
+  Trick t = {trump_suit, lead, cards};
   EXPECT_TRUE(t.started());
   EXPECT_TRUE(t.finished());
   EXPECT_EQ(t.winning_seat(), expected_winner);
@@ -29,35 +20,35 @@ void test_trick(
 
 TEST(Trick, ostream) {
   EXPECT_EQ(to_string(Trick()), "-");
-  EXPECT_EQ(to_string(make_trick(NO_TRUMP, WEST, {"2C", "3C"})), "2♣3♣");
+  EXPECT_EQ(to_string(Trick(NO_TRUMP, WEST, {"2C", "3C"})), "2♣3♣");
 }
 
 TEST(Trick, no_trump) {
-  test_trick(NO_TRUMP, WEST, {"2C", "3C", "TC", "8C"}, EAST);
+  test_trick(NO_TRUMP, WEST, EAST, {"2C", "3C", "TC", "8C"});
 }
 
 TEST(Trick, no_trump_discard) {
-  test_trick(NO_TRUMP, WEST, {"JC", "3C", "TC", "AS"}, WEST);
+  test_trick(NO_TRUMP, WEST, WEST, {"JC", "3C", "TC", "AS"});
 }
 
 TEST(Trick, trump_no_ruff) {
-  test_trick(HEARTS, WEST, {"2C", "AC", "TC", "8C"}, NORTH);
+  test_trick(HEARTS, WEST, NORTH, {"2C", "AC", "TC", "8C"});
 }
 
 TEST(Trick, trump_ruff) {
-  test_trick(HEARTS, WEST, {"2C", "AC", "TC", "2H"}, SOUTH);
+  test_trick(HEARTS, WEST, SOUTH, {"2C", "AC", "TC", "2H"});
 }
 
 TEST(Trick, trump_overruff) {
-  test_trick(HEARTS, WEST, {"2C", "2H", "3H", "TC"}, EAST);
+  test_trick(HEARTS, WEST, EAST, {"2C", "2H", "3H", "TC"});
 }
 
 TEST(Trick, trump_discard) {
-  test_trick(HEARTS, WEST, {"2C", "2S", "3C", "TC"}, SOUTH);
+  test_trick(HEARTS, WEST, SOUTH, {"2C", "2S", "3C", "TC"});
 }
 
 TEST(Trick, trump_ruff_discard) {
-  test_trick(HEARTS, WEST, {"2C", "2H", "3C", "TC"}, NORTH);
+  test_trick(HEARTS, WEST, NORTH, {"2C", "2H", "3C", "TC"});
 }
 
 struct CheckTrickArgs {
@@ -79,7 +70,7 @@ static void check_trick(const Trick &t, CheckTrickArgs args) {
 }
 
 TEST(Trick, unplay) {
-  Trick t = make_trick(HEARTS, WEST, {"2C", "2H", "3C", "TC"});
+  Trick t = Trick(HEARTS, WEST, {"2C", "2H", "3C", "TC"});
   check_trick(
       t, {.card_count = 4, .winning_seat = NORTH, .is_null_play = {false}}
   );
@@ -153,6 +144,26 @@ TEST(Trick, play_null) {
   check_trick(
       t, {.card_count = 1, .winning_seat = WEST, .is_null_play = {false}}
   );
+}
+
+TEST(Trick, won_by_rank_true) {
+  Trick trick = {NO_TRUMP, WEST, {"2C", "5C", "6D", "AD"}};
+  EXPECT_TRUE(trick.won_by_rank());
+}
+
+TEST(Trick, won_by_rank_false) {
+  Trick trick = {NO_TRUMP, WEST, {"5C", "2D", "6D", "AD"}};
+  EXPECT_FALSE(trick.won_by_rank());
+}
+
+TEST(Trick, won_by_rank_ruff) {
+  Trick trick = {HEARTS, WEST, {"5C", "2D", "3H", "AD"}};
+  EXPECT_FALSE(trick.won_by_rank());
+}
+
+TEST(Trick, won_by_rank_overruff) {
+  Trick trick = {HEARTS, WEST, {"5C", "3H", "4H", "AD"}};
+  EXPECT_TRUE(trick.won_by_rank());
 }
 
 TEST(Game, play_unplay) {

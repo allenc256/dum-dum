@@ -56,6 +56,7 @@ class Card {
 public:
   Card() : rank_(RANK_2), suit_(CLUBS) {}
   Card(Rank r, Suit s) : rank_(r), suit_(s) { assert(s != NO_TRUMP); }
+  Card(const char *s) : Card(std::string_view(s)) {}
   Card(std::string_view s);
 
   Rank rank() const { return (Rank)rank_; }
@@ -168,22 +169,43 @@ public:
   Cards prune_equivalent(Cards removed) const {
     assert(disjoint(removed));
 
-    constexpr uint64_t init_mask =
-        0b1111000000000000000000000000000000000000000000000000ull;
+    constexpr uint64_t init_mask = 0b1111ull;
 
     uint64_t bits      = bits_ & init_mask;
-    uint64_t next_mask = init_mask >> 4;
-    uint64_t prev      = (init_mask & bits_) >> 4;
+    uint64_t next_mask = init_mask << 4;
+    uint64_t prev      = (init_mask & bits_) << 4;
 
     for (int i = 0; i < 12; i++) {
       uint64_t next   = next_mask & bits_;
       uint64_t ignore = next_mask & removed.bits_;
       bits |= ~prev & next;
-      next_mask >>= 4;
-      prev = (next | (prev & ignore)) >> 4;
+      next_mask <<= 4;
+      prev = (next | (prev & ignore)) << 4;
     }
 
     return Cards(bits);
+  }
+
+  Card lowest_equivalent(Card card, Cards removed) const {
+    assert(contains(card));
+
+    uint64_t mask = to_card_bit(card);
+    Rank     curr = card.rank();
+    Rank     low  = curr;
+
+    while (curr > 0) {
+      curr--;
+      mask >>= 4;
+      bool pres_here      = mask & bits_;
+      bool pres_elsewhere = !(mask & removed.bits_);
+      if (pres_here) {
+        low = curr;
+      } else if (pres_elsewhere) {
+        break;
+      }
+    }
+
+    return Card(low, card.suit());
   }
 
   Iter iter_highest() const {
@@ -298,6 +320,7 @@ private:
 class CardNormalizer {
 public:
   Card normalize(Card card) const {
+    assert(!removed_.contains(card));
     Rank r = norm_[card.suit()].normalize(card.rank());
     return Card(r, card.suit());
   }
@@ -309,18 +332,35 @@ public:
 
   Cards normalize(Cards cards) const { return cards.normalize(removed_); }
 
+  // Rank normalize_rank_cutoff(Rank rank, Suit suit) const {
+  //   Cards low_cards_in_suit =
+  //       removed_.complement().intersect(suit).low_cards(rank);
+  //   if (low_cards_in_suit.empty()) {
+  //     return RANK_2;
+  //   } else {
+  //     Card cutoff_card = low_cards_in_suit.iter_highest().card();
+  //     return normalize(cutoff_card).rank();
+  //   }
+  // }
+
+  // Rank denormalize_rank_cutoff(Rank rank, Suit suit) const {
+  //   return denormalize(Card(rank, suit)).rank();
+  // }
+
   Cards prune_equivalent(Cards cards) const {
     return cards.prune_equivalent(removed_);
   }
 
+  bool contains(Card card) const { return !removed_.contains(card); }
+
   void remove(Card card) {
-    assert(!removed_.contains(card));
+    assert(contains(card));
     removed_.add(card);
     norm_[card.suit()].remove(card.rank());
   }
 
   void add(Card card) {
-    assert(removed_.contains(card));
+    assert(!contains(card));
     removed_.remove(card);
     norm_[card.suit()].add(card.rank());
   }

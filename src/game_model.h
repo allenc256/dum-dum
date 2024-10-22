@@ -44,6 +44,20 @@ public:
         lead_suit_(NO_TRUMP),
         card_count_(0) {}
 
+  Trick(Suit trump_suit, Seat lead_seat, std::initializer_list<Card> cards)
+      : Trick() {
+    assert(cards.size() <= 4);
+    bool first = true;
+    for (Card card : cards) {
+      if (first) {
+        play_start(trump_suit, lead_seat, card);
+        first = false;
+      } else {
+        play_continue(card);
+      }
+    }
+  }
+
   bool has_card(int index) const {
     assert(index >= 0 && index < card_count_);
     return cards_[index].has_value();
@@ -147,6 +161,19 @@ public:
     return cards_[card_count_];
   }
 
+  bool won_by_rank() const {
+    Card w = winning_card();
+    for (int i = 0; i < 4; i++) {
+      if (has_card(i)) {
+        Card c = card(i);
+        if (c.suit() == w.suit() && c.rank() < w.rank()) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
 private:
   Cards compute_winning_cards(Card w) const {
     if (trump_suit_ == NO_TRUMP || w.suit() == trump_suit_) {
@@ -236,14 +263,25 @@ class Game {
 public:
   Game(Suit trump_suit, Seat first_lead_seat, const Hands &hands);
 
-  Suit  trump_suit() const { return trump_suit_; }
-  Seat  lead_seat() const { return lead_seat_; }
-  Cards hand(Seat seat) const { return hands_.hand(seat); }
-  Seat  next_seat() const { return next_seat_; }
-  Seat  next_seat(int i) const { return right_seat(next_seat_, i); }
+  Suit         trump_suit() const { return trump_suit_; }
+  Seat         lead_seat() const { return lead_seat_; }
+  Cards        hand(Seat seat) const { return hands_.hand(seat); }
+  Seat         next_seat() const { return next_seat_; }
+  Seat         next_seat(int i) const { return right_seat(next_seat_, i); }
+  const Hands &hands() const { return hands_; }
 
   Trick       &current_trick() { return tricks_[tricks_taken_]; }
   const Trick &current_trick() const { return tricks_[tricks_taken_]; }
+
+  Trick &last_finished_trick() {
+    assert(tricks_taken_ > 0);
+    return tricks_[tricks_taken_ - 1];
+  }
+
+  const Trick &last_finished_trick() const {
+    assert(tricks_taken_ > 0);
+    return tricks_[tricks_taken_ - 1];
+  }
 
   const Trick &trick(int i) const {
     assert(i < tricks_taken_);
@@ -283,6 +321,14 @@ public:
   Card denormalize_card(Card card) const {
     return card_normalizer_.denormalize(card);
   }
+
+  // Rank normalize_rank_cutoff(Rank rank, Suit suit) const {
+  //   return card_normalizer_.normalize_rank_cutoff(rank, suit);
+  // }
+
+  // Rank denormalize_rank_cutoff(Rank rank, Suit suit) const {
+  //   return card_normalizer_.denormalize_rank_cutoff(rank, suit);
+  // }
 
 private:
   void finish_play();

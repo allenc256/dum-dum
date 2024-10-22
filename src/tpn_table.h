@@ -1,6 +1,7 @@
 #pragma once
 
 #include "game_model.h"
+#include "small_ints.h"
 
 #include <absl/container/flat_hash_map.h>
 
@@ -17,9 +18,9 @@ public:
       int                 max_depth,
       std::optional<Card> pv_play
   )
-      : lower_bound_((int8_t)lower_bound),
-        upper_bound_((int8_t)upper_bound),
-        max_depth_((int8_t)max_depth),
+      : lower_bound_(to_int8_t(lower_bound)),
+        upper_bound_(to_int8_t(upper_bound)),
+        max_depth_(to_int8_t(max_depth)),
         pv_play_(pv_play) {
     assert(lower_bound >= -1 && lower_bound <= upper_bound);
     assert(upper_bound >= 0 && upper_bound <= 14);
@@ -36,7 +37,7 @@ public:
   bool update_lower_bound(int lb) {
     assert(lb <= upper_bound_);
     if (lb > lower_bound_) {
-      lower_bound_ = (int8_t)lb;
+      lower_bound_ = to_int8_t(lb);
       return true;
     } else {
       return false;
@@ -46,7 +47,7 @@ public:
   bool update_upper_bound(int ub) {
     assert(ub >= lower_bound_);
     if (ub < upper_bound_) {
-      upper_bound_ = (int8_t)ub;
+      upper_bound_ = to_int8_t(ub);
       return true;
     } else {
       return false;
@@ -178,9 +179,43 @@ class AbsLevel {
 public:
   AbsLevel() : rank_cutoffs_{ACE, ACE, ACE, ACE} {}
 
-  AbsLevel(std::array<Rank, 4> rank_cutoffs) : rank_cutoffs_(rank_cutoffs) {}
+  AbsLevel(Rank west, Rank north, Rank east, Rank south)
+      : rank_cutoffs_{west, north, east, south} {}
+
+  AbsLevel(const Hands &hands, const Trick &trick) : AbsLevel() {
+    assert(trick.finished());
+    if (trick.won_by_rank()) {
+      Cards h = hands.hand(trick.winning_seat());
+      Card  c = trick.winning_card();
+      Rank r = h.with(c).lowest_equivalent(c, all_removed(hands, trick)).rank();
+      assert(r >= RANK_3);
+      rank_cutoffs_[c.suit()] = (Rank)(r - 1);
+    }
+  }
 
   Rank rank_cutoff(Suit suit) const { return rank_cutoffs_[suit]; }
+
+  void intersect(AbsLevel other) {
+    for (int i = 0; i < 4; i++) {
+      if (other.rank_cutoffs_[i] < rank_cutoffs_[i]) {
+        rank_cutoffs_[i] = other.rank_cutoffs_[i];
+      }
+    }
+  }
+
+  // void normalize(Game &game) {
+  //   for (Suit suit = FIRST_SUIT; suit <= LAST_SUIT; suit++) {
+  //     rank_cutoffs_[suit] =
+  //         game.normalize_rank_cutoff(rank_cutoffs_[suit], suit);
+  //   }
+  // }
+
+  // void denormalize(Game &game) {
+  //   for (Suit suit = FIRST_SUIT; suit <= LAST_SUIT; suit++) {
+  //     rank_cutoffs_[suit] =
+  //         game.denormalize_rank_cutoff(rank_cutoffs_[suit], suit);
+  //   }
+  // }
 
   template <typename H> friend H AbslHashValue(H h, const AbsLevel &l) {
     return H::combine(std::move(h), l.rank_cutoffs_);
@@ -189,13 +224,23 @@ public:
   bool operator==(const AbsLevel &other) const = default;
 
 private:
+  static Cards all_removed(const Hands &hands, const Trick &trick) {
+    Cards c = hands.all_cards();
+    for (int i = 0; i < 4; i++) {
+      if (trick.has_card(i)) {
+        c.add(trick.card(i));
+      }
+    }
+    return c.complement();
+  }
+
   std::array<Rank, 4> rank_cutoffs_;
 };
 
 class AbsSuitState {
 public:
   AbsSuitState(Rank rank_cutoff, Suit suit, Game &game)
-      : AbsSuitState(rank_cutoff, suit, game.normalized_hands()) {}
+      : AbsSuitState(rank_cutoff, suit, game.hands()) {}
 
   AbsSuitState(Rank rank_cutoff, Suit suit, const Hands &hands) {
     bits_ = (uint64_t)rank_cutoff << 60;
@@ -295,6 +340,15 @@ public:
 
   bool operator==(const AbsState &s) const = default;
 
+  AbsLevel level() const {
+    return AbsLevel(
+        suit_states_[0].rank_cutoff(),
+        suit_states_[1].rank_cutoff(),
+        suit_states_[2].rank_cutoff(),
+        suit_states_[3].rank_cutoff()
+    );
+  }
+
 private:
   static AbsSuitState make_suit_state(AbsLevel level, Game &game, int index) {
     return AbsSuitState(level.rank_cutoff((Suit)index), (Suit)index, game);
@@ -305,96 +359,45 @@ private:
 
 class TpnTable2 {
 public:
+  struct Value {
+    AbsLevel            level;
+    int8_t              lower_bound;
+    int8_t              upper_bound;
+    std::optional<Card> pv_play;
+  };
+
   TpnTable2(Game &game) : game_(game) {}
 
-  TpnTableValue lookup_value(int alpha, int beta, int max_depth) {
-    int normed_alpha = alpha - game_.tricks_taken_by_ns();
-    int normed_beta  = beta - game_.tricks_taken_by_ns();
-    return denorm_value(
-        lookup_value_normed(normed_alpha, normed_beta, max_depth)
-    );
-  }
-
-  void upsert_value(const AbsState &state, const TpnTableValue &value) {
-    upsert_value_normed(state, norm_value(value));
-  }
+  bool lookup_value(int alpha, int beta, int max_depth, Value &value);
+  void upsert_value(int max_depth, const Value &value);
 
 private:
-  TpnTableValue lookup_value_normed(int alpha, int beta, int max_depth) const {
-    int        best_lb = 0;
-    int        best_ub = game_.tricks_left();
-    SeatShapes key(game_);
-    auto       range = multimap_.equal_range(key);
-    for (auto i = range.first; i != range.second; ++i) {
-      auto &[s, v] = i->second;
-      if (s.matches(game_) && v.max_depth() >= max_depth) {
-        if (v.has_tight_bounds()) {
-          return v;
-        }
-        best_lb = std::max(best_lb, v.lower_bound());
-        best_ub = std::min(best_ub, v.upper_bound());
-        if (best_lb >= beta || best_ub <= alpha) {
-          break;
-        }
-      }
-    }
-    return TpnTableValue(best_lb, best_ub, max_depth, std::nullopt);
-  }
+  bool
+  lookup_value_normed(int alpha, int beta, int max_depth, Value &value) const;
+  void upsert_value_normed(int max_depth, const Value &value);
 
-  void upsert_value_normed(const AbsState &state, const TpnTableValue &value) {
-    SeatShapes key(game_);
-    auto       range = multimap_.equal_range(key);
-    for (auto i = range.first; i != range.second; ++i) {
-      auto &[s, nv] = i->second;
-      if (s == state) {
-        i->second.value = value;
-        return;
-      }
-    }
-    multimap_.emplace(
-        std::piecewise_construct,
-        std::forward_as_tuple(key),
-        std::forward_as_tuple(state, value)
-    );
-  }
-
-  TpnTableValue norm_value(const TpnTableValue &value) {
-    int  lb      = value.lower_bound() - game_.tricks_taken_by_ns();
-    int  ub      = value.upper_bound() - game_.tricks_taken_by_ns();
-    auto pv_play = norm_card(value.pv_play());
-    return TpnTableValue(lb, ub, value.max_depth(), pv_play);
-  }
-
-  TpnTableValue denorm_value([[maybe_unused]] const TpnTableValue &value) {
-    int  lb      = value.lower_bound() + game_.tricks_taken_by_ns();
-    int  ub      = value.upper_bound() + game_.tricks_taken_by_ns();
-    auto pv_play = denorm_card(value.pv_play());
-    return TpnTableValue(lb, ub, value.max_depth(), pv_play);
-  }
-
-  std::optional<Card> norm_card(const std::optional<Card> &card) const {
-    if (card.has_value()) {
-      return game_.normalize_card(*card);
-    } else {
-      return std::nullopt;
-    }
-  }
-
-  std::optional<Card> denorm_card(const std::optional<Card> &card) const {
-    if (card.has_value()) {
-      return game_.denormalize_card(*card);
-    } else {
-      return std::nullopt;
-    }
-  }
+  void norm_value(Value &value);
+  void denorm_value(Value &value);
 
   struct Entry {
-    AbsState      state;
-    TpnTableValue value;
+    AbsState            state;
+    int8_t              lower_bound;
+    int8_t              upper_bound;
+    int8_t              max_depth;
+    std::optional<Card> pv_play;
 
-    Entry(const AbsState &state_, const TpnTableValue &value_)
-        : state(state_),
-          value(value_) {}
+    Entry(
+        const AbsState     &state,
+        int                 lower_bound,
+        int                 upper_bound,
+        int                 max_depth,
+        std::optional<Card> pv_play
+    )
+        : state(state),
+          lower_bound(to_int8_t(lower_bound)),
+          upper_bound(to_int8_t(upper_bound)),
+          max_depth(to_int8_t(max_depth)),
+          pv_play(pv_play) {}
   };
 
   using Multimap =

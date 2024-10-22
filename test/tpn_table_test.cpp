@@ -41,15 +41,44 @@ TEST(AbsSuitState, random_deal) {
   }
 }
 
+TEST(AbsState, level) {
+  Random   random = Random(123);
+  Game     game   = random.random_game(10);
+  AbsLevel level  = random.random_abs_level();
+  AbsState state  = {level, game};
+  EXPECT_EQ(level, state.level());
+}
+
 TEST(AbsState, matches) {
   Random   random = Random(123);
   Game     game1  = random.random_game(10);
   Game     game2  = random.random_game(10);
-  AbsLevel level  = AbsLevel({RANK_8, RANK_9, TEN, JACK});
+  AbsLevel level  = random.random_abs_level();
   AbsState state1(level, game1);
   AbsState state2(level, game2);
   EXPECT_TRUE(state1.matches(game1));
   EXPECT_TRUE(state2.matches(game2));
   EXPECT_FALSE(state1.matches(game2));
   EXPECT_FALSE(state2.matches(game1));
+}
+
+TEST(AbsLevel, trick_won_by_rank) {
+  Hands    hands = {};
+  Trick    trick = {NO_TRUMP, WEST, {"2C", "3C", "4C", "5C"}};
+  AbsLevel level = {hands, trick};
+  EXPECT_EQ(level, AbsLevel(RANK_4, ACE, ACE, ACE));
+}
+
+TEST(AbsLevel, trick_not_won_by_rank) {
+  Hands    hands = {};
+  Trick    trick = {HEARTS, WEST, {"2C", "2H", "4C", "5C"}};
+  AbsLevel level = {hands, trick};
+  EXPECT_EQ(level, AbsLevel(ACE, ACE, ACE, ACE));
+}
+
+TEST(AbsLevel, trick_lowest_equivent) {
+  Hands    hands = {{}, {}, {}, {"6C", "5C"}};
+  Trick    trick = {NO_TRUMP, WEST, {"2C", "3C", "4C", "7C"}};
+  AbsLevel level = {hands, trick};
+  EXPECT_EQ(level, AbsLevel(RANK_4, ACE, ACE, ACE));
 }

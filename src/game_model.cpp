@@ -175,7 +175,7 @@ void Game::unplay() {
     if (t.started()) {
       next_seat_ = t.next_seat();
     } else if (tricks_taken_ > 0) {
-      next_seat_ = tricks_[tricks_taken_ - 1].winning_seat();
+      next_seat_ = last_finished_trick().winning_seat();
     } else {
       next_seat_ = lead_seat_;
     }
@@ -184,7 +184,7 @@ void Game::unplay() {
     }
   } else {
     if (tricks_taken_ > 0) {
-      Trick &t = tricks_[tricks_taken_ - 1];
+      Trick &t = last_finished_trick();
       assert(t.finished());
       for (int i = 0; i < 4; i++) {
         if (t.has_card(i)) {

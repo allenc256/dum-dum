@@ -2,6 +2,7 @@
 
 #include "card_model.h"
 #include "game_model.h"
+#include "tpn_table.h"
 
 #include <random>
 
@@ -45,6 +46,10 @@ public:
     Suit  trump_suit = random_trump_suit();
     Seat  lead_seat  = random_seat();
     return Game(trump_suit, lead_seat, hands);
+  }
+
+  AbsLevel random_abs_level() {
+    return {random_rank(), random_rank(), random_rank(), random_rank()};
   }
 
 private:

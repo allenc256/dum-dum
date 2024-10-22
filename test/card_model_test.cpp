@@ -188,18 +188,33 @@ TEST(Cards, normalize) {
 TEST(Cards, prune_equivalent) {
   EXPECT_EQ(
       Cards("♠ - ♥ - ♦ - ♣ AK").prune_equivalent(Cards()),
-      Cards("♠ - ♥ - ♦ - ♣ A")
+      Cards("♠ - ♥ - ♦ - ♣ K")
   );
   EXPECT_EQ(
       Cards("♠ AKT98543 ♥ AQT953 ♦ - ♣ 432").prune_equivalent(Cards()),
-      Cards("♠ AT5      ♥ AQT53 ♦ - ♣ 4")
+      Cards("♠ K83      ♥ AQ953 ♦ - ♣ 2")
   );
   EXPECT_EQ(
       Cards("♠ - ♥ - ♦ - ♣ 542").prune_equivalent(Cards({"3♣", "6♣"})),
-      Cards("♠ - ♥ - ♦ - ♣ 5")
+      Cards("♠ - ♥ - ♦ - ♣ 2")
   );
   Cards c = Cards("♠ KJ983 ♥ 5 ♦ - ♣ 732");
-  EXPECT_EQ(c.prune_equivalent(c.complement()), Cards("♠ K ♥ 5 ♦ - ♣ 7"));
+  EXPECT_EQ(c.prune_equivalent(c.complement()), Cards("♠ 3 ♥ 5 ♦ - ♣ 2"));
+}
+
+TEST(Cards, lowest_equivalent_none_removed) {
+  Cards c("♠ AK32 ♥ T8 ♦ - ♣ -");
+  EXPECT_EQ(c.lowest_equivalent(Card("A♠"), Cards()), Card("K♠"));
+  EXPECT_EQ(c.lowest_equivalent(Card("3♠"), Cards()), Card("2♠"));
+  EXPECT_EQ(c.lowest_equivalent(Card("T♥"), Cards()), Card("T♥"));
+  EXPECT_EQ(c.lowest_equivalent(Card("8♥"), Cards()), Card("8♥"));
+}
+
+TEST(Cards, lowest_equivalent_removed) {
+  Cards c("♠ AK32 ♥ T8 ♦ - ♣ -");
+  EXPECT_EQ(c.lowest_equivalent(Card("T♥"), Cards({"9♥"})), Card("8♥"));
+  EXPECT_EQ(c.lowest_equivalent(Card("T♥"), c.complement()), Card("8♥"));
+  EXPECT_EQ(c.lowest_equivalent(Card("K♠"), c.complement()), Card("2♠"));
 }
 
 TEST(SuitNormalizer, empty) {
@@ -287,3 +302,30 @@ TEST(SuitNormalizer, add_remove_random) {
     }
   }
 }
+
+// TEST(CardNormalizer, normalize_rank_cutoff) {
+//   for (int seed = 0; seed < 100; seed++) {
+//     Cards          cards = Random(seed).random_deal(7).all_cards();
+//     CardNormalizer norm;
+//     norm.remove_all(cards.complement());
+//     for (Suit suit = FIRST_SUIT; suit <= LAST_SUIT; suit++) {
+//       for (Rank rank = RANK_2; rank <= ACE; rank++) {
+//         Rank  normed_cutoff = norm.normalize_rank_cutoff(rank, suit);
+//         Card  card(rank, suit);
+//         Cards higher = cards.intersect(Cards::higher_ranking(card));
+//         Cards lower  = cards.intersect(suit).subtract(higher);
+//         if (lower.empty()) {
+//           EXPECT_EQ(normed_cutoff, RANK_2);
+//         } else {
+//           EXPECT_EQ(
+//               normed_cutoff,
+//               norm.normalize(lower.iter_highest().card()).rank()
+//           );
+//         }
+//         if (cards.contains(card)) {
+//           EXPECT_EQ(norm.denormalize_rank_cutoff(normed_cutoff, suit), rank);
+//         }
+//       }
+//     }
+//   }
+// }
