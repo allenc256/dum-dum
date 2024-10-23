@@ -64,9 +64,9 @@ TEST(AbsState, matches) {
 
 TEST(AbsLevel, trick_won_by_rank) {
   Hands    hands = {};
-  Trick    trick = {NO_TRUMP, WEST, {"2C", "3C", "4C", "5C"}};
+  Trick    trick = {NO_TRUMP, WEST, {"4C", "5C", "6C", "8C"}};
   AbsLevel level = {hands, trick};
-  EXPECT_EQ(level, AbsLevel(RANK_4, ACE, ACE, ACE));
+  EXPECT_EQ(level, AbsLevel(RANK_7, ACE, ACE, ACE));
 }
 
 TEST(AbsLevel, trick_not_won_by_rank) {
@@ -77,8 +77,8 @@ TEST(AbsLevel, trick_not_won_by_rank) {
 }
 
 TEST(AbsLevel, trick_lowest_equivent) {
-  Hands    hands = {{}, {}, {}, {"6C", "5C"}};
-  Trick    trick = {NO_TRUMP, WEST, {"2C", "3C", "4C", "7C"}};
+  Hands    hands = {{}, {}, {"7C"}, {"9C"}};
+  Trick    trick = {NO_TRUMP, WEST, {"4C", "2H", "5C", "TC"}};
   AbsLevel level = {hands, trick};
-  EXPECT_EQ(level, AbsLevel(RANK_4, ACE, ACE, ACE));
+  EXPECT_EQ(level, AbsLevel(RANK_8, ACE, ACE, ACE));
 }

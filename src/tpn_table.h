@@ -182,20 +182,15 @@ public:
   AbsLevel(Rank west, Rank north, Rank east, Rank south)
       : rank_cutoffs_{west, north, east, south} {}
 
-  AbsLevel(const Hands &hands, const Trick &trick) : AbsLevel() {
-    assert(trick.finished());
-    if (trick.won_by_rank()) {
-      Cards h = hands.hand(trick.winning_seat());
-      Card  c = trick.winning_card();
-      Rank r = h.with(c).lowest_equivalent(c, all_removed(hands, trick)).rank();
-      assert(r >= RANK_3);
-      rank_cutoffs_[c.suit()] = (Rank)(r - 1);
-    }
-  }
+  AbsLevel(const Hands &hands, const Trick &trick);
 
   Rank rank_cutoff(Suit suit) const { return rank_cutoffs_[suit]; }
 
-  void intersect(AbsLevel other) {
+  bool is_high_card(Card card) const {
+    return card.rank() > rank_cutoff(card.suit());
+  }
+
+  void intersect(const AbsLevel &other) {
     for (int i = 0; i < 4; i++) {
       if (other.rank_cutoffs_[i] < rank_cutoffs_[i]) {
         rank_cutoffs_[i] = other.rank_cutoffs_[i];
@@ -224,18 +219,10 @@ public:
   bool operator==(const AbsLevel &other) const = default;
 
 private:
-  static Cards all_removed(const Hands &hands, const Trick &trick) {
-    Cards c = hands.all_cards();
-    for (int i = 0; i < 4; i++) {
-      if (trick.has_card(i)) {
-        c.add(trick.card(i));
-      }
-    }
-    return c.complement();
-  }
-
   std::array<Rank, 4> rank_cutoffs_;
 };
+
+std::ostream &operator<<(std::ostream &os, const AbsLevel &level);
 
 class AbsSuitState {
 public:
@@ -327,9 +314,15 @@ public:
             make_suit_state(level, game, 1),
             make_suit_state(level, game, 2),
             make_suit_state(level, game, 3),
-        } {}
+        }, lead_seat_(game.next_seat()) {
+    assert(game.start_of_trick());
+  }
 
   bool matches(Game &game) const {
+    assert(game.start_of_trick());
+    if (game.next_seat() != lead_seat_) {
+      return false;
+    }
     for (Suit suit = FIRST_SUIT; suit <= LAST_SUIT; suit++) {
       if (!suit_states_[suit].matches(game, suit)) {
         return false;
@@ -349,13 +342,44 @@ public:
     );
   }
 
+  friend std::ostream &operator<<(std::ostream &os, const AbsState &s);
+
 private:
   static AbsSuitState make_suit_state(AbsLevel level, Game &game, int index) {
     return AbsSuitState(level.rank_cutoff((Suit)index), (Suit)index, game);
   }
 
   AbsSuitState suit_states_[4];
+  Seat         lead_seat_;
 };
+
+// class TpnPlay {
+// public:
+//   enum Type : int8_t { UNKNOWN, HIGH_CARD, LOW_CARD };
+
+//   TpnPlay() : type_(UNKNOWN) {}
+
+//   TpnPlay(const AbsLevel &level, Card card) {
+//     Rank rank_cutoff = level.rank_cutoff(card.suit());
+//     if (card.rank() <= rank_cutoff) {
+//       type_ = LOW_CARD;
+//     } else {
+//       type_      = HIGH_CARD;
+//       high_card_ = card;
+//     }
+//   }
+
+//   Type type() const { return type_; }
+
+//   Card high_card() const {
+//     assert(type_ == HIGH_CARD);
+//     return high_card_;
+//   }
+
+// private:
+//   Type type_;
+//   Card high_card_;
+// };
 
 class TpnTable2 {
 public:
@@ -368,10 +392,40 @@ public:
 
   TpnTable2(Game &game) : game_(game) {}
 
-  bool lookup_value(int alpha, int beta, int max_depth, Value &value);
-  void upsert_value(int max_depth, const Value &value);
+  bool   lookup_value(int alpha, int beta, int max_depth, Value &value);
+  void   upsert_value(int max_depth, const Value &value);
+  size_t size() const { return multimap_.size(); }
 
 private:
+  enum PlayType { UNKNOWN, LOW_CARD, HIGH_CARD };
+
+  struct Entry {
+    AbsState state;
+    int8_t   lower_bound;
+    int8_t   upper_bound;
+    int8_t   max_depth;
+    PlayType pv_play_type;
+    Card     pv_play_card;
+
+    Entry(
+        const AbsState &state,
+        int             lower_bound,
+        int             upper_bound,
+        int             max_depth,
+        PlayType        pv_play_type,
+        Card            pv_play_card
+    )
+        : state(state),
+          lower_bound(to_int8_t(lower_bound)),
+          upper_bound(to_int8_t(upper_bound)),
+          max_depth(to_int8_t(max_depth)),
+          pv_play_type(pv_play_type),
+          pv_play_card(pv_play_card) {}
+  };
+
+  using Multimap =
+      std::unordered_multimap<SeatShapes, Entry, absl::Hash<SeatShapes>>;
+
   bool
   lookup_value_normed(int alpha, int beta, int max_depth, Value &value) const;
   void upsert_value_normed(int max_depth, const Value &value);
@@ -379,29 +433,7 @@ private:
   void norm_value(Value &value);
   void denorm_value(Value &value);
 
-  struct Entry {
-    AbsState            state;
-    int8_t              lower_bound;
-    int8_t              upper_bound;
-    int8_t              max_depth;
-    std::optional<Card> pv_play;
-
-    Entry(
-        const AbsState     &state,
-        int                 lower_bound,
-        int                 upper_bound,
-        int                 max_depth,
-        std::optional<Card> pv_play
-    )
-        : state(state),
-          lower_bound(to_int8_t(lower_bound)),
-          upper_bound(to_int8_t(upper_bound)),
-          max_depth(to_int8_t(max_depth)),
-          pv_play(pv_play) {}
-  };
-
-  using Multimap =
-      std::unordered_multimap<SeatShapes, Entry, absl::Hash<SeatShapes>>;
+  Card choose_pv_play(const Entry &entry) const;
 
   Game    &game_;
   Multimap multimap_;

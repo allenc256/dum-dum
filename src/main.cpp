@@ -33,8 +33,8 @@ void benchmark(int num_games, int cards_per_hand) {
         "%20d,%20d,%20lld,%20lld,%20lld\n",
         i,
         r.tricks_taken_by_ns,
-        r.states_explored,
-        r.states_memoized,
+        s.states_explored(),
+        s.states_memoized(),
         elapsed_ms
     );
   }
@@ -53,8 +53,8 @@ void solve_seed(int seed, int cards_per_hand) {
 
   std::cout << g << std::endl;
   std::cout << "best_tricks_by_ns:  " << r.tricks_taken_by_ns << std::endl
-            << "states_explored:    " << r.states_explored << std::endl
-            << "states_memoized:    " << r.states_memoized << std::endl
+            << "states_explored:    " << s.states_explored() << std::endl
+            << "states_memoized:    " << s.states_memoized() << std::endl
             << "elapsed_ms:         " << elapsed_ms << std::endl;
 
   while (!s.game().finished()) {

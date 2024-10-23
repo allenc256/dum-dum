@@ -123,6 +123,16 @@ public:
     return card_count_ > 0 ? winning_cards_[card_count_ - 1] : Cards::all();
   }
 
+  Cards all_cards() const {
+    Cards c;
+    for (int i = 0; i < card_count_; i++) {
+      if (cards_[i].has_value()) {
+        c.add(*cards_[i]);
+      }
+    }
+    return c;
+  }
+
   void play_start(Suit trump_suit, Seat lead_seat, Card c) {
     assert(card_count_ == 0);
     trump_suit_       = trump_suit;

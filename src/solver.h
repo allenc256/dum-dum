@@ -11,15 +11,17 @@
 class Solver {
 public:
   struct Result {
-    int     tricks_taken_by_ns;
-    int     tricks_taken_by_ew;
-    Card    best_play;
-    int64_t states_explored;
-    int64_t states_memoized;
+    int      tricks_taken_by_ns;
+    int      tricks_taken_by_ew;
+    Card     best_play;
+    AbsLevel level;
   };
 
   Solver(Game g);
   ~Solver();
+
+  int64_t states_explored() const { return states_explored_; }
+  int64_t states_memoized() const { return tpn_table_.size(); }
 
   void enable_all_optimizations(bool enabled) {
     ab_pruning_enabled_    = enabled;
@@ -45,18 +47,23 @@ public:
   Result solve(int alpha, int beta, int max_depth);
 
 private:
-  TpnTableValue compute_initial_value(int max_depth);
+  struct Value {
+    int                 score;
+    AbsLevel            level;
+    std::optional<Card> best_play;
+  };
 
-  int solve_internal(int alpha, int beta, int max_depth);
+  void solve_internal(int alpha, int beta, int max_depth, Value &value);
 
   struct SearchState {
-    bool  maximizing;
-    int   alpha;
-    int   beta;
-    int   best_tricks_by_ns;
-    int   max_depth;
-    Cards already_searched;
-    Card  best_play;
+    bool     maximizing;
+    int      alpha;
+    int      beta;
+    int      score;
+    AbsLevel level;
+    int      max_depth;
+    Cards    already_searched;
+    Card     best_play;
   };
 
   enum Order { LOW_TO_HIGH, HIGH_TO_LOW };
@@ -65,18 +72,17 @@ private:
   bool search_specific_cards(SearchState &s, Cards c, Order o);
   bool search_specific_card(SearchState &s, Card c);
 
-  void trace(const char *tag, int alpha, int beta, int tricks_taken_by_ns);
+  void
+  trace(const char *tag, int alpha, int beta, int score, const AbsLevel &level);
 
-  Game                game_;
-  int                 search_ply_;
-  std::optional<Card> best_play_;
-  int64_t             states_explored_;
-  TpnTable            tpn_table_;
-  MiniSolver          mini_solver_;
-  bool                ab_pruning_enabled_;
-  bool                tpn_table_enabled_;
-  bool                move_ordering_enabled_;
-  bool                mini_solver_enabled_;
-  std::ostream       *trace_ostream_;
-  int64_t             trace_lineno_;
+  Game          game_;
+  int           search_ply_;
+  int64_t       states_explored_;
+  TpnTable2     tpn_table_;
+  bool          ab_pruning_enabled_;
+  bool          tpn_table_enabled_;
+  bool          move_ordering_enabled_;
+  bool          mini_solver_enabled_;
+  std::ostream *trace_ostream_;
+  int64_t       trace_lineno_;
 };

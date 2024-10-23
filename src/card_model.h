@@ -213,6 +213,8 @@ public:
     return k < 64 ? Cards::Iter(51 - k) : Cards::Iter();
   }
 
+  Iter iter_lower(Card card) const { return iter_lower(to_card_index(card)); }
+
   Iter iter_lower(Iter i) const {
     assert(i.valid());
     if (i.card_index_ <= 0) {
@@ -235,6 +237,8 @@ public:
     int k = std::countr_zero(bits_ >> (i.card_index_ + 1));
     return k < 64 ? Cards::Iter(i.card_index_ + k + 1) : Cards::Iter();
   }
+
+  std::string to_string() const;
 
   static Cards all() { return Cards(ALL_MASK); }
   static Cards all(Suit s) { return Cards(SUIT_MASK << s); }
