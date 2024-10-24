@@ -336,21 +336,6 @@ public:
 
   Cards normalize(Cards cards) const { return cards.normalize(removed_); }
 
-  // Rank normalize_rank_cutoff(Rank rank, Suit suit) const {
-  //   Cards low_cards_in_suit =
-  //       removed_.complement().intersect(suit).low_cards(rank);
-  //   if (low_cards_in_suit.empty()) {
-  //     return RANK_2;
-  //   } else {
-  //     Card cutoff_card = low_cards_in_suit.iter_highest().card();
-  //     return normalize(cutoff_card).rank();
-  //   }
-  // }
-
-  // Rank denormalize_rank_cutoff(Rank rank, Suit suit) const {
-  //   return denormalize(Card(rank, suit)).rank();
-  // }
-
   Cards prune_equivalent(Cards cards) const {
     return cards.prune_equivalent(removed_);
   }

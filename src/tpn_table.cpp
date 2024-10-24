@@ -1,14 +1,5 @@
 #include "tpn_table.h"
 
-// static Rank next_lower_rank_in_suit(Cards cards, Rank rank, Suit suit) {
-//   auto it = cards.intersect(suit).iter_lower(Card(rank, suit));
-//   if (it.valid()) {
-//     return it.card().rank();
-//   } else {
-//     return RANK_2;
-//   }
-// }
-
 AbsLevel::AbsLevel(const Hands &hands, const Trick &trick) : AbsLevel() {
   assert(trick.finished());
 
@@ -24,16 +15,35 @@ AbsLevel::AbsLevel(const Hands &hands, const Trick &trick) : AbsLevel() {
       winning_hand.lowest_equivalent(winning_card, removed_cards).rank();
   Rank rank_cutoff = (Rank)(winning_rank - 1);
 
-  // Cards all_cards    = hands.all_cards().union_with(trick.all_cards());
-  // Cards all_removed  = all_cards.complement();
-  // Card  winning_card = trick.winning_card();
-  // Cards winning_hand = hands.hand(trick.winning_seat()).with(winning_card);
-  // Rank  winning_rank =
-  //     winning_hand.lowest_equivalent(winning_card, all_removed).rank();
-  // Rank rank_cutoff =
-  //     next_lower_rank_in_suit(all_cards, winning_rank, winning_card.suit());
-
   rank_cutoffs_[winning_card.suit()] = rank_cutoff;
+}
+
+static Rank norm_rank_cutoff(const Game &game, Rank rank_cutoff, Suit suit) {
+  if (rank_cutoff == ACE) {
+    return rank_cutoff;
+  }
+  Card c = Card((Rank)(rank_cutoff + 1), suit);
+  return (Rank)(game.normalize_card(c).rank() - 1);
+}
+
+static Rank denorm_rank_cutoff(const Game &game, Rank rank_cutoff, Suit suit) {
+  if (rank_cutoff == ACE) {
+    return rank_cutoff;
+  }
+  Card c = Card((Rank)(rank_cutoff + 1), suit);
+  return (Rank)(game.denormalize_card(c).rank() - 1);
+}
+
+void AbsLevel::normalize(Game &game) {
+  for (Suit suit = FIRST_SUIT; suit <= LAST_SUIT; suit++) {
+    rank_cutoffs_[suit] = norm_rank_cutoff(game, rank_cutoffs_[suit], suit);
+  }
+}
+
+void AbsLevel::denormalize(Game &game) {
+  for (Suit suit = FIRST_SUIT; suit <= LAST_SUIT; suit++) {
+    rank_cutoffs_[suit] = denorm_rank_cutoff(game, rank_cutoffs_[suit], suit);
+  }
 }
 
 std::ostream &operator<<(std::ostream &os, const AbsLevel &level) {
@@ -90,7 +100,7 @@ void TpnTable2::upsert_value(int max_depth, const Value &value) {
 
 bool TpnTable2::lookup_value_normed(
     int alpha, int beta, int max_depth, Value &value
-) const {
+) {
   value.level       = {};
   value.lower_bound = 0;
   value.upper_bound = to_int8_t(game_.tricks_left());
@@ -105,7 +115,7 @@ bool TpnTable2::lookup_value_normed(
         value.level       = entry.state.level();
         value.lower_bound = entry.lower_bound;
         value.upper_bound = entry.upper_bound;
-        value.pv_play     = choose_pv_play(entry);
+        value.pv_play     = entry.pv_play;
         return true;
       }
 
@@ -130,50 +140,17 @@ bool TpnTable2::lookup_value_normed(
   return false;
 }
 
-Card TpnTable2::choose_pv_play(const Entry &entry) const {
-  if (entry.pv_play_type == HIGH_CARD) {
-    return entry.pv_play_card;
-  }
-
-  assert(entry.pv_play_type == LOW_CARD);
-
-  Suit  suit        = entry.pv_play_card.suit();
-  Rank  rank_cutoff = entry.state.level().rank_cutoff(suit);
-  Cards low_cards =
-      game_.hand(game_.next_seat())
-          .intersect(suit)
-          .subtract(Cards::higher_ranking(Card(rank_cutoff, suit)));
-
-  assert(!low_cards.empty());
-  return low_cards.iter_lowest().card();
-}
-
 void TpnTable2::upsert_value_normed(int max_depth, const Value &value) {
   AbsState   state = {value.level, game_};
   SeatShapes key   = {game_};
   auto       range = multimap_.equal_range(key);
-  PlayType   pv_play_type;
-  Card       pv_play_card;
-
-  if (value.pv_play.has_value()) {
-    pv_play_type =
-        value.level.is_high_card(*value.pv_play) ? HIGH_CARD : LOW_CARD;
-    pv_play_card = *value.pv_play;
-  } else {
-    pv_play_type = UNKNOWN;
-  }
-
-  // std::cout << "put: " << state << " -> " << (int)value.lower_bound << " "
-  //           << (int)value.upper_bound << std::endl;
 
   for (auto i = range.first; i != range.second; ++i) {
     Entry &entry = i->second;
     if (state == entry.state) {
-      entry.lower_bound  = value.lower_bound;
-      entry.upper_bound  = value.upper_bound;
-      entry.pv_play_type = pv_play_type;
-      entry.pv_play_card = pv_play_card;
-      entry.max_depth    = to_int8_t(max_depth);
+      entry.lower_bound = value.lower_bound;
+      entry.upper_bound = value.upper_bound;
+      entry.pv_play     = value.pv_play;
       return;
     }
   }
@@ -182,30 +159,37 @@ void TpnTable2::upsert_value_normed(int max_depth, const Value &value) {
       std::piecewise_construct,
       std::forward_as_tuple(key),
       std::forward_as_tuple(
-          state,
-          value.lower_bound,
-          value.upper_bound,
-          max_depth,
-          pv_play_type,
-          pv_play_card
+          state, value.lower_bound, value.upper_bound, max_depth, value.pv_play
       )
   );
 }
 
 void TpnTable2::norm_value(Value &value) {
-  // value.level.normalize(game_);
   value.lower_bound -= game_.tricks_taken_by_ns();
   value.upper_bound -= game_.tricks_taken_by_ns();
-  // if (value.pv_play.has_value()) {
-  //   value.pv_play = game_.normalize_card(*value.pv_play);
-  // }
+  if (value.pv_play.has_value()) {
+    if (value.level.is_high_card(*value.pv_play)) {
+      value.pv_play = game_.normalize_card(*value.pv_play);
+    } else {
+      value.pv_play = Card(RANK_2, value.pv_play->suit());
+    }
+  }
+  value.level.normalize(game_);
 }
 
 void TpnTable2::denorm_value(Value &value) {
-  // value.level.denormalize(game_);
   value.lower_bound += game_.tricks_taken_by_ns();
   value.upper_bound += game_.tricks_taken_by_ns();
-  // if (value.pv_play.has_value()) {
-  //   value.pv_play = game_.denormalize_card(*value.pv_play);
-  // }
+  if (value.pv_play.has_value()) {
+    if (value.level.is_high_card(*value.pv_play)) {
+      value.pv_play = game_.denormalize_card(*value.pv_play);
+    } else {
+      assert(value.pv_play->rank() == RANK_2);
+      Cards valid_plays =
+          game_.hand(game_.next_seat()).intersect(value.pv_play->suit());
+      assert(!valid_plays.empty());
+      value.pv_play = valid_plays.iter_lowest().card();
+    }
+  }
+  value.level.denormalize(game_);
 }
