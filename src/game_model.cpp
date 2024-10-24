@@ -160,7 +160,6 @@ void Game::finish_play() {
     }
     tricks_taken_++;
     assert(tricks_taken_ <= 13);
-    assert(!norm_key_stack_[tricks_taken_].has_value());
     assert(!norm_hands_stack_[tricks_taken_].has_value());
   } else {
     next_seat_ = t.next_seat();
@@ -200,7 +199,6 @@ void Game::unplay() {
       if (winner == NORTH || winner == SOUTH) {
         tricks_taken_by_ns_--;
       }
-      norm_key_stack_[tricks_taken_].reset();
       norm_hands_stack_[tricks_taken_].reset();
       tricks_taken_--;
     } else {
@@ -223,15 +221,6 @@ Cards Game::valid_plays() const {
     }
   }
   return c;
-}
-
-const GameKey &Game::normalized_key() {
-  assert(start_of_trick());
-  auto &cached = norm_key_stack_[tricks_taken_];
-  if (!cached.has_value()) {
-    cached.emplace(normalized_hands(), next_seat_);
-  }
-  return *cached;
 }
 
 const Hands &Game::normalized_hands() {

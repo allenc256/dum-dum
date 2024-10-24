@@ -9,9 +9,13 @@ public:
       : game_(game),
         tpn_table_(tpn_table) {}
 
-  TpnTableValue compute_value(int max_depth);
+  void solve(int alpha, int beta, int max_depth, TpnTable::Value &value);
 
 private:
+  void solve_child(
+      int alpha, int beta, int max_depth, Card my_play, TpnTable::Value &value
+  );
+
   Card play_my_lowest(Suit suit);
   void play_opp_lowest();
   void play_partner_lowest();

@@ -24,10 +24,11 @@ TEST_P(MiniSolverTest, test_case) {
   Game                      g(p.trump_suit, p.lead_seat, hands);
   TpnTable                  tpn_table(g);
   MiniSolver                s(g, tpn_table);
-  TpnTableValue             v = s.compute_value(g.tricks_max());
-  bool maximizing             = p.lead_seat == NORTH || p.lead_seat == SOUTH;
+  TpnTable::Value           v;
+  s.solve(-1, g.tricks_max() + 1, g.tricks_max(), v);
+  bool maximizing = p.lead_seat == NORTH || p.lead_seat == SOUTH;
   int  forced_tricks =
-      maximizing ? v.lower_bound() : g.tricks_max() - v.upper_bound();
+      maximizing ? v.lower_bound : g.tricks_max() - v.upper_bound;
   EXPECT_EQ(forced_tricks, p.forced_tricks);
 }
 
@@ -93,14 +94,15 @@ INSTANTIATE_TEST_SUITE_P(
 
 TEST(MiniSolver, random_test) {
   for (int i = 0; i < 100; i++) {
-    Game          g  = Random(i).random_game(6);
-    Solver        s1 = Solver(g);
-    TpnTable      tpn_table(g);
-    MiniSolver    s2 = MiniSolver(g, tpn_table);
-    auto          r  = s1.solve();
-    TpnTableValue v  = s2.compute_value(g.tricks_max());
+    Game            g  = Random(i).random_game(6);
+    Solver          s1 = Solver(g);
+    TpnTable        tpn_table(g);
+    MiniSolver      s2 = MiniSolver(g, tpn_table);
+    auto            r  = s1.solve();
+    TpnTable::Value v;
+    s2.solve(-1, g.tricks_max() + 1, g.tricks_max(), v);
 
-    EXPECT_LE(v.lower_bound(), r.tricks_taken_by_ns);
-    EXPECT_GE(v.upper_bound(), r.tricks_taken_by_ns);
+    EXPECT_LE(v.lower_bound, r.tricks_taken_by_ns);
+    EXPECT_GE(v.upper_bound, r.tricks_taken_by_ns);
   }
 }

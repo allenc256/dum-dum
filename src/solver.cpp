@@ -7,7 +7,7 @@ Solver::Solver(Game g)
       search_ply_(0),
       states_explored_(0),
       tpn_table_(game_),
-      // mini_solver_(game_, tpn_table_),
+      mini_solver_(game_, tpn_table_),
       trace_ostream_(nullptr),
       trace_lineno_(0) {
   enable_all_optimizations(true);
@@ -48,36 +48,14 @@ void Solver::solve_internal(int alpha, int beta, int max_depth, Value &value) {
   }
 
   bool maximizing = game_.next_seat() == NORTH || game_.next_seat() == SOUTH;
-  TpnTable2::Value tpn_value;
+  TpnTable::Value tpn_value;
 
   if (game_.start_of_trick()) {
-    if (tpn_table_enabled_) {
-      if (tpn_table_.lookup_value(alpha, beta, max_depth, tpn_value)) {
-        if (tpn_value.lower_bound == tpn_value.upper_bound) {
-          value.level     = tpn_value.level;
-          value.score     = tpn_value.lower_bound;
-          value.best_play = tpn_value.pv_play;
-          TRACE("prune", alpha, beta, value.score, value.level);
-          return;
-        }
-
-        if (tpn_value.lower_bound >= beta) {
-          value.level = tpn_value.level;
-          value.score = tpn_value.lower_bound;
-          TRACE("prune", alpha, beta, value.score, value.level);
-          return;
-        }
-
-        if (tpn_value.upper_bound <= alpha) {
-          value.level = tpn_value.level;
-          value.score = tpn_value.upper_bound;
-          TRACE("prune", alpha, beta, value.score, value.level);
-          return;
-        }
-      }
+    if (solve_fast(alpha, beta, max_depth, value, tpn_value)) {
+      return;
+    } else {
+      TRACE("start", alpha, beta, -1, AbsLevel());
     }
-
-    TRACE("start", alpha, beta, -1, AbsLevel());
   }
 
   SearchState ss = {
@@ -114,13 +92,43 @@ void Solver::solve_internal(int alpha, int beta, int max_depth, Value &value) {
   }
 }
 
-// TpnTableValue Solver::compute_initial_value(int max_depth) {
-//   if (mini_solver_enabled_) {
-//     return mini_solver_.compute_value(max_depth);
-//   } else {
-//     return tpn_table_.lookup_value(max_depth).value;
-//   }
-// }
+bool Solver::solve_fast(
+    int alpha, int beta, int max_depth, Value &value, TpnTable::Value &tpn_value
+) {
+  assert(game_.start_of_trick());
+
+  if (!tpn_table_enabled_) {
+    return false;
+  } else if (mini_solver_enabled_) {
+    mini_solver_.solve(alpha, beta, max_depth, tpn_value);
+  } else {
+    tpn_table_.lookup_value(alpha, beta, max_depth, tpn_value);
+  }
+
+  if (tpn_value.lower_bound == tpn_value.upper_bound) {
+    value.level     = tpn_value.level;
+    value.score     = tpn_value.lower_bound;
+    value.best_play = tpn_value.pv_play;
+    TRACE("prune", alpha, beta, value.score, value.level);
+    return true;
+  }
+
+  if (tpn_value.lower_bound >= beta) {
+    value.level = tpn_value.level;
+    value.score = tpn_value.lower_bound;
+    TRACE("prune", alpha, beta, value.score, value.level);
+    return true;
+  }
+
+  if (tpn_value.upper_bound <= alpha) {
+    value.level = tpn_value.level;
+    value.score = tpn_value.upper_bound;
+    TRACE("prune", alpha, beta, value.score, value.level);
+    return true;
+  }
+
+  return false;
+}
 
 bool Solver::search_all_cards(SearchState &s) {
   states_explored_++;
@@ -243,22 +251,6 @@ bool Solver::search_specific_card(SearchState &s, Card c) {
   game_.unplay();
   return prune;
 }
-
-// static void sha256_hash(Game &game, char *buf, size_t buflen) {
-//   if (!game.start_of_trick()) {
-//     buf[0] = 0;
-//     return;
-//   }
-//   const GameKey &key = game.normalized_key();
-//   uint8_t        digest[32];
-//   uint8_t       *in_begin = (uint8_t *)&key;
-//   uint8_t       *in_end   = in_begin + sizeof(GameKey);
-//   picosha2::hash256(in_begin, in_end, digest, digest + 32);
-//   std::snprintf(
-//       buf, buflen, "%08x%08x", *(uint32_t *)&digest[0], *(uint32_t
-//       *)&digest[4]
-//   );
-// }
 
 void Solver::trace(
     const char *tag, int alpha, int beta, int score, const AbsLevel &level

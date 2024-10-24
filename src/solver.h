@@ -53,6 +53,14 @@ private:
     std::optional<Card> best_play;
   };
 
+  bool solve_fast(
+      int              alpha,
+      int              beta,
+      int              max_depth,
+      Value           &value,
+      TpnTable::Value &tpn_value
+  );
+
   void solve_internal(int alpha, int beta, int max_depth, Value &value);
 
   struct SearchState {
@@ -78,7 +86,8 @@ private:
   Game          game_;
   int           search_ply_;
   int64_t       states_explored_;
-  TpnTable2     tpn_table_;
+  TpnTable      tpn_table_;
+  MiniSolver    mini_solver_;
   bool          ab_pruning_enabled_;
   bool          tpn_table_enabled_;
   bool          move_ordering_enabled_;

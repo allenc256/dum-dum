@@ -84,7 +84,7 @@ std::ostream &operator<<(std::ostream &os, const AbsState &s) {
   return os;
 }
 
-bool TpnTable2::lookup_value(int alpha, int beta, int max_depth, Value &value) {
+bool TpnTable::lookup_value(int alpha, int beta, int max_depth, Value &value) {
   int  normed_alpha = alpha - game_.tricks_taken_by_ns();
   int  normed_beta  = beta - game_.tricks_taken_by_ns();
   bool found = lookup_value_normed(normed_alpha, normed_beta, max_depth, value);
@@ -92,13 +92,13 @@ bool TpnTable2::lookup_value(int alpha, int beta, int max_depth, Value &value) {
   return found;
 }
 
-void TpnTable2::upsert_value(int max_depth, const Value &value) {
+void TpnTable::upsert_value(int max_depth, const Value &value) {
   Value normed = value;
   norm_value(normed);
   upsert_value_normed(max_depth, normed);
 }
 
-bool TpnTable2::lookup_value_normed(
+bool TpnTable::lookup_value_normed(
     int alpha, int beta, int max_depth, Value &value
 ) {
   value.level       = {};
@@ -140,7 +140,7 @@ bool TpnTable2::lookup_value_normed(
   return false;
 }
 
-void TpnTable2::upsert_value_normed(int max_depth, const Value &value) {
+void TpnTable::upsert_value_normed(int max_depth, const Value &value) {
   AbsState   state = {value.level, game_};
   SeatShapes key   = {game_};
   auto       range = multimap_.equal_range(key);
@@ -164,7 +164,7 @@ void TpnTable2::upsert_value_normed(int max_depth, const Value &value) {
   );
 }
 
-void TpnTable2::norm_value(Value &value) {
+void TpnTable::norm_value(Value &value) {
   value.lower_bound -= game_.tricks_taken_by_ns();
   value.upper_bound -= game_.tricks_taken_by_ns();
   if (value.pv_play.has_value()) {
@@ -177,7 +177,7 @@ void TpnTable2::norm_value(Value &value) {
   value.level.normalize(game_);
 }
 
-void TpnTable2::denorm_value(Value &value) {
+void TpnTable::denorm_value(Value &value) {
   value.lower_bound += game_.tricks_taken_by_ns();
   value.upper_bound += game_.tricks_taken_by_ns();
   if (value.pv_play.has_value()) {

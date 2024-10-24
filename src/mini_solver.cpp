@@ -1,44 +1,29 @@
 #include "mini_solver.h"
 
-static void update_value(
-    TpnTableValue       &value,
-    const TpnTableValue &child_value,
-    const Card          &play,
-    bool                 maximizing
+void MiniSolver::solve(
+    int alpha, int beta, int max_depth, TpnTable::Value &value
 ) {
-  if (maximizing) {
-    bool updated = value.update_lower_bound(child_value.lower_bound());
-    if (updated && value.has_tight_bounds()) {
-      value.update_pv_play(play);
-    }
-  } else {
-    bool updated = value.update_upper_bound(child_value.upper_bound());
-    if (updated && value.has_tight_bounds()) {
-      value.update_pv_play(play);
-    }
-  }
-}
-
-TpnTableValue MiniSolver::compute_value(int max_depth) {
   assert(game_.start_of_trick());
 
-  if (game_.finished() || game_.tricks_taken() >= max_depth) {
-    // TODO: compute evaluation here for non-terminal
-    return TpnTableValue(
-        game_.tricks_taken_by_ns(), game_.tricks_taken_by_ns(), max_depth
-    );
+  if (game_.finished()) {
+    value.lower_bound = to_int8_t(game_.tricks_taken_by_ns());
+    value.upper_bound = to_int8_t(game_.tricks_taken_by_ns());
+    return;
+  }
+  if (game_.tricks_taken() >= max_depth) {
+    value.lower_bound = to_int8_t(game_.tricks_taken_by_ns());
+    value.upper_bound =
+        to_int8_t(game_.tricks_taken_by_ns() + game_.tricks_left());
+    return;
+  }
+  if (tpn_table_.lookup_value(alpha, beta, max_depth, value)) {
+    return;
   }
 
-  auto [found, value] = tpn_table_.lookup_value(max_depth);
-  if (found) {
-    return value;
-  }
-
-  Seat me         = game_.next_seat();
-  Seat left       = game_.next_seat(1);
-  Seat partner    = game_.next_seat(2);
-  Seat right      = game_.next_seat(3);
-  bool maximizing = me == NORTH || me == SOUTH;
+  Seat me      = game_.next_seat();
+  Seat left    = game_.next_seat(1);
+  Seat partner = game_.next_seat(2);
+  Seat right   = game_.next_seat(3);
 
   Cards left_trumps;
   Cards right_trumps;
@@ -73,7 +58,7 @@ TpnTableValue MiniSolver::compute_value(int max_depth) {
     Cards partner_poss_winners = partner_cards.intersect(poss_winners);
 
     for (auto it = my_poss_winners.iter_highest();
-         it.valid() && !value.has_tight_bounds();
+         it.valid() && value.lower_bound != value.upper_bound;
          it = my_poss_winners.iter_lower(it)) {
       Card my_play = it.card();
       game_.play(my_play);
@@ -81,7 +66,7 @@ TpnTableValue MiniSolver::compute_value(int max_depth) {
       play_partner_lowest();
       play_opp_lowest();
       assert(game_.next_seat() == me || game_.next_seat() == partner);
-      update_value(value, compute_value(max_depth), my_play, maximizing);
+      solve_child(alpha, beta, max_depth, my_play, value);
       game_.unplay();
       game_.unplay();
       game_.unplay();
@@ -89,14 +74,14 @@ TpnTableValue MiniSolver::compute_value(int max_depth) {
     }
 
     for (auto it = partner_poss_winners.iter_highest();
-         it.valid() && !value.has_tight_bounds();
+         it.valid() && value.lower_bound != value.upper_bound;
          it = partner_poss_winners.iter_lower(it)) {
       Card my_play = play_my_lowest(suit);
       play_opp_lowest();
       game_.play(it.card());
       play_opp_lowest();
       assert(game_.next_seat() == me || game_.next_seat() == partner);
-      update_value(value, compute_value(max_depth), my_play, maximizing);
+      solve_child(alpha, beta, max_depth, my_play, value);
       game_.unplay();
       game_.unplay();
       game_.unplay();
@@ -104,13 +89,13 @@ TpnTableValue MiniSolver::compute_value(int max_depth) {
     }
 
     if (partner_cards.empty() && !partner_trumps.empty() &&
-        !value.has_tight_bounds()) {
+        value.lower_bound != value.upper_bound) {
       Card my_play = play_my_lowest(suit);
       play_opp_lowest();
       play_partner_ruff();
       play_opp_lowest();
       assert(game_.next_seat() == me || game_.next_seat() == partner);
-      update_value(value, compute_value(max_depth), my_play, maximizing);
+      solve_child(alpha, beta, max_depth, my_play, value);
       game_.unplay();
       game_.unplay();
       game_.unplay();
@@ -122,9 +107,30 @@ TpnTableValue MiniSolver::compute_value(int max_depth) {
     // - finesses?
   }
 
-  tpn_table_.update_value(value);
+  tpn_table_.upsert_value(max_depth, value);
+}
 
-  return value;
+void MiniSolver::solve_child(
+    int alpha, int beta, int max_depth, Card my_play, TpnTable::Value &value
+) {
+  TpnTable::Value child_value;
+
+  solve(alpha, beta, max_depth, child_value);
+
+  bool maximizing = game_.next_seat() == NORTH || game_.next_seat() == SOUTH;
+  if (maximizing && child_value.lower_bound > value.lower_bound) {
+    value.lower_bound = child_value.lower_bound;
+    value.level       = child_value.level;
+    value.level.intersect(AbsLevel(game_.hands(), game_.last_finished_trick()));
+  } else if (!maximizing && child_value.upper_bound < value.upper_bound) {
+    value.upper_bound = child_value.upper_bound;
+    value.level       = child_value.level;
+    value.level.intersect(AbsLevel(game_.hands(), game_.last_finished_trick()));
+  }
+
+  if (value.lower_bound == value.upper_bound) {
+    value.pv_play = my_play;
+  }
 }
 
 Card MiniSolver::play_my_lowest(Suit suit) {

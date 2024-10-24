@@ -254,21 +254,6 @@ private:
   std::array<Cards, 4> hands_;
 };
 
-class GameKey {
-public:
-  GameKey(Hands hands, Seat next_seat) : hands_(hands), next_seat_(next_seat) {}
-
-  template <typename H> friend H AbslHashValue(H h, const GameKey &k) {
-    return H::combine(std::move(h), k.hands_);
-  }
-
-  bool operator==(const GameKey &other) const = default;
-
-private:
-  Hands hands_;
-  Seat  next_seat_;
-};
-
 class Game {
 public:
   Game(Suit trump_suit, Seat first_lead_seat, const Hands &hands);
@@ -317,8 +302,7 @@ public:
   bool  valid_play(Card c) const;
   Cards valid_plays() const;
 
-  const GameKey &normalized_key();
-  const Hands   &normalized_hands();
+  const Hands &normalized_hands();
 
   Cards prune_equivalent_cards(Cards cards) const {
     return card_normalizer_.prune_equivalent(cards);
@@ -332,28 +316,19 @@ public:
     return card_normalizer_.denormalize(card);
   }
 
-  // Rank normalize_rank_cutoff(Rank rank, Suit suit) const {
-  //   return card_normalizer_.normalize_rank_cutoff(rank, suit);
-  // }
-
-  // Rank denormalize_rank_cutoff(Rank rank, Suit suit) const {
-  //   return card_normalizer_.denormalize_rank_cutoff(rank, suit);
-  // }
-
 private:
   void finish_play();
 
-  Hands                  hands_;
-  Suit                   trump_suit_;
-  Seat                   lead_seat_;
-  Seat                   next_seat_;
-  Trick                  tricks_[14];
-  int                    tricks_taken_;
-  int                    tricks_max_;
-  int                    tricks_taken_by_ns_;
-  CardNormalizer         card_normalizer_;
-  std::optional<GameKey> norm_key_stack_[14];
-  std::optional<Hands>   norm_hands_stack_[14];
+  Hands                hands_;
+  Suit                 trump_suit_;
+  Seat                 lead_seat_;
+  Seat                 next_seat_;
+  Trick                tricks_[14];
+  int                  tricks_taken_;
+  int                  tricks_max_;
+  int                  tricks_taken_by_ns_;
+  CardNormalizer       card_normalizer_;
+  std::optional<Hands> norm_hands_stack_[14];
 
   friend std::ostream &operator<<(std::ostream &os, const Game &g);
 };
