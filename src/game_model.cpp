@@ -159,7 +159,7 @@ void Game::finish_play() {
     }
     tricks_taken_++;
     assert(tricks_taken_ <= 13);
-    assert(!norm_hands_stack_[tricks_taken_].has_value());
+    assert(!state_stack_[tricks_taken_].has_value());
   } else {
     next_seat_ = t.next_seat();
   }
