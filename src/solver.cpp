@@ -236,11 +236,16 @@ static void sha256_hash(Game &game, char *buf, size_t buflen) {
     buf[0] = 0;
     return;
   }
-  const GameKey &key = game.normalized_key();
-  uint8_t        digest[32];
-  uint8_t       *in_begin = (uint8_t *)&key;
-  uint8_t       *in_end   = in_begin + sizeof(GameKey);
+
+  Game::State state;
+  memset(&state, 0, sizeof(state));
+  state = game.normalized_state();
+
+  uint8_t  digest[32];
+  uint8_t *in_begin = (uint8_t *)&state;
+  uint8_t *in_end   = in_begin + sizeof(state);
   picosha2::hash256(in_begin, in_end, digest, digest + 32);
+
   std::snprintf(
       buf, buflen, "%08x%08x", *(uint32_t *)&digest[0], *(uint32_t *)&digest[4]
   );

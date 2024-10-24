@@ -76,7 +76,7 @@ public:
   };
 
   LookupResult lookup_value(int max_depth) const {
-    auto it = table_.find(game_.normalized_key());
+    auto it = table_.find(game_.normalized_state());
     if (it != table_.end() && it->second.max_depth() >= max_depth) {
       const TpnTableValue &norm_value = it->second;
       int lb = norm_value.lower_bound() + game_.tricks_taken_by_ns();
@@ -104,7 +104,7 @@ public:
     assert(lb <= game_.tricks_left());
     assert(ub <= game_.tricks_left());
     std::optional<Card> pv_play = normalize_card(value.pv_play());
-    table_[game_.normalized_key()] =
+    table_[game_.normalized_state()] =
         TpnTableValue(lb, ub, value.max_depth(), pv_play);
   }
 
@@ -127,6 +127,8 @@ private:
     }
   }
 
-  Game                                       &game_;
-  absl::flat_hash_map<GameKey, TpnTableValue> table_;
+  using HashTable = absl::flat_hash_map<Game::State, TpnTableValue>;
+
+  Game     &game_;
+  HashTable table_;
 };

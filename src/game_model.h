@@ -167,144 +167,81 @@ private:
 
 std::ostream &operator<<(std::ostream &os, const Trick &t);
 
-class GameKey {
+class Hands {
 public:
-  GameKey(Cards west, Cards north, Cards east, Cards south, Seat next_seat)
-      : west_(west),
-        north_(north),
-        east_(east),
-        south_(south),
-        next_seat_(next_seat) {}
+  Hands() {}
+  Hands(Cards w, Cards n, Cards e, Cards s) : hands_{w, n, e, s} {}
 
-  template <typename H> friend H AbslHashValue(H h, const GameKey &k) {
-    return H::combine(
-        std::move(h), k.west_, k.north_, k.east_, k.south_, k.next_seat_
-    );
-  }
+  Cards hand(Seat seat) const { return hands_[seat]; }
+  void  add_card(Seat seat, Card card) { hands_[seat].add(card); }
+  void  remove_card(Seat seat, Card card) { hands_[seat].remove(card); }
 
-  friend bool operator==(const GameKey &lhs, const GameKey &rhs) {
-    return lhs.west_ == rhs.west_ && lhs.north_ == rhs.north_ &&
-           lhs.east_ == rhs.east_ && lhs.south_ == rhs.south_ &&
-           lhs.next_seat_ == rhs.next_seat_;
-  }
-
-private:
-  Cards west_;
-  Cards north_;
-  Cards east_;
-  Cards south_;
-  Seat  next_seat_;
-};
-
-class AbsLevel {
-public:
-  AbsLevel(std::array<Rank, 4> min_high_ranks)
-      : min_high_ranks_(min_high_ranks) {}
-
-  Rank min_high_rank(Suit suit) const { return min_high_ranks_[suit]; }
-
-  bool operator==(const AbsLevel &other) const {
-    return min_high_ranks_ == other.min_high_ranks_;
-  }
-
-  template <typename H> friend H AbslHashValue(H h, const AbsLevel &l) {
-    return H::combine(std::move(h), l.min_high_ranks_);
-  }
-
-private:
-  std::array<Rank, 4> min_high_ranks_;
-};
-
-class AbsSuitState {
-public:
-  AbsSuitState(Rank min_high_rank, Suit suit, const Cards hands[4]) {
-    bits_ = (uint64_t)min_high_rank << 60;
-
-    constexpr uint64_t mask_all  = 0x1111111111111ull;
-    uint64_t           b0        = (hands[0].bits() >> suit) & mask_all;
-    uint64_t           b1        = (hands[1].bits() >> suit) & mask_all;
-    uint64_t           b2        = (hands[2].bits() >> suit) & mask_all;
-    uint64_t           b3        = (hands[3].bits() >> suit) & mask_all;
-    uint64_t           mask_high = mask_all << (min_high_rank * 4);
-    uint64_t           mask_low  = ~mask_high & mask_all;
-    bits_ |= (b0 & mask_high) << 8;
-    bits_ |= (b1 & mask_high) << 9;
-    bits_ |= (b2 & mask_high) << 10;
-    bits_ |= (b3 & mask_high) << 11;
-
-    if (min_high_rank == 1) {
-      bits_ |= std::popcount(b0 & mask_low);
-      bits_ |= std::popcount(b1 & mask_low) << 1;
-      bits_ |= std::popcount(b2 & mask_low) << 2;
-      bits_ |= std::popcount(b3 & mask_low) << 3;
-    } else if (min_high_rank > 1) {
-      bits_ |= std::popcount(b0 & mask_low);
-      bits_ |= std::popcount(b1 & mask_low) << 4;
-      bits_ |= std::popcount(b2 & mask_low) << 8;
-      bits_ |= std::popcount(b3 & mask_low) << 12;
+  bool all_same_size() const {
+    int size = hands_[0].count();
+    for (int i = 1; i < 4; i++) {
+      if (hands_[i].count() != size) {
+        return false;
+      }
     }
+    return true;
   }
 
-  Rank min_high_rank() const { return (Rank)(bits_ >> 60); }
-
-  Cards high_cards(Seat seat, Suit suit) const {
-    Rank               r         = min_high_rank();
-    constexpr uint64_t mask_all  = 0x1111111111111ull;
-    uint64_t           mask_high = (mask_all << (r * 4)) & mask_all;
-    uint64_t           b         = ((bits_ >> (seat + 8)) & mask_high) << suit;
-    return Cards(b);
-  }
-
-  int low_cards(Seat seat) const {
-    Rank r = min_high_rank();
-    if (r == 0) {
-      return 0;
-    } else if (r == 1) {
-      return (bits_ >> seat) & 0x1;
-    } else {
-      return (bits_ >> (seat * 4)) & 0xf;
+  bool all_disjoint() const {
+    for (int i = 0; i < 4; i++) {
+      for (int j = i + 1; j < 4; j++) {
+        if (!hands_[i].disjoint(hands_[j])) {
+          return false;
+        }
+      }
     }
+    return true;
   }
+
+  Cards all_cards() const {
+    Cards c;
+    for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
+      c.add_all(hands_[seat]);
+    }
+    return c;
+  }
+
+  template <typename H> friend H AbslHashValue(H h, const Hands &hands) {
+    return H::combine(std::move(h), hands.hands_);
+  }
+
+  bool operator==(const Hands &hands) const = default;
 
 private:
-  // Layout of bits_
-  // ---------------
-  //
-  // CASE 0: min_high_rank == 0:
-  //
-  //    bits_: 0xrccccccccccccc00
-  //
-  //    r: min_high_rank (1 nibble)
-  //    c: high card bits, interleaved by seat (13 nibbles)
-  //
-  // CASE 1: min_high_rank == 1:
-  //
-  //    bits_: 0xrcccccccccccc00n
-  //
-  //    r: min_high_rank (1 nibble)
-  //    c: high card bits, interleaved by seat (12 nibbles)
-  //    n: low card bits, interleaved by seat (1 nibble)
-  //
-  // CASE 2: min_high_rank >= 2:
-  //
-  //    bits_: 0xrcccccccccccnnnn
-  //
-  //    r: min_high_rank (1 nibble)
-  //    c: high card bits, interleaved by seat (13 - r nibbles)
-  //    n: low card counts, one nibble per seat (4 nibbles)
-  //
-  uint64_t bits_;
+  std::array<Cards, 4> hands_;
 };
 
 class Game {
 public:
-  Game(Suit trump_suit, Seat first_lead_seat, Cards hands[4]);
+  struct State {
+    Hands normalized_hands;
+    Seat  next_seat;
 
-  Suit  trump_suit() const { return trump_suit_; }
-  Seat  lead_seat() const { return lead_seat_; }
-  Cards hand(Seat seat) const { return hands_[seat]; }
-  Seat  next_seat() const { return next_seat_; }
-  Seat  next_seat(int i) const { return right_seat(next_seat_, i); }
+    State() {}
+
+    State(Cards w, Cards n, Cards e, Cards s, Seat next_seat)
+        : normalized_hands(w, n, e, s),
+          next_seat(next_seat) {}
+
+    template <typename H> friend H AbslHashValue(H h, const State &state) {
+      return H::combine(std::move(h), state.normalized_hands, state.next_seat);
+    }
+
+    bool operator==(const State &state) const = default;
+  };
+
+  Game(Suit trump_suit, Seat first_lead_seat, const Hands &hands);
+
+  Suit         trump_suit() const { return trump_suit_; }
+  Seat         lead_seat() const { return lead_seat_; }
+  Cards        hand(Seat seat) const { return hands_.hand(seat); }
+  const Hands &hands() const { return hands_; }
+  Seat         next_seat() const { return next_seat_; }
+  Seat         next_seat(int i) const { return right_seat(next_seat_, i); }
 
   Trick       &current_trick() { return tricks_[tricks_taken_]; }
   const Trick &current_trick() const { return tricks_[tricks_taken_]; }
@@ -333,20 +270,7 @@ public:
   bool  valid_play(Card c) const;
   Cards valid_plays() const;
 
-  const GameKey &normalized_key() {
-    assert(start_of_trick());
-    auto &cached = norm_key_stack_[tricks_taken_];
-    if (!cached.has_value()) {
-      cached.emplace(
-          card_normalizer_.normalize(hands_[WEST]),
-          card_normalizer_.normalize(hands_[NORTH]),
-          card_normalizer_.normalize(hands_[EAST]),
-          card_normalizer_.normalize(hands_[SOUTH]),
-          next_seat_
-      );
-    }
-    return *cached;
-  }
+  const State &normalized_state() const;
 
   Cards prune_equivalent_cards(Cards cards) const {
     return card_normalizer_.prune_equivalent(cards);
@@ -363,16 +287,18 @@ public:
 private:
   void finish_play();
 
-  Cards                  hands_[4];
-  Suit                   trump_suit_;
-  Seat                   lead_seat_;
-  Seat                   next_seat_;
-  Trick                  tricks_[14];
-  int                    tricks_taken_;
-  int                    tricks_max_;
-  int                    tricks_taken_by_ns_;
-  CardNormalizer         card_normalizer_;
-  std::optional<GameKey> norm_key_stack_[14];
+  using StateStack = std::array<std::optional<State>, 14>;
+
+  Hands              hands_;
+  Suit               trump_suit_;
+  Seat               lead_seat_;
+  Seat               next_seat_;
+  Trick              tricks_[14];
+  int                tricks_taken_;
+  int                tricks_max_;
+  int                tricks_taken_by_ns_;
+  CardNormalizer     card_normalizer_;
+  mutable StateStack state_stack_;
 
   friend std::ostream &operator<<(std::ostream &os, const Game &g);
 };

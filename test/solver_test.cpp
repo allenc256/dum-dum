@@ -107,8 +107,8 @@ struct ManualTestCase {
 class ManualTest : public testing::TestWithParam<ManualTestCase> {};
 
 TEST_P(ManualTest, manual_test) {
-  const ManualTestCase &p        = GetParam();
-  Cards                 hands[4] = {p.west, p.north, p.east, p.south};
+  const ManualTestCase &p     = GetParam();
+  Hands                 hands = {p.west, p.north, p.east, p.south};
   Game                  g(p.trump_suit, p.lead_seat, hands);
   Solver                s(g);
   auto                  r = s.solve();
