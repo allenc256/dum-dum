@@ -1,5 +1,17 @@
 #include "tpn_table.h"
 
+std::ostream &operator<<(std::ostream &os, const SeatShape &shape) {
+  return os << std::hex << std::setfill('0') << std::setw(4) << shape.bits_
+            << std::dec;
+}
+
+std::ostream &operator<<(std::ostream &os, const SeatShapes &shapes) {
+  for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
+    os << shapes.seat_shapes_[seat];
+  }
+  return os;
+}
+
 AbsLevel::AbsLevel(const Hands &hands, const Trick &trick) : AbsLevel() {
   assert(trick.finished());
 
@@ -106,16 +118,16 @@ bool TpnTable::lookup_value_normed(
   value.upper_bound = to_int8_t(game_.tricks_left());
   value.pv_play     = std::nullopt;
 
-  auto it = buckets_.find(SeatShapes(game_));
-  if (it == buckets_.end()) {
-    return false;
-  }
+  SeatShapes key   = {game_};
+  auto       range = multimap_.equal_range(key);
+  bool       found = false;
 
-  Bucket &bucket = it->second;
-  for (int i = 0; i < bucket.entry_count; i++) {
-    Entry &entry = bucket.entries[i];
+  for (auto i = range.first; i != range.second; ++i) {
+    Entry &entry = i->second;
     stats_.lookup_entries_examined++;
     if (entry.state.matches(game_) && entry.max_depth >= max_depth) {
+      found = true;
+
       if (entry.lower_bound == entry.upper_bound) {
         value.level       = entry.state.level();
         value.lower_bound = entry.lower_bound;
@@ -146,37 +158,45 @@ bool TpnTable::lookup_value_normed(
   }
 
   stats_.lookup_misses++;
-  return false;
+  return found;
 }
 
 void TpnTable::upsert_value_normed(int max_depth, const Value &value) {
-  AbsState   state  = {value.level, game_};
-  SeatShapes key    = {game_};
-  Bucket    *bucket = &buckets_[key];
+  AbsState   state    = {value.level, game_};
+  SeatShapes key      = {game_};
+  auto       range    = multimap_.equal_range(key);
+  int        examined = 0;
 
-  for (int i = 0; i < bucket->entry_count; i++) {
-    Entry &entry = bucket->entries[i];
-    stats_.upsert_entries_examined++;
+  for (auto i = range.first; i != range.second; ++i) {
+    Entry &entry = i->second;
+    examined++;
     if (entry.state == state) {
       entry.lower_bound = value.lower_bound;
       entry.upper_bound = value.upper_bound;
       entry.max_depth   = to_int8_t(max_depth);
       entry.pv_play     = value.pv_play;
       stats_.upsert_hits++;
+      stats_.upsert_entries_examined += examined;
       return;
     }
   }
 
-  assert(bucket->entry_count < MAX_ENTRIES_PER_BUCKET);
-
-  Entry &entry      = bucket->entries[bucket->entry_count];
+  auto it = multimap_.emplace(
+      std::piecewise_construct,
+      std::forward_as_tuple(key),
+      std::forward_as_tuple()
+  );
+  Entry &entry      = it->second;
   entry.state       = state;
   entry.lower_bound = value.lower_bound;
   entry.upper_bound = value.upper_bound;
   entry.max_depth   = to_int8_t(max_depth);
   entry.pv_play     = value.pv_play;
-  bucket->entry_count++;
+
   stats_.upsert_misses++;
+  stats_.upsert_entries_examined += examined;
+  int64_t bucket_size    = examined + 1;
+  stats_.max_bucket_size = std::max(stats_.max_bucket_size, bucket_size);
 }
 
 void TpnTable::norm_value(Value &value) {

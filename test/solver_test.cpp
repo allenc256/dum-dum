@@ -112,17 +112,6 @@ TEST_P(ManualTest, manual_test) {
   Game                  g(p.trump_suit, p.lead_seat, hands);
   Solver                s(g);
   auto                  r = s.solve();
-
-  auto &stats = s.tpn_table_stats();
-  std::cout << "states_explored: " << s.states_explored() << std::endl
-            << "mini_explored: " << s.mini_solver_states_explored() << std::endl
-            << "lookup_examined: " << stats.lookup_entries_examined << std::endl
-            << "lookup_misses: " << stats.lookup_misses << std::endl
-            << "lookup_hits: " << stats.lookup_hits << std::endl
-            << "upsert_examined: " << stats.upsert_entries_examined << std::endl
-            << "upsert_misses: " << stats.upsert_misses << std::endl
-            << "upsert_hits: " << stats.upsert_hits << std::endl;
-
   EXPECT_EQ(r.tricks_taken_by_ns, p.tricks_taken_by_ns);
   EXPECT_TRUE(p.best_plays.contains(r.best_play));
 }

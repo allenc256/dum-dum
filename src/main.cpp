@@ -50,11 +50,19 @@ void solve_seed(int seed, int cards_per_hand) {
   auto elapsed_ms =
       std::chrono::duration_cast<std::chrono::milliseconds>(end - begin)
           .count();
+  auto &stats = s.tpn_table_stats();
 
   std::cout << g << std::endl;
-  std::cout << "best_tricks_by_ns:  " << r.tricks_taken_by_ns << std::endl
-            << "states_explored:    " << s.states_explored() << std::endl
-            << "states_memoized:    " << s.states_memoized() << std::endl
+  std::cout << "best_tricks_by_ns:  " << r.tricks_taken_by_ns << '\n'
+            << "states_explored:    " << s.states_explored() << '\n'
+            << "mini_explored:      " << s.mini_solver_states_explored() << '\n'
+            << "lookup_examined:    " << stats.lookup_entries_examined << '\n'
+            << "lookup_misses:      " << stats.lookup_misses << '\n'
+            << "lookup_hits:        " << stats.lookup_hits << '\n'
+            << "upsert_examined:    " << stats.upsert_entries_examined << '\n'
+            << "upsert_misses:      " << stats.upsert_misses << '\n'
+            << "upsert_hits:        " << stats.upsert_hits << '\n'
+            << "max_bucket_size:    " << stats.max_bucket_size << '\n'
             << "elapsed_ms:         " << elapsed_ms << std::endl;
 
   while (!s.game().finished()) {

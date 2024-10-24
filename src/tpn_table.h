@@ -25,7 +25,7 @@ public:
   bool operator==(const SeatShape &other) const = default;
 
 private:
-  friend struct std::hash<SeatShape>;
+  friend std::ostream &operator<<(std::ostream &os, const SeatShape &shape);
 
   uint16_t bits_;
 };
@@ -43,6 +43,8 @@ public:
   }
 
   bool operator==(const SeatShapes &other) const = default;
+
+  friend std::ostream &operator<<(std::ostream &os, const SeatShapes &shapes);
 
 private:
   std::array<SeatShape, 4> seat_shapes_;
@@ -238,6 +240,7 @@ public:
     int64_t upsert_entries_examined = 0;
     int64_t upsert_misses           = 0;
     int64_t upsert_hits             = 0;
+    int64_t max_bucket_size         = 0;
   };
 
   TpnTable(Game &game) : game_(game) {}
@@ -255,15 +258,8 @@ private:
     std::optional<Card> pv_play;
   };
 
-  static constexpr int MAX_ENTRIES_PER_BUCKET = 50;
-
-  struct Bucket {
-    int16_t                 entry_count = 0;
-    Entry                   entries[MAX_ENTRIES_PER_BUCKET];
-    std::unique_ptr<Bucket> next_bucket;
-  };
-
-  using HashMap = absl::flat_hash_map<SeatShapes, Bucket>;
+  using Multimap =
+      std::unordered_multimap<SeatShapes, Entry, absl::Hash<SeatShapes>>;
 
   bool lookup_value_normed(int alpha, int beta, int max_depth, Value &value);
   void upsert_value_normed(int max_depth, const Value &value);
@@ -271,7 +267,7 @@ private:
   void norm_value(Value &value);
   void denorm_value(Value &value);
 
-  Game   &game_;
-  HashMap buckets_;
-  Stats   stats_;
+  Game    &game_;
+  Multimap multimap_;
+  Stats    stats_;
 };
