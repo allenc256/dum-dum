@@ -7,9 +7,12 @@ class MiniSolver {
 public:
   MiniSolver(Game &game, TpnTable &tpn_table)
       : game_(game),
-        tpn_table_(tpn_table) {}
+        tpn_table_(tpn_table),
+        states_explored_(0) {}
 
   void solve(int alpha, int beta, int max_depth, TpnTable::Value &value);
+
+  int64_t states_explored() const { return states_explored_; }
 
 private:
   void solve_child(
@@ -23,4 +26,5 @@ private:
 
   Game     &game_;
   TpnTable &tpn_table_;
+  int64_t   states_explored_;
 };

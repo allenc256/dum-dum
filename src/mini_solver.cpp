@@ -20,6 +20,8 @@ void MiniSolver::solve(
     return;
   }
 
+  states_explored_++;
+
   Seat me      = game_.next_seat();
   Seat left    = game_.next_seat(1);
   Seat partner = game_.next_seat(2);

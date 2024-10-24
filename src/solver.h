@@ -21,7 +21,13 @@ public:
   ~Solver();
 
   int64_t states_explored() const { return states_explored_; }
-  int64_t states_memoized() const { return tpn_table_.size(); }
+  int64_t states_memoized() const { return tpn_table_.stats().upsert_misses; }
+
+  int64_t mini_solver_states_explored() const {
+    return mini_solver_.states_explored();
+  }
+
+  const TpnTable::Stats &tpn_table_stats() const { return tpn_table_.stats(); }
 
   void enable_all_optimizations(bool enabled) {
     ab_pruning_enabled_    = enabled;

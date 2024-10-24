@@ -106,16 +106,22 @@ bool TpnTable::lookup_value_normed(
   value.upper_bound = to_int8_t(game_.tricks_left());
   value.pv_play     = std::nullopt;
 
-  SeatShapes key(game_);
-  auto       range = multimap_.equal_range(key);
-  for (auto i = range.first; i != range.second; ++i) {
-    auto &entry = i->second;
+  auto it = buckets_.find(SeatShapes(game_));
+  if (it == buckets_.end()) {
+    return false;
+  }
+
+  Bucket &bucket = it->second;
+  for (int i = 0; i < bucket.entry_count; i++) {
+    Entry &entry = bucket.entries[i];
+    stats_.lookup_entries_examined++;
     if (entry.state.matches(game_) && entry.max_depth >= max_depth) {
       if (entry.lower_bound == entry.upper_bound) {
         value.level       = entry.state.level();
         value.lower_bound = entry.lower_bound;
         value.upper_bound = entry.upper_bound;
         value.pv_play     = entry.pv_play;
+        stats_.lookup_hits++;
         return true;
       }
 
@@ -123,6 +129,7 @@ bool TpnTable::lookup_value_normed(
         value.lower_bound = entry.lower_bound;
         value.level.intersect(entry.state.level());
         if (value.lower_bound >= beta) {
+          stats_.lookup_hits++;
           return true;
         }
       }
@@ -131,37 +138,45 @@ bool TpnTable::lookup_value_normed(
         value.upper_bound = entry.upper_bound;
         value.level.intersect(entry.state.level());
         if (value.upper_bound <= alpha) {
+          stats_.lookup_hits++;
           return true;
         }
       }
     }
   }
 
+  stats_.lookup_misses++;
   return false;
 }
 
 void TpnTable::upsert_value_normed(int max_depth, const Value &value) {
-  AbsState   state = {value.level, game_};
-  SeatShapes key   = {game_};
-  auto       range = multimap_.equal_range(key);
+  AbsState   state  = {value.level, game_};
+  SeatShapes key    = {game_};
+  Bucket    *bucket = &buckets_[key];
 
-  for (auto i = range.first; i != range.second; ++i) {
-    Entry &entry = i->second;
-    if (state == entry.state) {
+  for (int i = 0; i < bucket->entry_count; i++) {
+    Entry &entry = bucket->entries[i];
+    stats_.upsert_entries_examined++;
+    if (entry.state == state) {
       entry.lower_bound = value.lower_bound;
       entry.upper_bound = value.upper_bound;
+      entry.max_depth   = to_int8_t(max_depth);
       entry.pv_play     = value.pv_play;
+      stats_.upsert_hits++;
       return;
     }
   }
 
-  multimap_.emplace(
-      std::piecewise_construct,
-      std::forward_as_tuple(key),
-      std::forward_as_tuple(
-          state, value.lower_bound, value.upper_bound, max_depth, value.pv_play
-      )
-  );
+  assert(bucket->entry_count < MAX_ENTRIES_PER_BUCKET);
+
+  Entry &entry      = bucket->entries[bucket->entry_count];
+  entry.state       = state;
+  entry.lower_bound = value.lower_bound;
+  entry.upper_bound = value.upper_bound;
+  entry.max_depth   = to_int8_t(max_depth);
+  entry.pv_play     = value.pv_play;
+  bucket->entry_count++;
+  stats_.upsert_misses++;
 }
 
 void TpnTable::norm_value(Value &value) {

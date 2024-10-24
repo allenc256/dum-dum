@@ -88,6 +88,8 @@ std::ostream &operator<<(std::ostream &os, const AbsLevel &level);
 
 class AbsSuitState {
 public:
+  AbsSuitState() {}
+
   AbsSuitState(Rank rank_cutoff, Suit suit, const Hands &hands) {
     bits_ = (uint64_t)rank_cutoff << 60;
 
@@ -162,6 +164,8 @@ private:
 
 class AbsState {
 public:
+  AbsState() {}
+
   AbsState(AbsLevel normed_level, Game &game)
       : suit_states_{
             make_suit_state(normed_level, game, 0),
@@ -227,11 +231,20 @@ public:
     std::optional<Card> pv_play;
   };
 
+  struct Stats {
+    int64_t lookup_entries_examined = 0;
+    int64_t lookup_misses           = 0;
+    int64_t lookup_hits             = 0;
+    int64_t upsert_entries_examined = 0;
+    int64_t upsert_misses           = 0;
+    int64_t upsert_hits             = 0;
+  };
+
   TpnTable(Game &game) : game_(game) {}
 
-  bool   lookup_value(int alpha, int beta, int max_depth, Value &value);
-  void   upsert_value(int max_depth, const Value &value);
-  size_t size() const { return multimap_.size(); }
+  bool         lookup_value(int alpha, int beta, int max_depth, Value &value);
+  void         upsert_value(int max_depth, const Value &value);
+  const Stats &stats() const { return stats_; }
 
 private:
   struct Entry {
@@ -240,23 +253,17 @@ private:
     int8_t              upper_bound;
     int8_t              max_depth;
     std::optional<Card> pv_play;
-
-    Entry(
-        const AbsState     &state,
-        int                 lower_bound,
-        int                 upper_bound,
-        int                 max_depth,
-        std::optional<Card> pv_play
-    )
-        : state(state),
-          lower_bound(to_int8_t(lower_bound)),
-          upper_bound(to_int8_t(upper_bound)),
-          max_depth(to_int8_t(max_depth)),
-          pv_play(pv_play) {}
   };
 
-  using Multimap =
-      std::unordered_multimap<SeatShapes, Entry, absl::Hash<SeatShapes>>;
+  static constexpr int MAX_ENTRIES_PER_BUCKET = 50;
+
+  struct Bucket {
+    int16_t                 entry_count = 0;
+    Entry                   entries[MAX_ENTRIES_PER_BUCKET];
+    std::unique_ptr<Bucket> next_bucket;
+  };
+
+  using HashMap = absl::flat_hash_map<SeatShapes, Bucket>;
 
   bool lookup_value_normed(int alpha, int beta, int max_depth, Value &value);
   void upsert_value_normed(int max_depth, const Value &value);
@@ -264,6 +271,7 @@ private:
   void norm_value(Value &value);
   void denorm_value(Value &value);
 
-  Game    &game_;
-  Multimap multimap_;
+  Game   &game_;
+  HashMap buckets_;
+  Stats   stats_;
 };
