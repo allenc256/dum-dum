@@ -1,6 +1,6 @@
 #include "tpn_table.h"
 
-bool TpnTable2::lookup_value(int max_depth, Value &value) const {
+bool TpnTable::lookup_value(int max_depth, Value &value) const {
   bool found = lookup_value_normed(max_depth, value);
 
   value.lower_bound += game_.tricks_taken_by_ns();
@@ -12,19 +12,19 @@ bool TpnTable2::lookup_value(int max_depth, Value &value) const {
   return found;
 }
 
-void TpnTable2::upsert_value(int max_depth, const Value &value) {
+void TpnTable::upsert_value(int max_depth, const Value &value) {
   Value normed_value = {
       .lower_bound = value.lower_bound - game_.tricks_taken_by_ns(),
       .upper_bound = value.upper_bound - game_.tricks_taken_by_ns(),
   };
   if (value.pv_play.has_value()) {
-    normed_value.pv_play = game_.denormalize_card(*value.pv_play);
+    normed_value.pv_play = game_.normalize_card(*value.pv_play);
   }
 
   upsert_value_normed(max_depth, normed_value);
 }
 
-bool TpnTable2::lookup_value_normed(int max_depth, Value &value) const {
+bool TpnTable::lookup_value_normed(int max_depth, Value &value) const {
   auto it = table_.find(game_.normalized_state());
   if (it != table_.end() && it->second.max_depth >= max_depth) {
     const Entry &entry = it->second;
@@ -40,7 +40,7 @@ bool TpnTable2::lookup_value_normed(int max_depth, Value &value) const {
   }
 }
 
-void TpnTable2::upsert_value_normed(int max_depth, const Value &value) {
+void TpnTable::upsert_value_normed(int max_depth, const Value &value) {
   auto &state = game_.normalized_state();
   auto  it    = table_.find(state);
   if (it != table_.end()) {

@@ -20,18 +20,16 @@ Solver::Result Solver::solve() {
 }
 
 Solver::Result Solver::solve(int alpha, int beta, int max_depth) {
-  states_explored_ = 0;
-  search_ply_      = 0;
   best_play_.reset();
+  assert(search_ply_ == 0);
   int tricks_taken_by_ns = solve_internal(alpha, beta, max_depth);
+  assert(search_ply_ == 0);
   int tricks_taken_by_ew = game_.tricks_max() - tricks_taken_by_ns;
   assert(best_play_.has_value());
   return {
       .tricks_taken_by_ns = tricks_taken_by_ns,
       .tricks_taken_by_ew = tricks_taken_by_ew,
       .best_play          = *best_play_,
-      .states_explored    = states_explored_,
-      .states_memoized    = (int64_t)tpn_table_.size(),
   };
 }
 
@@ -47,78 +45,71 @@ int Solver::solve_internal(int alpha, int beta, int max_depth) {
   }
 
   bool maximizing = game_.next_seat() == NORTH || game_.next_seat() == SOUTH;
-  TpnTableValue tt_value;
+  TpnTable::Value tpn_value;
 
   if (game_.start_of_trick()) {
     if (tpn_table_enabled_) {
-      tt_value = compute_initial_value(max_depth);
-      if (tt_value.lower_bound() >= beta || tt_value.has_tight_bounds()) {
-        TRACE("prune", alpha, beta, tt_value.lower_bound());
+      lookup_tpn_value(max_depth, tpn_value);
+      if (tpn_value.lower_bound >= beta ||
+          tpn_value.lower_bound == tpn_value.upper_bound) {
+        TRACE("prune", alpha, beta, tpn_value.lower_bound);
         if (search_ply_ == 0) {
-          best_play_ = tt_value.pv_play();
+          best_play_ = tpn_value.pv_play;
         }
-        return tt_value.lower_bound();
+        return tpn_value.lower_bound;
       }
-      if (tt_value.upper_bound() <= alpha) {
-        TRACE("prune", alpha, beta, tt_value.upper_bound());
-        if (search_ply_ == 0) {
-          best_play_ = tt_value.pv_play();
-        }
-        return tt_value.upper_bound();
+      if (tpn_value.upper_bound <= alpha) {
+        TRACE("prune", alpha, beta, tpn_value.upper_bound);
+        return tpn_value.upper_bound;
       }
-      assert(!tt_value.has_tight_bounds());
     }
 
     TRACE("start", alpha, beta, -1);
   }
 
-  SearchState search_state = {
-      .maximizing        = maximizing,
-      .alpha             = alpha,
-      .beta              = beta,
-      .best_tricks_by_ns = maximizing ? -1 : game_.tricks_max() + 1,
-      .max_depth         = max_depth
+  SearchState ss = {
+      .maximizing = maximizing,
+      .alpha      = alpha,
+      .beta       = beta,
+      .best_score = maximizing ? -1 : game_.tricks_max() + 1,
+      .max_depth  = max_depth
   };
-  search_all_cards(search_state);
+  search_all_cards(ss);
 
   if (game_.start_of_trick()) {
-    TRACE("end", alpha, beta, search_state.best_tricks_by_ns);
+    TRACE("end", alpha, beta, ss.best_score);
 
     if (tpn_table_enabled_) {
       bool changed = false;
-      if (search_state.best_tricks_by_ns < beta) {
-        if (tt_value.update_upper_bound(search_state.best_tricks_by_ns)) {
-          changed = true;
-        }
+      if (ss.best_score < beta && ss.best_score < tpn_value.upper_bound) {
+        tpn_value.upper_bound = ss.best_score;
+        changed               = true;
       }
-      if (search_state.best_tricks_by_ns > alpha) {
-        if (tt_value.update_lower_bound(search_state.best_tricks_by_ns)) {
-          changed = true;
-        }
+      if (ss.best_score > alpha && ss.best_score > tpn_value.lower_bound) {
+        tpn_value.lower_bound = ss.best_score;
+        changed               = true;
       }
       if (changed) {
-        if (tt_value.has_tight_bounds()) {
-          tt_value.update_pv_play(search_state.best_play);
+        if (tpn_value.lower_bound == tpn_value.upper_bound) {
+          tpn_value.pv_play = ss.best_play;
         }
-        tpn_table_.update_value(tt_value);
+        tpn_table_.upsert_value(max_depth, tpn_value);
       }
     }
   }
 
-  bool is_pv_node = alpha < search_state.best_tricks_by_ns &&
-                    search_state.best_tricks_by_ns < beta;
-  if (search_ply_ == 0 && is_pv_node) {
-    best_play_ = search_state.best_play;
+  if (search_ply_ == 0 && alpha < ss.best_score && ss.best_score < beta) {
+    best_play_ = ss.best_play;
   }
 
-  return search_state.best_tricks_by_ns;
+  return ss.best_score;
 }
 
-TpnTableValue Solver::compute_initial_value(int max_depth) {
+void Solver::lookup_tpn_value(int max_depth, TpnTable::Value &value) {
   if (mini_solver_enabled_) {
-    return mini_solver_.compute_value(max_depth);
+    mini_solver_.solve(max_depth, value);
   } else {
-    return tpn_table_.lookup_value(max_depth).value;
+    tpn_table_.lookup_value(max_depth, value);
   }
 }
 
@@ -203,24 +194,24 @@ bool Solver::search_specific_card(SearchState &s, Card c) {
   int  child_tricks_by_ns = solve_internal(s.alpha, s.beta, s.max_depth);
   bool prune              = false;
   if (s.maximizing) {
-    if (child_tricks_by_ns > s.best_tricks_by_ns) {
-      s.best_tricks_by_ns = child_tricks_by_ns;
-      s.best_play         = c;
+    if (child_tricks_by_ns > s.best_score) {
+      s.best_score = child_tricks_by_ns;
+      s.best_play  = c;
     }
     if (ab_pruning_enabled_) {
-      s.alpha = std::max(s.alpha, s.best_tricks_by_ns);
-      if (s.best_tricks_by_ns >= s.beta) {
+      s.alpha = std::max(s.alpha, s.best_score);
+      if (s.best_score >= s.beta) {
         prune = true;
       }
     }
   } else {
-    if (child_tricks_by_ns < s.best_tricks_by_ns) {
-      s.best_tricks_by_ns = child_tricks_by_ns;
-      s.best_play         = c;
+    if (child_tricks_by_ns < s.best_score) {
+      s.best_score = child_tricks_by_ns;
+      s.best_play  = c;
     }
     if (ab_pruning_enabled_) {
-      s.beta = std::min(s.beta, s.best_tricks_by_ns);
-      if (s.best_tricks_by_ns <= s.alpha) {
+      s.beta = std::min(s.beta, s.best_score);
+      if (s.best_score <= s.alpha) {
         prune = true;
       }
     }

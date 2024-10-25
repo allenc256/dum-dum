@@ -11,15 +11,16 @@
 class Solver {
 public:
   struct Result {
-    int     tricks_taken_by_ns;
-    int     tricks_taken_by_ew;
-    Card    best_play;
-    int64_t states_explored;
-    int64_t states_memoized;
+    int  tricks_taken_by_ns;
+    int  tricks_taken_by_ew;
+    Card best_play;
   };
 
   Solver(Game g);
   ~Solver();
+
+  int64_t states_explored() const { return states_explored_; }
+  int64_t states_memoized() const { return tpn_table_.size(); }
 
   void enable_all_optimizations(bool enabled) {
     ab_pruning_enabled_    = enabled;
@@ -45,7 +46,7 @@ public:
   Result solve(int alpha, int beta, int max_depth);
 
 private:
-  TpnTableValue compute_initial_value(int max_depth);
+  void lookup_tpn_value(int max_depth, TpnTable::Value &value);
 
   int solve_internal(int alpha, int beta, int max_depth);
 
@@ -53,7 +54,7 @@ private:
     bool  maximizing;
     int   alpha;
     int   beta;
-    int   best_tricks_by_ns;
+    int   best_score;
     int   max_depth;
     Cards already_searched;
     Card  best_play;
