@@ -54,35 +54,39 @@ std::ostream &operator<<(std::ostream &os, Rank r);
 
 class Card {
 public:
-  Card() : rank_(RANK_2), suit_(CLUBS) {}
-  Card(Rank r, Suit s) : rank_(r), suit_(s) { assert(s != NO_TRUMP); }
+  Card() : index_(0) {}
+
+  Card(int card_index) : index_((uint8_t)card_index) {
+    assert(card_index >= 0 && card_index < 52);
+  }
+
+  Card(Rank r, Suit s) : index_((uint8_t)((r << 2) | s)) {
+    assert(s != NO_TRUMP);
+  }
+
   Card(std::string_view s);
   Card(const char *s);
 
-  Rank rank() const { return (Rank)rank_; }
-  Suit suit() const { return (Suit)suit_; }
+  Rank rank() const { return (Rank)(index_ >> 2); }
+  Suit suit() const { return (Suit)(index_ & 0b11); }
 
   std::string to_string() const;
 
+  bool operator==(Card other) const { return index_ == other.index_; }
+
 private:
-  Rank rank_;
-  Suit suit_;
+  uint8_t index_;
 
   friend std::istream &operator>>(std::istream &is, Card &c);
   friend std::ostream &operator<<(std::ostream &os, Card c);
 };
-
-inline bool operator==(const Card &lhs, const Card &rhs) {
-  return lhs.rank() == rhs.rank() && lhs.suit() == rhs.suit();
-}
 
 class Cards {
 public:
   class Iter {
   public:
     bool valid() const { return card_index_ >= 0; }
-    Card card() const { return from_card_index(card_index_); }
-    int  card_index() const { return card_index_; }
+    Card card() const { return Card(card_index_); }
 
   private:
     Iter() : card_index_(-1) {}
@@ -234,10 +238,6 @@ private:
   static int      to_card_index(Card c) { return c.rank() * 4 + c.suit(); }
   static uint64_t to_card_bit(Card c) { return to_card_bit(to_card_index(c)); }
   static uint64_t to_card_bit(int card_index) { return 1ull << card_index; }
-
-  static Card from_card_index(int card_index) {
-    return Card((Rank)(card_index / 4), (Suit)(card_index % 4));
-  }
 
   static const uint64_t HONORS_MASK =
       0b1111111111111111000000000000000000000000000000000000ull;

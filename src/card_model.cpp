@@ -89,8 +89,7 @@ std::istream &operator>>(std::istream &is, Card &c) {
   if (s == NO_TRUMP) {
     throw ParseFailure("bad suit");
   }
-  c.rank_ = r;
-  c.suit_ = s;
+  c = Card(r, s);
   return is;
 }
 
