@@ -8,6 +8,26 @@
 #include <ostream>
 #include <vector>
 
+class PlayOrder {
+public:
+  static constexpr bool LOW_TO_HIGH = true;
+  static constexpr bool HIGH_TO_LOW = false;
+
+  PlayOrder() : card_count_(0) {}
+
+  const Card *begin() const { return cards_; }
+  const Card *end() const { return cards_ + card_count_; }
+
+  void append_plays(Cards cards, bool low_to_high);
+
+private:
+  friend class Iter;
+
+  Cards  all_cards_;
+  Card   cards_[13];
+  int8_t card_count_;
+};
+
 class Solver {
 public:
   struct Result {
@@ -46,10 +66,6 @@ public:
   Result solve(int alpha, int beta, int max_depth);
 
 private:
-  void lookup_tpn_value(int max_depth, TpnTable::Value &value);
-
-  int solve_internal(int alpha, int beta, int max_depth);
-
   struct SearchState {
     bool  maximizing;
     int   alpha;
@@ -61,6 +77,16 @@ private:
   };
 
   enum Order { LOW_TO_HIGH, HIGH_TO_LOW };
+
+  void lookup_tpn_value(int max_depth, TpnTable::Value &value);
+
+  int solve_internal(int alpha, int beta, int max_depth);
+
+  void order_plays(PlayOrder &order) const;
+  void order_plays_first_seat(PlayOrder &order) const;
+  void order_plays_second_seat(PlayOrder &order) const;
+  void order_plays_third_seat(PlayOrder &order) const;
+  void order_plays_fourth_seat(PlayOrder &order) const;
 
   bool search_all_cards(SearchState &s);
   bool search_specific_cards(SearchState &s, Cards c, Order o);

@@ -2,6 +2,26 @@
 
 #include <picosha2.h>
 
+void PlayOrder::append_plays(Cards cards, bool low_to_high) {
+  cards.remove_all(all_cards_);
+  if (cards.empty()) {
+    return;
+  }
+  all_cards_.add_all(cards);
+  assert(all_cards_.count() <= 13);
+  if (low_to_high) {
+    for (auto it = cards.iter_lowest(); it.valid();
+         it      = cards.iter_higher(it)) {
+      cards_[card_count_++] = it.card();
+    }
+  } else {
+    for (auto it = cards.iter_highest(); it.valid();
+         it      = cards.iter_lower(it)) {
+      cards_[card_count_++] = it.card();
+    }
+  }
+}
+
 Solver::Solver(Game g)
     : game_(g),
       search_ply_(0),
@@ -113,11 +133,79 @@ void Solver::lookup_tpn_value(int max_depth, TpnTable::Value &value) {
   }
 }
 
+// void Solver::order_plays(PlayOrder &order) const {
+//   switch (game_.current_trick().card_count()) {
+//   case 0: order_plays_first_seat(order); break;
+//   case 1: order_plays_second_seat(order); break;
+//   case 2: order_plays_third_seat(order); break;
+//   case 3: order_plays_fourth_seat(order); break;
+//   }
+//   assert(false);
+// }
+
+// void Solver::order_plays_first_seat(PlayOrder &order) const {
+//   order.append_plays(game_.valid_plays_pruned(), PlayOrder::LOW_TO_HIGH);
+// }
+
+// static int card_to_strength(const Trick &trick, Card card) {
+//   if (card.suit() == trick.trump_suit()) {
+//     return card.rank() + 14;
+//   } else if (card.suit() == trick.lead_suit()) {
+//     return card.rank() + 1;
+//   } else {
+//     return 0;
+//   }
+// }
+
+// void Solver::order_plays_second_seat(PlayOrder &order) const {
+//   auto &trick = game_.current_trick();
+//   Card  highest[4];
+//   Card  overall_highest;
+//   Card  my_highest      = highest[1];
+//   Card  partner_highest = highest[3];
+//   Cards valid_plays     = game_.valid_plays_pruned();
+
+//   if (my_highest == overall_highest) {
+//     //
+//   }
+
+//   // int max_str     = *std::max_element(strs, strs + 4);
+//   // int my_str      = strs[1];
+//   // int partner_str = strs[3];
+
+//   // Seat  me                = game_.next_seat();
+//   // Seat  opp               = right_seat(me, 1);
+//   // Seat  partner           = right_seat(me, 2);
+//   // Cards my_cards          = game_.hand(me);
+//   // Cards opp_cards         = game_.hand(opp);
+//   // Cards partner_cards     = game_.hand(partner);
+//   // Card  my_best_card      = best_card(trick, my_cards);
+//   // Card  opp_best_card     = best_card(trick, opp_cards);
+//   // Card  partner_best_card = best_card(trick, partner_cards);
+//   // int   curr_val          = card_to_strength(trick, trick.card(0));
+//   // int   my_val            = card_to_strength(trick, my_best_card);
+//   // int   opp_val           = card_to_strength(trick, opp_best_card);
+//   // int   partner_val       = card_to_strength(trick, partner_best_card);
+
+//   // int highest_val = curr_val;
+//   // highest_val     = std::max(highest_val, my_val);
+//   // highest_val     = std::max(highest_val, opp_val);
+//   // highest_val     = std::max(highest_val, partner_val);
+
+//   // Card right_card = best_card(game_.trump_suit(), game_.)
+
+//   // if partner > opps
+//   //   play my lowest first
+//   // if me > opps
+//   //   play my highest first
+//   //
+// }
+
 bool Solver::search_all_cards(SearchState &s) {
   states_explored_++;
 
   const Trick &t        = game_.current_trick();
-  Cards        my_plays = game_.valid_plays();
+  Cards        my_plays = game_.valid_plays_pruned();
 
   if (move_ordering_enabled_) {
     Cards my_winners = my_plays.intersect(t.winning_cards());
@@ -170,7 +258,6 @@ bool Solver::search_specific_cards(SearchState &s, Cards c, Order o) {
     return false;
   }
   s.already_searched.add_all(c);
-  c = game_.prune_equivalent_cards(c);
   if (o == HIGH_TO_LOW) {
     for (auto i = c.iter_highest(); i.valid(); i = c.iter_lower(i)) {
       if (search_specific_card(s, i.card())) {

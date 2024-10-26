@@ -206,7 +206,11 @@ void Game::unplay() {
   }
 }
 
-Cards Game::valid_plays() const {
+Cards Game::valid_plays_pruned() const {
+  return card_normalizer_.prune_equivalent(valid_plays_all());
+}
+
+Cards Game::valid_plays_all() const {
   if (finished()) {
     return Cards();
   }

@@ -228,7 +228,7 @@ TEST(Game, play_unplay) {
   EXPECT_THROW(g.unplay(), std::runtime_error);
 }
 
-TEST(Game, valid_plays) {
+TEST(Game, valid_plays_all) {
   Hands hands = {
       Cards("S A2 H - D - C -"),
       Cards("S 93 H - D - C -"),
@@ -237,23 +237,23 @@ TEST(Game, valid_plays) {
   };
   Game g(HEARTS, WEST, hands);
 
-  EXPECT_EQ(g.valid_plays(), Cards("S A2 H - D - C -"));
+  EXPECT_EQ(g.valid_plays_all(), Cards("S A2 H - D - C -"));
   g.play(Card("2S"));
-  EXPECT_EQ(g.valid_plays(), Cards("S 93 H - D - C -"));
+  EXPECT_EQ(g.valid_plays_all(), Cards("S 93 H - D - C -"));
   g.play(Card("9S"));
-  EXPECT_EQ(g.valid_plays(), Cards("S 5  H - D - C -"));
+  EXPECT_EQ(g.valid_plays_all(), Cards("S 5  H - D - C -"));
   g.play(Card("5S"));
-  EXPECT_EQ(g.valid_plays(), Cards("S 6  H - D - C -"));
+  EXPECT_EQ(g.valid_plays_all(), Cards("S 6  H - D - C -"));
   g.play(Card("6S"));
-  EXPECT_EQ(g.valid_plays(), Cards("S 3  H - D - C -"));
+  EXPECT_EQ(g.valid_plays_all(), Cards("S 3  H - D - C -"));
   g.play(Card("3S"));
-  EXPECT_EQ(g.valid_plays(), Cards("S -  H 2 D - C -"));
+  EXPECT_EQ(g.valid_plays_all(), Cards("S -  H 2 D - C -"));
   g.play(Card("2H"));
-  EXPECT_EQ(g.valid_plays(), Cards("S -  H 3 D - C -"));
+  EXPECT_EQ(g.valid_plays_all(), Cards("S -  H 3 D - C -"));
   g.play(Card("3H"));
-  EXPECT_EQ(g.valid_plays(), Cards("S A  H - D - C -"));
+  EXPECT_EQ(g.valid_plays_all(), Cards("S A  H - D - C -"));
   g.play(Card("AS"));
-  EXPECT_EQ(g.valid_plays(), Cards());
+  EXPECT_EQ(g.valid_plays_all(), Cards());
 }
 
 void test_play_unplay_dfs(Game &g) {
@@ -267,7 +267,7 @@ void test_play_unplay_dfs(Game &g) {
     hands[i] = g.hand((Seat)i);
   }
 
-  Cards p = g.valid_plays();
+  Cards p = g.valid_plays_all();
   for (auto i = p.iter_highest(); i.valid(); i = p.iter_lower(i)) {
     g.play(i.card());
     test_play_unplay_dfs(g);

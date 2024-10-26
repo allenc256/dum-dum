@@ -104,6 +104,8 @@ Card::Card(std::string_view s) {
   is >> *this;
 }
 
+Card::Card(const char *s) : Card(std::string_view(s)) {}
+
 std::string Card::to_string() const {
   std::ostringstream os;
   os << *this;

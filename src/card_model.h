@@ -57,6 +57,7 @@ public:
   Card() : rank_(RANK_2), suit_(CLUBS) {}
   Card(Rank r, Suit s) : rank_(r), suit_(s) { assert(s != NO_TRUMP); }
   Card(std::string_view s);
+  Card(const char *s);
 
   Rank rank() const { return (Rank)rank_; }
   Suit suit() const { return (Suit)suit_; }
@@ -84,11 +85,11 @@ public:
     int  card_index() const { return card_index_; }
 
   private:
+    Iter() : card_index_(-1) {}
+
     Iter(int card_index) : card_index_(card_index) {
       assert(card_index >= 0 && card_index < 52);
     }
-
-    Iter() : card_index_(-1) {}
 
     int card_index_;
 

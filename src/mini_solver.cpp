@@ -127,7 +127,7 @@ void MiniSolver::solve(int max_depth, TpnTable::Value &value) {
 }
 
 Card MiniSolver::play_my_lowest(Suit suit) {
-  auto it = game_.valid_plays().intersect(suit).iter_lowest();
+  auto it = game_.valid_plays_all().intersect(suit).iter_lowest();
   assert(it.valid());
   Card my_play = it.card();
   game_.play(my_play);
@@ -135,7 +135,7 @@ Card MiniSolver::play_my_lowest(Suit suit) {
 }
 
 void MiniSolver::play_partner_lowest() {
-  Cards valid_plays = game_.valid_plays();
+  Cards valid_plays = game_.valid_plays_all();
   auto  it          = valid_plays.iter_lowest();
   assert(it.valid());
   game_.play(it.card());
@@ -143,7 +143,7 @@ void MiniSolver::play_partner_lowest() {
 
 void MiniSolver::play_partner_ruff() {
   assert(game_.trump_suit() != NO_TRUMP);
-  Cards ruffs = game_.valid_plays().intersect(game_.trump_suit());
+  Cards ruffs = game_.valid_plays_all().intersect(game_.trump_suit());
   assert(!ruffs.empty());
   game_.play(ruffs.iter_lowest().card());
 }

@@ -68,6 +68,11 @@ public:
     return lead_suit_;
   }
 
+  Suit trump_suit() const {
+    assert(started());
+    return trump_suit_;
+  }
+
   Seat seat(int index) const {
     assert(index >= 0 && index < 4);
     return right_seat(lead_seat_, index);
@@ -268,13 +273,10 @@ public:
   void unplay();
 
   bool  valid_play(Card c) const;
-  Cards valid_plays() const;
+  Cards valid_plays_pruned() const;
+  Cards valid_plays_all() const;
 
   const State &normalized_state() const;
-
-  Cards prune_equivalent_cards(Cards cards) const {
-    return card_normalizer_.prune_equivalent(cards);
-  }
 
   Card normalize_card(Card card) const {
     return card_normalizer_.normalize(card);
