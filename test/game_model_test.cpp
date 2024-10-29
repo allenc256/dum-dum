@@ -155,6 +155,42 @@ TEST(Trick, play_null) {
   );
 }
 
+TEST(Trick, highest_card_no_trump_in_suit) {
+  Trick trick = make_trick(NO_TRUMP, WEST, {"2C"});
+  EXPECT_EQ(trick.highest_card(Cards({"3C", "TC", "AS"})), Card("TC"));
+}
+
+TEST(Trick, highest_card_no_trump_discard) {
+  Trick trick = make_trick(NO_TRUMP, WEST, {"2C"});
+  EXPECT_EQ(trick.highest_card(Cards({"3H", "TD", "AS"})), Card("AS"));
+}
+
+TEST(Trick, highest_card_trump_in_suit) {
+  Trick trick = make_trick(HEARTS, WEST, {"2C"});
+  EXPECT_EQ(trick.highest_card(Cards({"3C", "TC", "5H"})), Card("TC"));
+}
+
+TEST(Trick, highest_card_trump_ruff) {
+  Trick trick = make_trick(HEARTS, WEST, {"2C"});
+  EXPECT_EQ(trick.highest_card(Cards({"3S", "TS", "5H"})), Card("5H"));
+}
+
+TEST(Trick, is_higher_card_no_trump) {
+  Trick trick = make_trick(NO_TRUMP, WEST, {"2C"});
+  EXPECT_TRUE(trick.is_higher_card(Card("5C"), Card("4C")));
+  EXPECT_FALSE(trick.is_higher_card(Card("4C"), Card("5C")));
+  EXPECT_TRUE(trick.is_higher_card(Card("2C"), Card("4H")));
+  EXPECT_FALSE(trick.is_higher_card(Card("4H"), Card("2C")));
+}
+
+TEST(Trick, is_higher_card_trump) {
+  Trick trick = make_trick(HEARTS, WEST, {"2C"});
+  EXPECT_TRUE(trick.is_higher_card(Card("5H"), Card("4H")));
+  EXPECT_FALSE(trick.is_higher_card(Card("4H"), Card("5H")));
+  EXPECT_TRUE(trick.is_higher_card(Card("2H"), Card("5C")));
+  EXPECT_FALSE(trick.is_higher_card(Card("5C"), Card("2H")));
+}
+
 TEST(Game, play_unplay) {
   Hands hands = {
       Cards("S A2 H - D - C -"),

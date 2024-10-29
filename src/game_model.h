@@ -121,7 +121,7 @@ public:
     lead_suit_        = c.suit();
     cards_[0]         = c;
     card_count_       = 1;
-    winning_cards_[0] = compute_winning_cards(c);
+    winning_cards_[0] = higher_cards(c);
     winning_index_[0] = 0;
   }
 
@@ -129,7 +129,7 @@ public:
     assert(card_count_ > 0 && card_count_ < 4);
     if (winning_cards().contains(c)) {
       winning_index_[card_count_] = card_count_;
-      winning_cards_[card_count_] = compute_winning_cards(c);
+      winning_cards_[card_count_] = higher_cards(c);
     } else {
       winning_index_[card_count_] = winning_index();
       winning_cards_[card_count_] = winning_cards();
@@ -152,12 +152,44 @@ public:
     return cards_[card_count_];
   }
 
-private:
-  Cards compute_winning_cards(Card w) const {
+  Cards higher_cards(Card w) const {
+    assert(started());
     if (trump_suit_ == NO_TRUMP || w.suit() == trump_suit_) {
       return Cards::higher_ranking(w);
     } else {
-      return Cards::higher_ranking(w).union_with(Cards::all(trump_suit_));
+      return Cards::higher_ranking(w).with_all(Cards::all(trump_suit_));
+    }
+  }
+
+  Card highest_card(Cards hand) const {
+    assert(started());
+    Cards in_suit = hand.intersect(lead_suit_);
+    if (!in_suit.empty()) {
+      return in_suit.highest();
+    }
+    Cards trumps = hand.intersect(trump_suit_);
+    if (!trumps.empty()) {
+      return trumps.highest();
+    }
+    return hand.highest();
+  }
+
+  bool is_higher_card(Card c1, Card c2) const {
+    return card_value(c1) > card_value(c2);
+  }
+
+  Card higher_card(Card c1, Card c2) const {
+    return is_higher_card(c1, c2) ? c1 : c2;
+  }
+
+private:
+  int card_value(Card c) const {
+    if (c.suit() == trump_suit_) {
+      return c.rank() + 14;
+    } else if (c.suit() == lead_suit_) {
+      return c.rank() + 1;
+    } else {
+      return 0;
     }
   }
 

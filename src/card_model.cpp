@@ -204,3 +204,9 @@ Cards::Cards(std::string_view s) {
   std::istringstream is(std::string(s), std::ios_base::in);
   is >> *this;
 }
+
+std::string Cards::to_string() const {
+  std::ostringstream os;
+  os << *this;
+  return os.str();
+}

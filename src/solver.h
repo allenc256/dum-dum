@@ -66,31 +66,14 @@ public:
   Result solve(int alpha, int beta, int max_depth);
 
 private:
-  struct SearchState {
-    bool  maximizing;
-    int   alpha;
-    int   beta;
-    int   best_score;
-    int   max_depth;
-    Cards already_searched;
-    Card  best_play;
-  };
-
   enum Order { LOW_TO_HIGH, HIGH_TO_LOW };
 
+  int  solve_internal(int alpha, int beta, int max_depth);
   void lookup_tpn_value(int max_depth, TpnTable::Value &value);
-
-  int solve_internal(int alpha, int beta, int max_depth);
-
   void order_plays(PlayOrder &order) const;
-  void order_plays_first_seat(PlayOrder &order) const;
-  void order_plays_second_seat(PlayOrder &order) const;
-  void order_plays_third_seat(PlayOrder &order) const;
-  void order_plays_fourth_seat(PlayOrder &order) const;
-
-  bool search_all_cards(SearchState &s);
-  bool search_specific_cards(SearchState &s, Cards c, Order o);
-  bool search_specific_card(SearchState &s, Card c);
+  void search_all_cards(
+      int max_depth, int alpha, int beta, int &best_score, Card &best_play
+  );
 
   void trace(const char *tag, int alpha, int beta, int tricks_taken_by_ns);
 

@@ -122,12 +122,11 @@ public:
   bool     contains(Card c) const { return bits_ & to_card_bit(c); }
   int      count() const { return std::popcount(bits_); }
   Cards    with(Card c) const { return Cards(bits_ | to_card_bit(c)); }
-  Cards    union_with(Cards c) const { return Cards(bits_ | c.bits_); }
+  Cards    with_all(Cards c) const { return Cards(bits_ | c.bits_); }
   Cards    complement() const { return Cards(~bits_ & ALL_MASK); }
   bool     disjoint(Cards c) const { return intersect(c).empty(); }
   Cards    intersect(Cards c) const { return Cards(bits_ & c.bits_); }
-  Cards    subtract(Cards c) const { return Cards(bits_ & ~c.bits_); }
-  Cards    honors() const { return Cards(bits_ & HONORS_MASK); }
+  Cards    without_all(Cards c) const { return Cards(bits_ & ~c.bits_); }
 
   Cards without_lower(Rank rank) const {
     return Cards(bits_ & (ALL_MASK << (rank * 4)));
@@ -219,6 +218,11 @@ public:
     return k < 64 ? Cards::Iter(i.card_index_ + k + 1) : Cards::Iter();
   }
 
+  Card highest() const {
+    assert(!empty());
+    return iter_highest().card();
+  }
+
   static Cards all() { return Cards(ALL_MASK); }
   static Cards all(Suit s) { return Cards(SUIT_MASK << s); }
 
@@ -232,6 +236,8 @@ public:
     return Cards(rank_bits << card.suit());
   }
 
+  std::string to_string() const;
+
 private:
   uint64_t bits_;
 
@@ -239,8 +245,6 @@ private:
   static uint64_t to_card_bit(Card c) { return to_card_bit(to_card_index(c)); }
   static uint64_t to_card_bit(int card_index) { return 1ull << card_index; }
 
-  static const uint64_t HONORS_MASK =
-      0b1111111111111111000000000000000000000000000000000000ull;
   static const uint64_t SUIT_MASK =
       0b0001000100010001000100010001000100010001000100010001ull;
   static const uint64_t ALL_MASK =

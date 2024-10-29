@@ -63,7 +63,7 @@ void MiniSolver::solve(int max_depth, TpnTable::Value &value) {
     }
 
     Cards poss_winners;
-    auto  it = left_cards.union_with(right_cards).iter_highest();
+    auto  it = left_cards.with_all(right_cards).iter_highest();
     if (it.valid()) {
       poss_winners = Cards::higher_ranking(it.card());
     } else {

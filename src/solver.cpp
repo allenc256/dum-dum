@@ -87,42 +87,37 @@ int Solver::solve_internal(int alpha, int beta, int max_depth) {
     TRACE("start", alpha, beta, -1);
   }
 
-  SearchState ss = {
-      .maximizing = maximizing,
-      .alpha      = alpha,
-      .beta       = beta,
-      .best_score = maximizing ? -1 : game_.tricks_max() + 1,
-      .max_depth  = max_depth
-  };
-  search_all_cards(ss);
+  int  best_score = maximizing ? -1 : game_.tricks_max() + 1;
+  Card best_play;
+  search_all_cards(max_depth, alpha, beta, best_score, best_play);
 
   if (game_.start_of_trick()) {
-    TRACE("end", alpha, beta, ss.best_score);
+    TRACE("end", alpha, beta, best_score);
 
     if (tpn_table_enabled_) {
       bool changed = false;
-      if (ss.best_score < beta && ss.best_score < tpn_value.upper_bound) {
-        tpn_value.upper_bound = ss.best_score;
+      if (best_score < beta && best_score < tpn_value.upper_bound) {
+        tpn_value.upper_bound = best_score;
         changed               = true;
       }
-      if (ss.best_score > alpha && ss.best_score > tpn_value.lower_bound) {
-        tpn_value.lower_bound = ss.best_score;
+      if (best_score > alpha && best_score > tpn_value.lower_bound) {
+        tpn_value.lower_bound = best_score;
         changed               = true;
       }
       if (changed) {
         if (tpn_value.lower_bound == tpn_value.upper_bound) {
-          tpn_value.pv_play = ss.best_play;
+          tpn_value.pv_play = best_play;
         }
         tpn_table_.upsert_value(max_depth, tpn_value);
       }
     }
   }
 
-  if (search_ply_ == 0 && alpha < ss.best_score && ss.best_score < beta) {
-    best_play_ = ss.best_play;
+  if (search_ply_ == 0 && alpha < best_score && best_score < beta) {
+    best_play_ = best_play;
   }
 
-  return ss.best_score;
+  return best_score;
 }
 
 void Solver::lookup_tpn_value(int max_depth, TpnTable::Value &value) {
@@ -133,180 +128,90 @@ void Solver::lookup_tpn_value(int max_depth, TpnTable::Value &value) {
   }
 }
 
-// void Solver::order_plays(PlayOrder &order) const {
-//   switch (game_.current_trick().card_count()) {
-//   case 0: order_plays_first_seat(order); break;
-//   case 1: order_plays_second_seat(order); break;
-//   case 2: order_plays_third_seat(order); break;
-//   case 3: order_plays_fourth_seat(order); break;
-//   }
-//   assert(false);
-// }
+static Cards compute_sure_winners(
+    const Trick &trick, const Hands &hands, Cards valid_plays
+) {
+  Card highest = trick.card(0);
+  for (int i = 1; i < trick.card_count(); i++) {
+    assert(trick.has_card(i));
+    highest = trick.higher_card(trick.card(i), highest);
+  }
+  for (int i = trick.card_count() + 1; i < 4; i++) {
+    highest = trick.higher_card(
+        trick.highest_card(hands.hand(trick.seat(i))), highest
+    );
+  }
 
-// void Solver::order_plays_first_seat(PlayOrder &order) const {
-//   order.append_plays(game_.valid_plays_pruned(), PlayOrder::LOW_TO_HIGH);
-// }
+  return trick.higher_cards(highest).intersect(valid_plays);
+}
 
-// static int card_to_strength(const Trick &trick, Card card) {
-//   if (card.suit() == trick.trump_suit()) {
-//     return card.rank() + 14;
-//   } else if (card.suit() == trick.lead_suit()) {
-//     return card.rank() + 1;
-//   } else {
-//     return 0;
-//   }
-// }
+void Solver::order_plays(PlayOrder &order) const {
+  auto &trick       = game_.current_trick();
+  Cards valid_plays = game_.valid_plays_pruned();
 
-// void Solver::order_plays_second_seat(PlayOrder &order) const {
-//   auto &trick = game_.current_trick();
-//   Card  highest[4];
-//   Card  overall_highest;
-//   Card  my_highest      = highest[1];
-//   Card  partner_highest = highest[3];
-//   Cards valid_plays     = game_.valid_plays_pruned();
+  if (!trick.started()) {
+    order.append_plays(valid_plays, PlayOrder::LOW_TO_HIGH);
+    return;
+  }
 
-//   if (my_highest == overall_highest) {
-//     //
-//   }
+  Cards sure_winners = compute_sure_winners(trick, game_.hands(), valid_plays);
+  order.append_plays(sure_winners, PlayOrder::LOW_TO_HIGH);
 
-//   // int max_str     = *std::max_element(strs, strs + 4);
-//   // int my_str      = strs[1];
-//   // int partner_str = strs[3];
+  if (trick.trump_suit() != NO_TRUMP) {
+    Cards non_trump_losers =
+        valid_plays.without_all(Cards::all(trick.trump_suit()));
+    order.append_plays(non_trump_losers, PlayOrder::LOW_TO_HIGH);
+  }
 
-//   // Seat  me                = game_.next_seat();
-//   // Seat  opp               = right_seat(me, 1);
-//   // Seat  partner           = right_seat(me, 2);
-//   // Cards my_cards          = game_.hand(me);
-//   // Cards opp_cards         = game_.hand(opp);
-//   // Cards partner_cards     = game_.hand(partner);
-//   // Card  my_best_card      = best_card(trick, my_cards);
-//   // Card  opp_best_card     = best_card(trick, opp_cards);
-//   // Card  partner_best_card = best_card(trick, partner_cards);
-//   // int   curr_val          = card_to_strength(trick, trick.card(0));
-//   // int   my_val            = card_to_strength(trick, my_best_card);
-//   // int   opp_val           = card_to_strength(trick, opp_best_card);
-//   // int   partner_val       = card_to_strength(trick, partner_best_card);
+  order.append_plays(valid_plays, PlayOrder::LOW_TO_HIGH);
+}
 
-//   // int highest_val = curr_val;
-//   // highest_val     = std::max(highest_val, my_val);
-//   // highest_val     = std::max(highest_val, opp_val);
-//   // highest_val     = std::max(highest_val, partner_val);
-
-//   // Card right_card = best_card(game_.trump_suit(), game_.)
-
-//   // if partner > opps
-//   //   play my lowest first
-//   // if me > opps
-//   //   play my highest first
-//   //
-// }
-
-bool Solver::search_all_cards(SearchState &s) {
+void Solver::search_all_cards(
+    int max_depth, int alpha, int beta, int &best_score, Card &best_play
+) {
   states_explored_++;
 
-  const Trick &t        = game_.current_trick();
-  Cards        my_plays = game_.valid_plays_pruned();
+  bool maximizing = game_.next_seat() == NORTH || game_.next_seat() == SOUTH;
 
-  if (move_ordering_enabled_) {
-    Cards my_winners = my_plays.intersect(t.winning_cards());
-    Cards my_losers  = my_plays.subtract(my_winners);
+  PlayOrder order;
+  order_plays(order);
 
-    if (t.card_count() == 1) {
-      Cards partner_plays   = t.valid_plays(game_.hand(t.seat(3)));
-      Cards partner_winners = partner_plays.intersect(t.winning_cards());
-      if (partner_winners.empty()) {
-        if (search_specific_cards(s, my_winners, HIGH_TO_LOW)) {
-          return true;
-        }
-      } else {
-        if (search_specific_cards(s, my_losers, LOW_TO_HIGH)) {
-          return true;
+  for (Card c : order) {
+    game_.play(c);
+    search_ply_++;
+
+    int child_score = solve_internal(alpha, beta, max_depth);
+    if (maximizing) {
+      if (child_score > best_score) {
+        best_score = child_score;
+        best_play  = c;
+      }
+      if (ab_pruning_enabled_) {
+        alpha = std::max(alpha, best_score);
+        if (best_score >= beta) {
+          search_ply_--;
+          game_.unplay();
+          return;
         }
       }
-    } else if (t.card_count() == 2) {
-      Cards opp_plays   = t.valid_plays(game_.hand(t.seat(3)));
-      Cards opp_winners = opp_plays.intersect(t.winning_cards());
-      if (opp_winners.empty()) {
-        if (search_specific_cards(s, my_losers, LOW_TO_HIGH)) {
-          return true;
-        }
-      } else {
-        if (search_specific_cards(s, my_winners, HIGH_TO_LOW)) {
-          return true;
-        }
+    } else {
+      if (child_score < best_score) {
+        best_score = child_score;
+        best_play  = c;
       }
-    } else if (t.card_count() == 3) {
-      bool partner_winning = t.winning_index() == 1;
-      if (partner_winning) {
-        if (search_specific_cards(s, my_losers, LOW_TO_HIGH)) {
-          return true;
-        }
-      } else {
-        if (search_specific_cards(s, my_winners, LOW_TO_HIGH)) {
-          return true;
+      if (ab_pruning_enabled_) {
+        beta = std::min(beta, best_score);
+        if (best_score <= alpha) {
+          search_ply_--;
+          game_.unplay();
+          return;
         }
       }
     }
+
+    search_ply_--;
+    game_.unplay();
   }
-
-  return search_specific_cards(s, my_plays, LOW_TO_HIGH);
-}
-
-bool Solver::search_specific_cards(SearchState &s, Cards c, Order o) {
-  c = c.subtract(s.already_searched);
-  if (c.empty()) {
-    return false;
-  }
-  s.already_searched.add_all(c);
-  if (o == HIGH_TO_LOW) {
-    for (auto i = c.iter_highest(); i.valid(); i = c.iter_lower(i)) {
-      if (search_specific_card(s, i.card())) {
-        return true;
-      }
-    }
-  } else {
-    for (auto i = c.iter_lowest(); i.valid(); i = c.iter_higher(i)) {
-      if (search_specific_card(s, i.card())) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
-bool Solver::search_specific_card(SearchState &s, Card c) {
-  game_.play(c);
-  search_ply_++;
-
-  int  child_tricks_by_ns = solve_internal(s.alpha, s.beta, s.max_depth);
-  bool prune              = false;
-  if (s.maximizing) {
-    if (child_tricks_by_ns > s.best_score) {
-      s.best_score = child_tricks_by_ns;
-      s.best_play  = c;
-    }
-    if (ab_pruning_enabled_) {
-      s.alpha = std::max(s.alpha, s.best_score);
-      if (s.best_score >= s.beta) {
-        prune = true;
-      }
-    }
-  } else {
-    if (child_tricks_by_ns < s.best_score) {
-      s.best_score = child_tricks_by_ns;
-      s.best_play  = c;
-    }
-    if (ab_pruning_enabled_) {
-      s.beta = std::min(s.beta, s.best_score);
-      if (s.best_score <= s.alpha) {
-        prune = true;
-      }
-    }
-  }
-
-  search_ply_--;
-  game_.unplay();
-  return prune;
 }
 
 static void sha256_hash(Game &game, char *buf, size_t buflen) {
