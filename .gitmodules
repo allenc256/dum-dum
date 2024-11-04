@@ -4,3 +4,6 @@
 [submodule "PicoSHA2"]
 	path = PicoSHA2
 	url = git@github.com:okdshin/PicoSHA2.git
+[submodule "benchmark"]
+	path = benchmark
+	url = git@github.com:google/benchmark.git
