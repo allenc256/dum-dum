@@ -60,5 +60,6 @@ void TpnTable::upsert_value_normed(int max_depth, const Value &value) {
             value.pv_play
         )
     );
+    stats_.states_by_depth[game_.tricks_taken()]++;
   }
 }

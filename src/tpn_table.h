@@ -12,11 +12,16 @@ public:
     std::optional<Card> pv_play;
   };
 
+  struct Stats {
+    int states_by_depth[13] = {0};
+  };
+
   TpnTable(const Game &game) : game_(game) {}
 
-  bool   lookup_value(int max_depth, Value &value) const;
-  void   upsert_value(int max_depth, const Value &value);
-  size_t size() const { return table_.size(); }
+  bool         lookup_value(int max_depth, Value &value) const;
+  void         upsert_value(int max_depth, const Value &value);
+  size_t       size() const { return table_.size(); }
+  const Stats &stats() const { return stats_; }
 
 private:
   struct Entry {
@@ -44,4 +49,5 @@ private:
 
   const Game &game_;
   HashTable   table_;
+  Stats       stats_;
 };

@@ -39,8 +39,9 @@ public:
   Solver(Game g);
   ~Solver();
 
-  int64_t states_explored() const { return states_explored_; }
-  int64_t states_memoized() const { return tpn_table_.size(); }
+  int64_t                states_explored() const { return states_explored_; }
+  int64_t                states_memoized() const { return tpn_table_.size(); }
+  const TpnTable::Stats &tpn_table_stats() const { return tpn_table_.stats(); }
 
   void enable_all_optimizations(bool enabled) {
     ab_pruning_enabled_    = enabled;

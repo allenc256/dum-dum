@@ -154,6 +154,63 @@ void Solver::order_plays(PlayOrder &order) const {
     return;
   }
 
+  // 2nd seat:
+  //
+  // - 0XXX (lead always wins)
+  //   - low
+  //
+  // - 10XX (only I can win)
+  // - X01X (only I can win)
+  //   - high
+  // - X0X1 (opps always lose)
+  //   - one low + one high
+  //
+  // - 1X0X (opponents always win)
+  //   - low
+  // - X10X (finesse)
+  //   - cover?
+  // - XX01 (self-finesse?)
+  //   - low
+  //
+  // - 1XX0 (partner must win)
+  //   - low
+  // - X1X0 (opps always lose)
+  //   - one low + one high
+  // - XX10 (self-finesse?)
+  //   - low
+
+  // 3rd seat:
+  //
+  // - 0XXX (lead always wins)
+  // - X0XX (2nd seat always wins)
+  //   - low
+  //
+  // - 1X0X (lead already winning)
+  //   - low
+  // - X10X (only I can win)
+  // - XX01 (only I can win)
+  //   - high
+  //
+  // - 1XX0 (opp will win)
+  // - X1X0 (opp will win)
+  //   - low
+  // - XX10 (finesse)
+  //   - cover?
+
+  // 4th seat:
+  //
+  // - 0XXX
+  // - X0XX
+  // - XX0X
+  //   - low
+  //
+  // - 1XX0 (only I can win)
+  //   - high
+  // - X1X0 (partner has won)
+  //   - low
+  // - XX10 (only I can win)
+  //   - high
+
   Cards sure_winners = compute_sure_winners(trick, game_.hands(), valid_plays);
   order.append_plays(sure_winners, PlayOrder::LOW_TO_HIGH);
 

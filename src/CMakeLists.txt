@@ -16,5 +16,5 @@ target_compile_options(dumdum PRIVATE ${CXX_FLAGS})
 target_compile_options(dumdum_test_lib PRIVATE ${CXX_FLAGS})
 
 target_include_directories(dumdum_test_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(dumdum ${LINK_LIBS})
+target_link_libraries(dumdum ${LINK_LIBS} absl::flags absl::flags_parse)
 target_link_libraries(dumdum_test_lib ${LINK_LIBS})
