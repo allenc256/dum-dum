@@ -152,7 +152,8 @@ bool is_rank_char(int ch) {
   return false;
 }
 
-static void parse_cards_ranks(std::istream &is, Suit s, Cards &cs) {
+static void
+parse_cards_ranks(std::istream &is, Suit s, Cards &cs, bool allow_empty) {
   Rank r;
   Rank last_rank;
   int  ch;
@@ -162,7 +163,7 @@ static void parse_cards_ranks(std::istream &is, Suit s, Cards &cs) {
   while (true) {
     ch = is.peek();
     if (ch == EOF) {
-      if (count == 0) {
+      if (count == 0 && !allow_empty) {
         throw ParseFailure("EOF");
       }
       return;
@@ -195,9 +196,31 @@ std::istream &operator>>(std::istream &is, Cards &c) {
     if (s != suit) {
       throw ParseFailure("bad suit");
     }
-    parse_cards_ranks(is, s, c);
+    parse_cards_ranks(is, s, c, false);
   }
   return is;
+}
+
+void Cards::print_compact(std::ostream &os) const {
+  for (Suit suit = LAST_SUIT; suit >= FIRST_SUIT; suit--) {
+    if (suit != LAST_SUIT) {
+      os << '.';
+    }
+    Cards in_suit = intersect(suit);
+    for (auto it = in_suit.iter_highest(); it.valid();
+         it      = in_suit.iter_lower(it)) {
+      os << it.card().rank();
+    }
+  }
+}
+
+void Cards::parse_compact(std::istream &is) {
+  for (Suit suit = LAST_SUIT; suit >= FIRST_SUIT; suit--) {
+    if (suit != LAST_SUIT && is.get() != '.') {
+      throw ParseFailure("expected '.'");
+    }
+    parse_cards_ranks(is, suit, *this, true);
+  }
 }
 
 Cards::Cards(std::string_view s) {

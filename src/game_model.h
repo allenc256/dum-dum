@@ -248,6 +248,9 @@ public:
 
   bool operator==(const Hands &hands) const = default;
 
+  friend std::ostream &operator<<(std::ostream &os, const Hands &hands);
+  friend std::istream &operator>>(std::istream &is, Hands &hands);
+
 private:
   std::array<Cards, 4> hands_;
 };

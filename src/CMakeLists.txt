@@ -1,3 +1,12 @@
+include(FetchContent)
+
+FetchContent_Declare(
+    argparse
+    GIT_REPOSITORY https://github.com/p-ranav/argparse.git
+    GIT_TAG        v3.1
+)
+FetchContent_MakeAvailable(argparse)
+
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "*.cpp" "*.h")
 list(REMOVE_ITEM SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp)
 
@@ -16,5 +25,5 @@ target_compile_options(dumdum PRIVATE ${CXX_FLAGS})
 target_compile_options(dumdum_test_lib PRIVATE ${CXX_FLAGS})
 
 target_include_directories(dumdum_test_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(dumdum ${LINK_LIBS} absl::flags absl::flags_parse)
+target_link_libraries(dumdum ${LINK_LIBS} argparse)
 target_link_libraries(dumdum_test_lib ${LINK_LIBS})

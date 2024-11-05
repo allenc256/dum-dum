@@ -49,6 +49,26 @@ std::ostream &operator<<(std::ostream &os, const Trick &t) {
   return os;
 }
 
+std::ostream &operator<<(std::ostream &os, const Hands &hands) {
+  for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
+    if (seat != FIRST_SEAT) {
+      os << '/';
+    }
+    hands.hand(seat).print_compact(os);
+  }
+  return os;
+}
+
+std::istream &operator>>(std::istream &is, Hands &hands) {
+  for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
+    if (seat != FIRST_SEAT && is.get() != '/') {
+      throw ParseFailure("expected '/' delimiter between hands");
+    }
+    hands.hands_[seat].parse_compact(is);
+  }
+  return is;
+}
+
 std::ostream &operator<<(std::ostream &os, const Game &g) {
   constexpr int spacing = 15;
 

@@ -8,6 +8,8 @@
 #include "weights/linear0_w.txt"
 };
 
+// const float (*LINEAR0_WEIGHT_MD)[4] = (float (*)[4])LINEAR0_WEIGHT;
+
 [[maybe_unused]] alignas(16) const float LINEAR0_BIAS[4] = {
 #include "weights/linear0_b.txt"
 };
@@ -53,7 +55,15 @@ void eval_layer0_naive(const int features[32], float output[16]) {
     output[s_off + 2] += LINEAR0_WEIGHT[w_off + 2];
     output[s_off + 3] += LINEAR0_WEIGHT[w_off + 3];
   }
+
+  for (int i = 0; i < 16; i++) {
+    output[i] = std::max(0.0f, output[i]);
+  }
 }
+
+// void eval_layer1_naive(const float input[16], float output[16]) {
+
+// }
 
 void eval_layer0_arm_neon(const int features[32], float output[16]) {
   float32x4_t o0 = vld1q_f32(LINEAR0_BIAS);

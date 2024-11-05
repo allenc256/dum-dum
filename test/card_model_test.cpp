@@ -202,6 +202,30 @@ TEST(Cards, prune_equivalent) {
   EXPECT_EQ(c.prune_equivalent(c.complement()), Cards("♠ K ♥ 5 ♦ - ♣ 7"));
 }
 
+TEST(Cards, print_parse_compact) {
+  Cards              c1("♠ AKT98543 ♥ AQT953 ♦ - ♣ 432");
+  std::ostringstream os;
+  c1.print_compact(os);
+  EXPECT_EQ(os.str(), "AKT98543.AQT953..432");
+
+  Cards              c2;
+  std::istringstream is(os.str());
+  c2.parse_compact(is);
+  EXPECT_EQ(c1, c2);
+}
+
+TEST(Cards, print_parse_empty) {
+  Cards              c1;
+  std::ostringstream os;
+  c1.print_compact(os);
+  EXPECT_EQ(os.str(), "...");
+
+  Cards              c2;
+  std::istringstream is(os.str());
+  c2.parse_compact(is);
+  EXPECT_EQ(c1, c2);
+}
+
 TEST(SuitNormalizer, empty) {
   SuitNormalizer sn;
   for (Rank r = RANK_2; r <= ACE; r++) {

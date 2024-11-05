@@ -238,6 +238,9 @@ public:
 
   std::string to_string() const;
 
+  void print_compact(std::ostream &os) const;
+  void parse_compact(std::istream &is);
+
 private:
   uint64_t bits_;
 

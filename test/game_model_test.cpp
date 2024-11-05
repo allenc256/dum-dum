@@ -191,6 +191,23 @@ TEST(Trick, is_higher_card_trump) {
   EXPECT_FALSE(trick.is_higher_card(Card("5C"), Card("2H")));
 }
 
+TEST(Hands, iostream) {
+  Hands h1 = {
+      Cards("♠ A ♥ QT8 ♦ -   ♣ QJT"),
+      Cards("♠ 2 ♥ -   ♦ AK9 ♣ A42"),
+      Cards("♠ K ♥ J97 ♦ QJT ♣ -"),
+      Cards("♠ - ♥ AK2 ♦ 2   ♣ K53"),
+  };
+  std::ostringstream os;
+  os << h1;
+  EXPECT_EQ(os.str(), "A.QT8..QJT/2..AK9.A42/K.J97.QJT./.AK2.2.K53");
+
+  Hands              h2;
+  std::istringstream is(os.str());
+  is >> h2;
+  EXPECT_EQ(h1, h2);
+}
+
 TEST(Game, play_unplay) {
   Hands hands = {
       Cards("S A2 H - D - C -"),
