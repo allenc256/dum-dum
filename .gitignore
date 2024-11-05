@@ -35,5 +35,5 @@ CMakeFiles/
 build/
 .vscode/
 *.gcov
-*.txt
+notes/
 

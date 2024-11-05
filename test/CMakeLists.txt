@@ -13,9 +13,14 @@ enable_testing()
 
 include(GoogleTest)
 
-file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "*.cpp" "*.h")
+file(GLOB_RECURSE TEST_SOURCES CONFIGURE_DEPENDS "*.cpp" "*.h")
+list(REMOVE_ITEM TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/benchmark.cpp)
 
-add_executable(dumdum_test ${SOURCES})
+add_executable(dumdum_test ${TEST_SOURCES})
 target_link_libraries(dumdum_test dumdum_test_lib GTest::gmock GTest::gtest_main)
 
 gtest_discover_tests(dumdum_test)
+
+add_executable(dumdum_benchmark benchmark.cpp)
+target_link_libraries(dumdum_benchmark dumdum_test_lib benchmark::benchmark)
+
