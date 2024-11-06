@@ -1,5 +1,7 @@
 #include "game_model.h"
 
+#include <sstream>
+
 static void print_chars(std::ostream &os, int n, char ch) {
   for (int i = 0; i < n; i++) {
     os << ch;
@@ -67,6 +69,11 @@ std::istream &operator>>(std::istream &is, Hands &hands) {
     hands.hands_[seat].parse_compact(is);
   }
   return is;
+}
+
+Hands::Hands(std::string_view s) {
+  std::istringstream is(std::string(s), std::ios_base::in);
+  is >> *this;
 }
 
 std::ostream &operator<<(std::ostream &os, const Game &g) {

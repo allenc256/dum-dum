@@ -271,9 +271,9 @@ void Solver::search_all_cards(
   }
 }
 
-static void sha256_hash(Game &game, char *buf, size_t buflen) {
+static void print_sha256_hash(std::ostream &os, Game &game) {
   if (!game.start_of_trick()) {
-    buf[0] = 0;
+    os << std::setw(16) << ' ';
     return;
   }
 
@@ -286,37 +286,30 @@ static void sha256_hash(Game &game, char *buf, size_t buflen) {
   uint8_t *in_end   = in_begin + sizeof(state);
   picosha2::hash256(in_begin, in_end, digest, digest + 32);
 
-  std::snprintf(
-      buf, buflen, "%08x%08x", *(uint32_t *)&digest[0], *(uint32_t *)&digest[4]
-  );
+  os << std::hex << std::setfill('0');
+  os << std::setw(8) << *(uint32_t *)&digest[0];
+  os << std::setw(8) << *(uint32_t *)&digest[1];
+  os << std::dec << std::setfill(' ');
 }
 
 void Solver::trace(
     const char *tag, int alpha, int beta, int tricks_taken_by_ns
 ) {
-  char line_buf[121], tricks_buf[3], hash_buf[17];
-  sha256_hash(game_, hash_buf, sizeof(hash_buf));
+  *trace_ostream_ << std::left;
+  *trace_ostream_ << std::setw(7) << trace_lineno_ << ' ';
+  *trace_ostream_ << std::setw(8) << tag << ' ';
+  print_sha256_hash(*trace_ostream_, game_);
+  *trace_ostream_ << std::setw(2) << alpha << ' ';
+  *trace_ostream_ << std::setw(2) << beta << ' ';
+  *trace_ostream_ << std::setw(2) << game_.tricks_taken_by_ns() << ' ';
   if (tricks_taken_by_ns >= 0) {
-    std::snprintf(tricks_buf, sizeof(tricks_buf), "%2d", tricks_taken_by_ns);
+    *trace_ostream_ << std::setw(2) << tricks_taken_by_ns;
   } else {
-    std::strcpy(tricks_buf, "  ");
+    *trace_ostream_ << "  ";
   }
-  std::snprintf(
-      line_buf,
-      sizeof(line_buf),
-      "%-7llu %-8s %16s %2d %2d %2d %s",
-      trace_lineno_,
-      tag,
-      hash_buf,
-      alpha,
-      beta,
-      game_.tricks_taken_by_ns(),
-      tricks_buf
-  );
-  *trace_ostream_ << line_buf;
   for (int i = 0; i < game_.tricks_taken(); i++) {
-    *trace_ostream_ << " " << game_.trick(i);
+    *trace_ostream_ << ' ' << game_.trick(i);
   }
-  *trace_ostream_ << std::endl;
+  *trace_ostream_ << '\n';
   trace_lineno_++;
 }

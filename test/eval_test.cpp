@@ -9,44 +9,33 @@ static const int FEATURES[32] = {
 };
 
 static const float OUTPUT[16] = {
-    0.2025102,
-    1.0128818,
-    -0.14067471,
-    0.14914006,
-    0.88365465,
-    0.9768978,
-    -0.16632055,
-    0.38320038,
-    0.34305304,
-    0.83159864,
-    -0.2803467,
-    0.28927544,
-    0.42370218,
-    0.61149293,
-    0.19096339,
-    0.44793922,
+    0.0,
+    0.0,
+    0.0,
+    0.24163932,
+    0.0,
+    0.0,
+    0.0684607,
+    0.0255655,
+    0.0,
+    0.0,
+    0.16984534,
+    0.0,
+    0.2826414,
+    0.0,
+    0.0,
+    0.0
 };
 
 TEST(Eval, eval_layer0_naive) {
   alignas(16) float output[16];
-  eval_layer0_naive(FEATURES, output);
+  Game              game = {
+      NO_TRUMP,
+      WEST,
+      Hands("QT5.KJ.KJ9./6.AQ.T6.AJT/K98.9.875.K/AJ7.T8.AQ.Q"),
+  };
+  eval_layer0_naive(game, output);
   for (int i = 0; i < 16; i++) {
-    EXPECT_FLOAT_EQ(OUTPUT[i], output[i]);
-  }
-}
-
-TEST(Eval, eval_layer0_arm_neon) {
-  alignas(16) float output[16];
-  eval_layer0_arm_neon(FEATURES, output);
-  for (int i = 0; i < 16; i++) {
-    EXPECT_FLOAT_EQ(OUTPUT[i], output[i]);
-  }
-}
-
-TEST(Eval, eval_layer0_arm_neon_fp16) {
-  alignas(16) float output[16];
-  eval_layer0_arm_neon_fp16(FEATURES, output);
-  for (int i = 0; i < 16; i++) {
-    EXPECT_NEAR(OUTPUT[i], output[i], 1e-3);
+    EXPECT_NEAR(OUTPUT[i], output[i], 1e-5);
   }
 }

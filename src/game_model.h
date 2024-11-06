@@ -208,6 +208,7 @@ class Hands {
 public:
   Hands() {}
   Hands(Cards w, Cards n, Cards e, Cards s) : hands_{w, n, e, s} {}
+  Hands(std::string_view s);
 
   Cards hand(Seat seat) const { return hands_[seat]; }
   void  add_card(Seat seat, Card card) { hands_[seat].add(card); }

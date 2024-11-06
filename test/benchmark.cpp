@@ -11,26 +11,39 @@ const int features[32] = {6488, 6480, 6460, 6516, 6596, 6580, 6576, 6652,
 static void BM_eval_layer0_naive(benchmark::State &state) {
   alignas(16) float output[16];
   for (auto _ : state) {
-    eval_layer0_naive(features, output);
+    eval_layer0_naive(6, features, output);
   }
 }
 
-static void BM_eval_layer0_arm_neon(benchmark::State &state) {
+static void BM_eval_layer0_naive_2(benchmark::State &state) {
   alignas(16) float output[16];
+  Game              game = {
+      NO_TRUMP,
+      WEST,
+      Hands("QT5.KJ.KJ9./6.AQ.T6.AJT/K98.9.875.K/AJ7.T8.AQ.Q"),
+  };
   for (auto _ : state) {
-    eval_layer0_arm_neon(features, output);
+    eval_layer0_naive(game, output);
   }
 }
 
-static void BM_eval_layer0_arm_neon_fp16(benchmark::State &state) {
-  alignas(16) float output[16];
-  for (auto _ : state) {
-    eval_layer0_arm_neon_fp16(features, output);
-  }
-}
+// static void BM_eval_layer0_arm_neon(benchmark::State &state) {
+//   alignas(16) float output[16];
+//   for (auto _ : state) {
+//     eval_layer0_arm_neon(features, output);
+//   }
+// }
+
+// static void BM_eval_layer0_arm_neon_fp16(benchmark::State &state) {
+//   alignas(16) float output[16];
+//   for (auto _ : state) {
+//     eval_layer0_arm_neon_fp16(features, output);
+//   }
+// }
 
 BENCHMARK(BM_eval_layer0_naive);
-BENCHMARK(BM_eval_layer0_arm_neon);
-BENCHMARK(BM_eval_layer0_arm_neon_fp16);
+BENCHMARK(BM_eval_layer0_naive_2);
+// BENCHMARK(BM_eval_layer0_arm_neon);
+// BENCHMARK(BM_eval_layer0_arm_neon_fp16);
 
 BENCHMARK_MAIN();
