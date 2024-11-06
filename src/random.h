@@ -40,17 +40,21 @@ public:
   }
 
   Game random_game(int cards_per_hand) {
-    return random_game(std::nullopt, std::nullopt, cards_per_hand);
+    return random_game(std::nullopt, std::nullopt, cards_per_hand, false);
   }
 
   Game random_game(
       std::optional<Suit> trump_suit,
       std::optional<Seat> lead_seat,
-      int                 cards_per_hand
+      int                 cards_per_hand,
+      bool                normalize
   ) {
     Hands hands = random_deal(cards_per_hand);
-    Suit  suit  = trump_suit.has_value() ? *trump_suit : random_trump_suit();
-    Seat  lead  = lead_seat.has_value() ? *lead_seat : random_seat();
+    if (normalize) {
+      hands = hands.normalize();
+    }
+    Suit suit = trump_suit.has_value() ? *trump_suit : random_trump_suit();
+    Seat lead = lead_seat.has_value() ? *lead_seat : random_seat();
     return Game(suit, lead, hands);
   }
 

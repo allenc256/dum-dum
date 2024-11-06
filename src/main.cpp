@@ -12,7 +12,9 @@ struct Options {
   int                 seed;
   int                 num_hands;
   int                 deal_size;
+  bool                normalize;
   bool                compact_output;
+  bool                perf_stats;
 };
 
 void parse_arguments(int argc, char **argv, Options &options) {
@@ -53,11 +55,21 @@ void parse_arguments(int argc, char **argv, Options &options) {
       .nargs(1)
       .metavar("N")
       .help("number of cards per hand in each deal");
+  program.add_argument("-n", "--normalize")
+      .default_value(false)
+      .implicit_value(true)
+      .store_into(options.normalize)
+      .help("normalize hands");
   program.add_argument("-c", "--compact")
       .default_value(false)
       .implicit_value(true)
       .store_into(options.compact_output)
       .help("compact output");
+  program.add_argument("-p", "--perf-stats")
+      .default_value(false)
+      .implicit_value(true)
+      .store_into(options.perf_stats)
+      .help("output performance stats");
 
   try {
     program.parse_args(argc, argv);
@@ -94,36 +106,44 @@ struct Solve {
   int64_t elapsed_ms;
 };
 
-void print_solve_compact_headers() {
-  std::cout << "lead_seat,";
-  std::cout << "trump_suit,";
-  std::cout << "hands,";
-  std::cout << "tricks,";
-  std::cout << "states_explored,";
-  std::cout << "states_memoized,";
-  std::cout << "elapsed_ms\n";
+void print_solve_compact_headers(bool perf_stats) {
+  std::cout << "lead_seat";
+  std::cout << ",trump_suit";
+  std::cout << ",hands";
+  std::cout << ",tricks";
+  if (perf_stats) {
+    std::cout << ",states_explored";
+    std::cout << ",states_memoized";
+    std::cout << ",elapsed_ms";
+  }
+  std::cout << '\n';
 }
 
 constexpr const char *TRUMP_STRS[] = {"C", "D", "H", "S", "NT"};
 
-void print_solve_compact(const Solve &solve) {
-  std::cout << solve.lead_seat << ',';
-  std::cout << TRUMP_STRS[solve.trump_suit] << ',';
-  std::cout << solve.hands << ',';
-  std::cout << solve.tricks << ',';
-  std::cout << solve.states_explored << ',';
-  std::cout << solve.states_memoized << ',';
-  std::cout << solve.elapsed_ms << '\n';
+void print_solve_compact(const Solve &solve, bool perf_stats) {
+  std::cout << solve.lead_seat;
+  std::cout << ',' << TRUMP_STRS[solve.trump_suit];
+  std::cout << ',' << solve.hands;
+  std::cout << ',' << solve.tricks;
+  if (perf_stats) {
+    std::cout << ',' << solve.states_explored;
+    std::cout << ',' << solve.states_memoized;
+    std::cout << ',' << solve.elapsed_ms;
+  }
+  std::cout << '\n';
 }
 
-void print_solve(const Solve &solve) {
+void print_solve(const Solve &solve, bool perf_stats) {
   std::cout << "lead_seat        " << solve.lead_seat << '\n';
   std::cout << "trump_suit       " << TRUMP_STRS[solve.trump_suit] << '\n';
   std::cout << "hands            " << solve.hands << '\n';
   std::cout << "tricks           " << solve.tricks << '\n';
-  std::cout << "states_explored  " << solve.states_explored << '\n';
-  std::cout << "states_memoized  " << solve.states_memoized << '\n';
-  std::cout << "elapsed_ms       " << solve.elapsed_ms << '\n';
+  if (perf_stats) {
+    std::cout << "states_explored  " << solve.states_explored << '\n';
+    std::cout << "states_memoized  " << solve.states_memoized << '\n';
+    std::cout << "elapsed_ms       " << solve.elapsed_ms << '\n';
+  }
   std::cout << '\n';
 }
 
@@ -131,12 +151,15 @@ void solve_random(const Options &options) {
   Random random(options.seed);
 
   if (options.compact_output) {
-    print_solve_compact_headers();
+    print_solve_compact_headers(options.perf_stats);
   }
 
   for (int i = 0; i < options.num_hands; i++) {
     Game g = random.random_game(
-        options.trump_suit, options.lead_seat, options.deal_size
+        options.trump_suit,
+        options.lead_seat,
+        options.deal_size,
+        options.normalize
     );
     Solver s(g);
     auto   begin = std::chrono::steady_clock::now();
@@ -157,9 +180,9 @@ void solve_random(const Options &options) {
     };
 
     if (options.compact_output) {
-      print_solve_compact(solve);
+      print_solve_compact(solve, options.perf_stats);
     } else {
-      print_solve(solve);
+      print_solve(solve, options.perf_stats);
     }
   }
 }
