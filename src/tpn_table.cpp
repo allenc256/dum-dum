@@ -26,18 +26,18 @@ void TpnTable::upsert_value(int max_depth, const Value &value) {
 
 bool TpnTable::lookup_value_normed(int max_depth, Value &value) const {
   auto it = table_.find(game_.normalized_state());
-  if (it != table_.end() && it->second.max_depth >= max_depth) {
+  if (it != table_.end()) {
     const Entry &entry = it->second;
-    value.lower_bound  = entry.lower_bound;
-    value.upper_bound  = entry.upper_bound;
     value.pv_play      = entry.pv_play;
-    return true;
-  } else {
-    value.lower_bound = 0;
-    value.upper_bound = (float)game_.tricks_left();
-    value.pv_play     = std::nullopt;
-    return false;
+    if (entry.max_depth >= max_depth) {
+      value.lower_bound = entry.lower_bound;
+      value.upper_bound = entry.upper_bound;
+      return true;
+    }
   }
+  value.lower_bound = 0;
+  value.upper_bound = (float)game_.tricks_left();
+  return false;
 }
 
 void TpnTable::upsert_value_normed(int max_depth, const Value &value) {

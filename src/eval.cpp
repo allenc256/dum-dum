@@ -155,7 +155,16 @@ float eval_mlp_network(const Game &game) {
   float out0[16];
   float out1[16];
   int   tricks_left = game.tricks_left();
+  float out;
+
   eval_layer0_naive(game, out0);
   eval_layer1_naive(tricks_left, out0, out1);
-  return eval_layer2_naive(game.tricks_left(), out1) * (float)tricks_left;
+  out = eval_layer2_naive(game.tricks_left(), out1);
+  if (game.next_seat() == NORTH || game.next_seat() == SOUTH) {
+    out = 1.0f - out;
+  }
+  out *= (float)game.tricks_left();
+  out += (float)game.tricks_taken_by_ns();
+
+  return out;
 }

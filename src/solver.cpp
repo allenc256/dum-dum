@@ -1,7 +1,17 @@
 #include "solver.h"
+#include "eval.h"
 
 #include <cmath>
 #include <picosha2.h>
+
+void PlayOrder::append_play(Card card) {
+  if (all_cards_.contains(card)) {
+    return;
+  }
+  all_cards_.add(card);
+  assert(all_cards_.count() <= 13);
+  cards_[card_count_++] = card;
+}
 
 void PlayOrder::append_plays(Cards cards, bool low_to_high) {
   cards.remove_all(all_cards_);
@@ -43,13 +53,72 @@ Solver::Result Solver::solve() {
 Solver::Result Solver::solve(float alpha, float beta, int max_depth) {
   best_play_.reset();
   assert(search_ply_ == 0);
-  int tricks_taken_by_ns = (int)roundf(solve_internal(alpha, beta, max_depth));
+  float tricks_taken_by_ns = solve_internal(alpha, beta, max_depth);
   assert(search_ply_ == 0);
-  int tricks_taken_by_ew = game_.tricks_max() - tricks_taken_by_ns;
+  float tricks_taken_by_ew = (float)game_.tricks_max() - tricks_taken_by_ns;
   assert(best_play_.has_value());
   return {
       .tricks_taken_by_ns = tricks_taken_by_ns,
       .tricks_taken_by_ew = tricks_taken_by_ew,
+      .best_play          = *best_play_,
+  };
+}
+
+Solver::Result Solver::solve_id() {
+  float score = -1;
+
+  std::cout << game_ << '\n';
+
+  std::cout << std::setw(8) << "depth" << ' ';
+  std::cout << std::setw(8) << "alpha" << ' ';
+  std::cout << std::setw(8) << "beta" << ' ';
+  std::cout << std::setw(8) << "score" << ' ';
+  std::cout << std::setw(8) << "explored" << ' ';
+  std::cout << std::setw(8) << "memoized" << '\n';
+
+  for (int max_depth = 1; max_depth <= game_.tricks_max(); max_depth++) {
+    int eval_tricks = game_.tricks_max() - max_depth;
+    if (max_depth < game_.tricks_max() &&
+        !(4 <= eval_tricks && eval_tricks <= 8)) {
+      continue;
+    }
+
+    while (true) {
+      float left_window  = 0.5f;
+      float right_window = 0.5f;
+      float alpha, beta;
+
+      if (score < 0) {
+        alpha = -1;
+        beta  = (float)(game_.tricks_max() + 1);
+      } else {
+        alpha = score - left_window;
+        beta  = score + right_window;
+      }
+
+      score = solve_internal(alpha, beta, max_depth);
+
+      std::cout << std::setw(8) << max_depth << ' ';
+      std::cout << std::setw(8) << alpha << ' ';
+      std::cout << std::setw(8) << beta << ' ';
+      std::cout << std::setw(8) << score << ' ';
+      std::cout << std::setw(8) << states_explored() << ' ';
+      std::cout << std::setw(8) << states_memoized() << '\n';
+
+      if (score <= alpha) {
+        left_window *= 2;
+      } else if (score >= beta) {
+        right_window *= 2;
+      } else {
+        break;
+      }
+    }
+  }
+
+  assert(best_play_.has_value());
+  return {
+      .tricks_taken_by_ns = score,
+      .tricks_taken_by_ew = (float)game_.tricks_max() - score,
       .best_play          = *best_play_,
   };
 }
@@ -86,12 +155,26 @@ float Solver::solve_internal(float alpha, float beta, int max_depth) {
       }
     }
 
+    if (game_.tricks_taken() >= max_depth) {
+      float score = eval_mlp_network(game_);
+      TRACE("eval", alpha, beta, score);
+      if (tpn_table_enabled_) {
+        tpn_value.lower_bound = score;
+        tpn_value.upper_bound = score;
+        tpn_value.pv_play     = std::nullopt;
+        tpn_table_.upsert_value(max_depth, tpn_value);
+      }
+      return score;
+    }
+
     TRACE("start", alpha, beta, -1);
   }
 
   float best_score = maximizing ? -1 : (float)game_.tricks_max() + 1;
   Card  best_play;
-  search_all_cards(max_depth, alpha, beta, best_score, best_play);
+  search_all_cards(
+      max_depth, alpha, beta, tpn_value.pv_play, best_score, best_play
+  );
 
   if (game_.start_of_trick()) {
     TRACE("end", alpha, beta, best_score);
@@ -107,7 +190,7 @@ float Solver::solve_internal(float alpha, float beta, int max_depth) {
         changed               = true;
       }
       if (changed) {
-        if (tpn_value.lower_bound == tpn_value.upper_bound) {
+        if (tpn_value.lower_bound >= tpn_value.upper_bound) {
           tpn_value.pv_play = best_play;
         }
         tpn_table_.upsert_value(max_depth, tpn_value);
@@ -147,11 +230,14 @@ static Cards compute_sure_winners(
   return trick.higher_cards(highest).intersect(valid_plays);
 }
 
-void Solver::order_plays(PlayOrder &order) const {
+void Solver::order_plays(std::optional<Card> pv_play, PlayOrder &order) const {
   auto &trick       = game_.current_trick();
   Cards valid_plays = game_.valid_plays_pruned();
 
   if (!trick.started()) {
+    if (pv_play.has_value()) {
+      order.append_play(*pv_play);
+    }
     order.append_plays(valid_plays, PlayOrder::LOW_TO_HIGH);
     return;
   }
@@ -169,14 +255,19 @@ void Solver::order_plays(PlayOrder &order) const {
 }
 
 void Solver::search_all_cards(
-    int max_depth, float alpha, float beta, float &best_score, Card &best_play
+    int                 max_depth,
+    float               alpha,
+    float               beta,
+    std::optional<Card> pv_play,
+    float              &best_score,
+    Card               &best_play
 ) {
   states_explored_++;
 
   bool maximizing = game_.next_seat() == NORTH || game_.next_seat() == SOUTH;
 
   PlayOrder order;
-  order_plays(order);
+  order_plays(pv_play, order);
 
   for (Card c : order) {
     game_.play(c);

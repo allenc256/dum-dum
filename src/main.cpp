@@ -12,6 +12,7 @@ struct Options {
   int                 seed;
   int                 num_hands;
   int                 deal_size;
+  bool                iterative_deepening;
   bool                normalize;
   bool                compact_output;
   bool                perf_stats;
@@ -70,6 +71,11 @@ void parse_arguments(int argc, char **argv, Options &options) {
       .implicit_value(true)
       .store_into(options.perf_stats)
       .help("output performance stats");
+  program.add_argument("-i", "--iterative-deepening")
+      .default_value(false)
+      .implicit_value(true)
+      .store_into(options.iterative_deepening)
+      .help("use iterative deepening");
 
   try {
     program.parse_args(argc, argv);
@@ -97,17 +103,19 @@ void parse_arguments(int argc, char **argv, Options &options) {
 }
 
 struct Solve {
+  int     seed;
   Seat    lead_seat;
   Suit    trump_suit;
   Hands   hands;
-  int     tricks;
+  float   tricks;
   int64_t states_explored;
   int64_t states_memoized;
   int64_t elapsed_ms;
 };
 
 void print_solve_compact_headers(bool perf_stats) {
-  std::cout << "lead_seat";
+  std::cout << "seed";
+  std::cout << ",lead_seat";
   std::cout << ",trump_suit";
   std::cout << ",hands";
   std::cout << ",tricks";
@@ -122,7 +130,8 @@ void print_solve_compact_headers(bool perf_stats) {
 constexpr const char *TRUMP_STRS[] = {"C", "D", "H", "S", "NT"};
 
 void print_solve_compact(const Solve &solve, bool perf_stats) {
-  std::cout << solve.lead_seat;
+  std::cout << solve.seed;
+  std::cout << ',' << solve.lead_seat;
   std::cout << ',' << TRUMP_STRS[solve.trump_suit];
   std::cout << ',' << solve.hands;
   std::cout << ',' << solve.tricks;
@@ -135,6 +144,7 @@ void print_solve_compact(const Solve &solve, bool perf_stats) {
 }
 
 void print_solve(const Solve &solve, bool perf_stats) {
+  std::cout << "seed             " << solve.seed << '\n';
   std::cout << "lead_seat        " << solve.lead_seat << '\n';
   std::cout << "trump_suit       " << TRUMP_STRS[solve.trump_suit] << '\n';
   std::cout << "hands            " << solve.hands << '\n';
@@ -148,14 +158,13 @@ void print_solve(const Solve &solve, bool perf_stats) {
 }
 
 void solve_random(const Options &options) {
-  Random random(options.seed);
-
   if (options.compact_output) {
     print_solve_compact_headers(options.perf_stats);
   }
 
   for (int i = 0; i < options.num_hands; i++) {
-    Game g = random.random_game(
+    Random random(options.seed + i);
+    Game   g = random.random_game(
         options.trump_suit,
         options.lead_seat,
         options.deal_size,
@@ -163,13 +172,14 @@ void solve_random(const Options &options) {
     );
     Solver s(g);
     auto   begin = std::chrono::steady_clock::now();
-    auto   r     = s.solve();
+    auto   r     = options.iterative_deepening ? s.solve_id() : s.solve();
     auto   end   = std::chrono::steady_clock::now();
     auto   elapsed_ms =
         std::chrono::duration_cast<std::chrono::milliseconds>(end - begin)
             .count();
 
     Solve solve = {
+        .seed            = options.seed + i,
         .lead_seat       = g.lead_seat(),
         .trump_suit      = g.trump_suit(),
         .hands           = g.hands(),

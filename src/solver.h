@@ -19,6 +19,7 @@ public:
   const Card *begin() const { return cards_; }
   const Card *end() const { return cards_ + card_count_; }
 
+  void append_play(Card card);
   void append_plays(Cards cards, bool low_to_high);
 
 private:
@@ -32,9 +33,9 @@ private:
 class Solver {
 public:
   struct Result {
-    int  tricks_taken_by_ns;
-    int  tricks_taken_by_ew;
-    Card best_play;
+    float tricks_taken_by_ns;
+    float tricks_taken_by_ew;
+    Card  best_play;
   };
 
   Solver(Game g);
@@ -69,15 +70,23 @@ public:
   Result solve();
   Result solve(float alpha, float beta, int max_depth);
 
+  Result solve_id();
+
 private:
   enum Order { LOW_TO_HIGH, HIGH_TO_LOW };
 
   float solve_internal(float alpha, float beta, int max_depth);
   void  lookup_tpn_value(int max_depth, TpnTable::Value &value);
-  void  order_plays(PlayOrder &order) const;
-  void  search_all_cards(
-       int max_depth, float alpha, float beta, float &best_score, Card &best_play
-   );
+  void  order_plays(std::optional<Card> pv_play, PlayOrder &order) const;
+
+  void search_all_cards(
+      int                 max_depth,
+      float               alpha,
+      float               beta,
+      std::optional<Card> pv_play,
+      float              &best_score,
+      Card               &best_play
+  );
 
   void trace(const char *tag, float alpha, float beta, float score);
 
