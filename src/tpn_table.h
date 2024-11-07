@@ -7,8 +7,8 @@
 class TpnTable {
 public:
   struct Value {
-    int                 lower_bound;
-    int                 upper_bound;
+    float               lower_bound;
+    float               upper_bound;
     std::optional<Card> pv_play;
   };
 
@@ -25,14 +25,14 @@ public:
 
 private:
   struct Entry {
-    int8_t              lower_bound;
-    int8_t              upper_bound;
+    float               lower_bound;
+    float               upper_bound;
     int8_t              max_depth;
     std::optional<Card> pv_play;
 
     Entry(
-        int8_t              lower_bound,
-        int8_t              upper_bound,
+        float               lower_bound,
+        float               upper_bound,
         int8_t              max_depth,
         std::optional<Card> pv_play
     )

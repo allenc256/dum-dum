@@ -1,5 +1,6 @@
 #include "solver.h"
 
+#include <cmath>
 #include <picosha2.h>
 
 void PlayOrder::append_plays(Cards cards, bool low_to_high) {
@@ -27,7 +28,7 @@ Solver::Solver(Game g)
       search_ply_(0),
       states_explored_(0),
       tpn_table_(game_),
-      mini_solver_(game_, tpn_table_),
+      // mini_solver_(game_, tpn_table_),
       trace_ostream_(nullptr),
       trace_lineno_(0) {
   enable_all_optimizations(true);
@@ -36,13 +37,13 @@ Solver::Solver(Game g)
 Solver::~Solver() {}
 
 Solver::Result Solver::solve() {
-  return solve(-1, game_.tricks_max() + 1, game_.tricks_max());
+  return solve(-1, (float)(game_.tricks_max() + 1), game_.tricks_max());
 }
 
-Solver::Result Solver::solve(int alpha, int beta, int max_depth) {
+Solver::Result Solver::solve(float alpha, float beta, int max_depth) {
   best_play_.reset();
   assert(search_ply_ == 0);
-  int tricks_taken_by_ns = solve_internal(alpha, beta, max_depth);
+  int tricks_taken_by_ns = (int)roundf(solve_internal(alpha, beta, max_depth));
   assert(search_ply_ == 0);
   int tricks_taken_by_ew = game_.tricks_max() - tricks_taken_by_ns;
   assert(best_play_.has_value());
@@ -53,15 +54,16 @@ Solver::Result Solver::solve(int alpha, int beta, int max_depth) {
   };
 }
 
-#define TRACE(tag, alpha, beta, tricks_taken_by_ns)                            \
+#define TRACE(tag, alpha, beta, score)                                         \
   if (trace_ostream_) {                                                        \
-    trace(tag, alpha, beta, tricks_taken_by_ns);                               \
+    trace(tag, alpha, beta, score);                                            \
   }
 
-int Solver::solve_internal(int alpha, int beta, int max_depth) {
+float Solver::solve_internal(float alpha, float beta, int max_depth) {
   if (game_.finished()) {
-    TRACE("terminal", alpha, beta, game_.tricks_taken_by_ns());
-    return game_.tricks_taken_by_ns();
+    float score = (float)game_.tricks_taken_by_ns();
+    TRACE("terminal", alpha, beta, score);
+    return score;
   }
 
   bool maximizing = game_.next_seat() == NORTH || game_.next_seat() == SOUTH;
@@ -71,7 +73,7 @@ int Solver::solve_internal(int alpha, int beta, int max_depth) {
     if (tpn_table_enabled_) {
       lookup_tpn_value(max_depth, tpn_value);
       if (tpn_value.lower_bound >= beta ||
-          tpn_value.lower_bound == tpn_value.upper_bound) {
+          tpn_value.lower_bound >= tpn_value.upper_bound) {
         TRACE("prune", alpha, beta, tpn_value.lower_bound);
         if (search_ply_ == 0) {
           best_play_ = tpn_value.pv_play;
@@ -87,8 +89,8 @@ int Solver::solve_internal(int alpha, int beta, int max_depth) {
     TRACE("start", alpha, beta, -1);
   }
 
-  int  best_score = maximizing ? -1 : game_.tricks_max() + 1;
-  Card best_play;
+  float best_score = maximizing ? -1 : (float)game_.tricks_max() + 1;
+  Card  best_play;
   search_all_cards(max_depth, alpha, beta, best_score, best_play);
 
   if (game_.start_of_trick()) {
@@ -121,11 +123,11 @@ int Solver::solve_internal(int alpha, int beta, int max_depth) {
 }
 
 void Solver::lookup_tpn_value(int max_depth, TpnTable::Value &value) {
-  if (mini_solver_enabled_) {
-    mini_solver_.solve(max_depth, value);
-  } else {
-    tpn_table_.lookup_value(max_depth, value);
-  }
+  // if (mini_solver_enabled_) {
+  //   mini_solver_.solve(max_depth, value);
+  // } else {
+  tpn_table_.lookup_value(max_depth, value);
+  // }
 }
 
 static Cards compute_sure_winners(
@@ -154,63 +156,6 @@ void Solver::order_plays(PlayOrder &order) const {
     return;
   }
 
-  // 2nd seat:
-  //
-  // - 0XXX (lead always wins)
-  //   - low
-  //
-  // - 10XX (only I can win)
-  // - X01X (only I can win)
-  //   - high
-  // - X0X1 (opps always lose)
-  //   - one low + one high
-  //
-  // - 1X0X (opponents always win)
-  //   - low
-  // - X10X (finesse)
-  //   - cover?
-  // - XX01 (self-finesse?)
-  //   - low
-  //
-  // - 1XX0 (partner must win)
-  //   - low
-  // - X1X0 (opps always lose)
-  //   - one low + one high
-  // - XX10 (self-finesse?)
-  //   - low
-
-  // 3rd seat:
-  //
-  // - 0XXX (lead always wins)
-  // - X0XX (2nd seat always wins)
-  //   - low
-  //
-  // - 1X0X (lead already winning)
-  //   - low
-  // - X10X (only I can win)
-  // - XX01 (only I can win)
-  //   - high
-  //
-  // - 1XX0 (opp will win)
-  // - X1X0 (opp will win)
-  //   - low
-  // - XX10 (finesse)
-  //   - cover?
-
-  // 4th seat:
-  //
-  // - 0XXX
-  // - X0XX
-  // - XX0X
-  //   - low
-  //
-  // - 1XX0 (only I can win)
-  //   - high
-  // - X1X0 (partner has won)
-  //   - low
-  // - XX10 (only I can win)
-  //   - high
-
   Cards sure_winners = compute_sure_winners(trick, game_.hands(), valid_plays);
   order.append_plays(sure_winners, PlayOrder::LOW_TO_HIGH);
 
@@ -224,7 +169,7 @@ void Solver::order_plays(PlayOrder &order) const {
 }
 
 void Solver::search_all_cards(
-    int max_depth, int alpha, int beta, int &best_score, Card &best_play
+    int max_depth, float alpha, float beta, float &best_score, Card &best_play
 ) {
   states_explored_++;
 
@@ -237,7 +182,7 @@ void Solver::search_all_cards(
     game_.play(c);
     search_ply_++;
 
-    int child_score = solve_internal(alpha, beta, max_depth);
+    float child_score = solve_internal(alpha, beta, max_depth);
     if (maximizing) {
       if (child_score > best_score) {
         best_score = child_score;
@@ -292,9 +237,7 @@ static void print_sha256_hash(std::ostream &os, Game &game) {
   os << std::dec << std::setfill(' ');
 }
 
-void Solver::trace(
-    const char *tag, int alpha, int beta, int tricks_taken_by_ns
-) {
+void Solver::trace(const char *tag, float alpha, float beta, float score) {
   *trace_ostream_ << std::left;
   *trace_ostream_ << std::setw(7) << trace_lineno_ << ' ';
   *trace_ostream_ << std::setw(8) << tag << ' ';
@@ -302,8 +245,8 @@ void Solver::trace(
   *trace_ostream_ << std::setw(2) << alpha << ' ';
   *trace_ostream_ << std::setw(2) << beta << ' ';
   *trace_ostream_ << std::setw(2) << game_.tricks_taken_by_ns() << ' ';
-  if (tricks_taken_by_ns >= 0) {
-    *trace_ostream_ << std::setw(2) << tricks_taken_by_ns;
+  if (score >= 0) {
+    *trace_ostream_ << std::setw(2) << score;
   } else {
     *trace_ostream_ << "  ";
   }

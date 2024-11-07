@@ -1,7 +1,8 @@
 #pragma once
 
 #include "game_model.h"
-#include "mini_solver.h"
+// #include "mini_solver.h"
+#include "tpn_table.h"
 
 #include <absl/container/flat_hash_map.h>
 #include <array>
@@ -48,12 +49,14 @@ public:
     tpn_table_enabled_     = enabled;
     move_ordering_enabled_ = enabled;
     mini_solver_enabled_   = enabled;
+    iter_deep_enabled_     = enabled;
   }
 
   void enable_ab_pruning(bool enabled) { ab_pruning_enabled_ = enabled; }
   void enable_tpn_table(bool enabled) { tpn_table_enabled_ = enabled; }
   void enable_move_ordering(bool enabled) { move_ordering_enabled_ = enabled; }
   void enable_mini_solver(bool enabled) { mini_solver_enabled_ = enabled; }
+  void enable_iter_deep(bool enabled) { iter_deep_enabled_ = enabled; }
 
   void enable_tracing(std::ostream *os) {
     trace_ostream_ = os;
@@ -64,30 +67,31 @@ public:
   const Game &game() const { return game_; }
 
   Result solve();
-  Result solve(int alpha, int beta, int max_depth);
+  Result solve(float alpha, float beta, int max_depth);
 
 private:
   enum Order { LOW_TO_HIGH, HIGH_TO_LOW };
 
-  int  solve_internal(int alpha, int beta, int max_depth);
-  void lookup_tpn_value(int max_depth, TpnTable::Value &value);
-  void order_plays(PlayOrder &order) const;
-  void search_all_cards(
-      int max_depth, int alpha, int beta, int &best_score, Card &best_play
-  );
+  float solve_internal(float alpha, float beta, int max_depth);
+  void  lookup_tpn_value(int max_depth, TpnTable::Value &value);
+  void  order_plays(PlayOrder &order) const;
+  void  search_all_cards(
+       int max_depth, float alpha, float beta, float &best_score, Card &best_play
+   );
 
-  void trace(const char *tag, int alpha, int beta, int tricks_taken_by_ns);
+  void trace(const char *tag, float alpha, float beta, float score);
 
   Game                game_;
   int                 search_ply_;
   std::optional<Card> best_play_;
   int64_t             states_explored_;
   TpnTable            tpn_table_;
-  MiniSolver          mini_solver_;
-  bool                ab_pruning_enabled_;
-  bool                tpn_table_enabled_;
-  bool                move_ordering_enabled_;
-  bool                mini_solver_enabled_;
-  std::ostream       *trace_ostream_;
-  int64_t             trace_lineno_;
+  // MiniSolver          mini_solver_;
+  bool          ab_pruning_enabled_;
+  bool          tpn_table_enabled_;
+  bool          move_ordering_enabled_;
+  bool          mini_solver_enabled_;
+  bool          iter_deep_enabled_;
+  std::ostream *trace_ostream_;
+  int64_t       trace_lineno_;
 };
