@@ -46,7 +46,6 @@ constexpr int THRESHOLDS[7][2] = {
 
 void eval_layer0_naive(const Game &game, float out[16]) {
   assert(game.start_of_trick());
-  assert(game.next_seat() == WEST);
   assert(game.trump_suit() == NO_TRUMP);
   assert(game.tricks_left() >= 2 && game.tricks_left() <= 8);
 
@@ -58,8 +57,8 @@ void eval_layer0_naive(const Game &game, float out[16]) {
   auto &hands = game.normalized_state().normalized_hands;
   int   shape[4];
 
-  for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
-    int n = hands.hand(seat).count();
+  for (int seat = 0; seat < 4; seat++) {
+    int n = hands.hand(game.next_seat(seat)).count();
     if (n <= t0[0]) {
       shape[seat] = 0;
     } else if (n <= t0[1]) {
@@ -78,8 +77,8 @@ void eval_layer0_naive(const Game &game, float out[16]) {
 
   for (Suit suit = FIRST_SUIT; suit <= LAST_SUIT; suit++) {
     int shape[4];
-    for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
-      int n = hands.hand(seat).intersect(suit).count();
+    for (int seat = 0; seat < 4; seat++) {
+      int n = hands.hand(game.next_seat(seat)).intersect(suit).count();
       if (n <= t0[0]) {
         shape[seat] = 0;
       } else if (n <= t0[1]) {
@@ -90,8 +89,8 @@ void eval_layer0_naive(const Game &game, float out[16]) {
     }
 
     int output_off = (3 - suit) * 4;
-    for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
-      Cards cards = hands.hand(seat).intersect(suit);
+    for (int seat = 0; seat < 4; seat++) {
+      Cards cards = hands.hand(game.next_seat(seat)).intersect(suit);
       for (auto it = cards.iter_highest(); it.valid();
            it      = cards.iter_lower(it)) {
         Card card   = it.card();
