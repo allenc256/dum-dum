@@ -13,7 +13,7 @@ list(REMOVE_ITEM SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp)
 if (MSVC)
   set(CXX_FLAGS /W4 /WX)
 else()
-  set(CXX_FLAGS -Wall -Wextra -Wpedantic -Werror -Wconversion -Wno-gcc-compat -Wno-sign-conversion -march=native)
+  set(CXX_FLAGS -Wall -Wextra -Wpedantic -Werror -Wconversion -Wno-gcc-compat -Wno-sign-conversion -march=native -ffast-math)
 endif()
 
 set(LINK_LIBS absl::flat_hash_map picosha2)
