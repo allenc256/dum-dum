@@ -83,21 +83,79 @@ private:
 
 class Cards {
 public:
-  class Iter {
+  template <bool low_to_high> class Iterator {
   public:
-    bool valid() const { return card_index_ >= 0; }
-    Card card() const { return Card(card_index_); }
+    Card operator*() const { return Card(card_index_); }
 
-  private:
-    Iter() : card_index_(-1) {}
-
-    Iter(int card_index) : card_index_(card_index) {
-      assert(card_index >= 0 && card_index < 52);
+    void operator++() {
+      assert(card_index_ >= 0);
+      if constexpr (low_to_high) {
+        int k = std::countr_zero(bits_ >> (card_index_ + 1));
+        if (k < 64) {
+          card_index_ += k + 1;
+        } else {
+          card_index_ = -1;
+        }
+      } else {
+        if (card_index_ <= 0) {
+          // Beware! Shifting by > 63 bits is undefined behavior (and will not
+          // necessarily zero out the value being shifted on some hardware).
+          // Therefore, we *must* special case when bit_index_ is 0.
+          card_index_ = -1;
+        } else {
+          int k = std::countl_zero(bits_ << (64 - card_index_));
+          if (k < 64) {
+            card_index_ -= k + 1;
+          } else {
+            card_index_ = -1;
+          }
+        }
+      }
     }
 
-    int card_index_;
+    bool operator==(const Iterator &it) const {
+      return card_index_ == it.card_index_;
+    }
+
+    static Iterator begin(uint64_t bits) {
+      if constexpr (low_to_high) {
+        int k = std::countr_zero(bits);
+        return k < 64 ? Iterator(bits, k) : end(bits);
+      } else {
+        int k = std::countl_zero(bits << 12);
+        return k < 64 ? Iterator(bits, 51 - k) : end(bits);
+      }
+    }
+
+    static Iterator end(uint64_t bits) { return Iterator(bits, -1); }
+
+  private:
+    Iterator(uint64_t bits, int card_index)
+        : bits_(bits),
+          card_index_(card_index) {}
 
     friend class Cards;
+
+    uint64_t bits_;
+    int      card_index_;
+  };
+
+  template <bool low_to_high> class Iterable {
+  public:
+    Iterator<low_to_high> begin() const {
+      return Iterator<low_to_high>::begin(bits_);
+    }
+
+    Iterator<low_to_high> end() const {
+      return Iterator<low_to_high>::end(bits_);
+    }
+
+  private:
+    friend class Cards;
+
+    Iterable(uint64_t bits) : bits_(bits) {}
+
+    uint64_t bits_;
   };
 
   Cards() : bits_(0) {}
@@ -116,9 +174,6 @@ public:
   void     add_all(Cards c) { bits_ |= c.bits_; }
   void     remove(Card c) { bits_ &= ~to_card_bit(c); }
   void     remove_all(Cards c) { bits_ &= ~c.bits_; }
-  void     add(int card_index) { bits_ |= to_card_bit(card_index); }
-  void     remove(int card_index) { bits_ &= ~to_card_bit(card_index); }
-  void     clear() { bits_ = 0; }
   bool     contains(Card c) const { return bits_ & to_card_bit(c); }
   int      count() const { return std::popcount(bits_); }
   Cards    with(Card c) const { return Cards(bits_ | to_card_bit(c)); }
@@ -190,37 +245,17 @@ public:
     return Cards(bits);
   }
 
-  Iter iter_highest() const {
-    int k = std::countl_zero(bits_ << 12);
-    return k < 64 ? Cards::Iter(51 - k) : Cards::Iter();
-  }
+  Iterable<true>  low_to_high() const { return Iterable<true>(bits_); }
+  Iterable<false> high_to_low() const { return Iterable<false>(bits_); }
 
-  Iter iter_lower(Iter i) const {
-    assert(i.valid());
-    if (i.card_index_ <= 0) {
-      // Beware! Shifting by > 63 bits is undefined behavior (and will not
-      // necessarily zero out the value being shifted on some hardware).
-      // Therefore, we *must* special case when bit_index_ is 0.
-      return Cards::Iter();
-    }
-    int k = std::countl_zero(bits_ << (64 - i.card_index_));
-    return k < 64 ? Cards::Iter(i.card_index_ - k - 1) : Cards::Iter();
-  }
-
-  Iter iter_lowest() const {
-    int k = std::countr_zero(bits_);
-    return k < 64 ? Cards::Iter(k) : Cards::Iter();
-  }
-
-  Iter iter_higher(Iter i) const {
-    assert(i.valid());
-    int k = std::countr_zero(bits_ >> (i.card_index_ + 1));
-    return k < 64 ? Cards::Iter(i.card_index_ + k + 1) : Cards::Iter();
+  Card lowest() const {
+    assert(!empty());
+    return *low_to_high().begin();
   }
 
   Card highest() const {
     assert(!empty());
-    return iter_highest().card();
+    return *high_to_low().begin();
   }
 
   static Cards all() { return Cards(ALL_MASK); }
@@ -331,9 +366,8 @@ public:
   }
 
   void remove_all(Cards cards) {
-    for (auto it = cards.iter_highest(); it.valid();
-         it      = cards.iter_lower(it)) {
-      remove(it.card());
+    for (Card c : cards.high_to_low()) {
+      remove(c);
     }
   }
 

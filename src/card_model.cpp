@@ -116,8 +116,8 @@ int print_cards_in_suit(std::ostream &os, Cards c, Suit s) {
   c = c.intersect(s);
   os << s << ' ';
   int count = 0;
-  for (auto i = c.iter_highest(); i.valid(); i = c.iter_lower(i)) {
-    os << i.card().rank();
+  for (Card card : c.high_to_low()) {
+    os << card.rank();
     count++;
   }
   if (count <= 0) {
@@ -188,7 +188,7 @@ static void parse_cards_ranks(std::istream &is, Suit s, Cards &cs) {
 }
 
 std::istream &operator>>(std::istream &is, Cards &c) {
-  c.clear();
+  c = Cards();
   for (Suit suit = LAST_SUIT; suit >= FIRST_SUIT; suit--) {
     Suit s;
     is >> s;

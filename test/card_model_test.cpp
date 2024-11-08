@@ -77,15 +77,15 @@ TEST(Cards, iostream) {
 }
 
 std::vector<Card> iterate_cards(std::string s, bool high_to_low) {
-  Cards             c = Cards(s);
+  Cards             cs = Cards(s);
   std::vector<Card> result;
   if (high_to_low) {
-    for (auto it = c.iter_highest(); it.valid(); it = c.iter_lower(it)) {
-      result.push_back(it.card());
+    for (Card c : cs.high_to_low()) {
+      result.push_back(c);
     }
   } else {
-    for (auto it = c.iter_lowest(); it.valid(); it = c.iter_higher(it)) {
-      result.push_back(it.card());
+    for (Card c : cs.low_to_high()) {
+      result.push_back(c);
     }
   }
   return result;
@@ -130,6 +130,7 @@ TEST(Cards, iter_low_to_high) {
       })
   );
 }
+
 TEST(Cards, count) {
   EXPECT_THAT(Cards("♠ T ♥ - ♦ 432 ♣ KQJ").count(), 7);
   EXPECT_THAT(

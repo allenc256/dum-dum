@@ -304,8 +304,8 @@ void test_play_unplay_dfs(Game &g) {
   }
 
   Cards p = g.valid_plays_all();
-  for (auto i = p.iter_highest(); i.valid(); i = p.iter_lower(i)) {
-    g.play(i.card());
+  for (Card c : p.high_to_low()) {
+    g.play(c);
     test_play_unplay_dfs(g);
     g.unplay();
 

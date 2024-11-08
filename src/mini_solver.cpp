@@ -63,20 +63,20 @@ void MiniSolver::solve(int max_depth, TpnTable::Value &value) {
     }
 
     Cards poss_winners;
-    auto  it = left_cards.with_all(right_cards).iter_highest();
-    if (it.valid()) {
-      poss_winners = Cards::higher_ranking(it.card());
-    } else {
+    Cards left_and_right = left_cards.with_all(right_cards);
+    if (left_and_right.empty()) {
       poss_winners = Cards::all(suit);
+    } else {
+      poss_winners = Cards::higher_ranking(left_and_right.highest());
     }
 
     Cards my_poss_winners      = my_cards.intersect(poss_winners);
     Cards partner_poss_winners = partner_cards.intersect(poss_winners);
 
-    for (auto it = my_poss_winners.iter_highest();
-         it.valid() && value.lower_bound != value.upper_bound;
-         it = my_poss_winners.iter_lower(it)) {
-      Card my_play = it.card();
+    for (Card my_play : my_poss_winners.high_to_low()) {
+      if (value.lower_bound == value.upper_bound) {
+        break;
+      }
       game_.play(my_play);
       play_opp_lowest();
       play_partner_lowest();
@@ -89,12 +89,13 @@ void MiniSolver::solve(int max_depth, TpnTable::Value &value) {
       game_.unplay();
     }
 
-    for (auto it = partner_poss_winners.iter_highest();
-         it.valid() && value.lower_bound != value.upper_bound;
-         it = partner_poss_winners.iter_lower(it)) {
+    for (Card partner_play : partner_poss_winners.high_to_low()) {
+      if (value.lower_bound == value.upper_bound) {
+        break;
+      }
       Card my_play = play_my_lowest(suit);
       play_opp_lowest();
-      game_.play(it.card());
+      game_.play(partner_play);
       play_opp_lowest();
       assert(game_.next_seat() == me || game_.next_seat() == partner);
       solve_child(max_depth, my_play, value);
@@ -127,25 +128,24 @@ void MiniSolver::solve(int max_depth, TpnTable::Value &value) {
 }
 
 Card MiniSolver::play_my_lowest(Suit suit) {
-  auto it = game_.valid_plays_all().intersect(suit).iter_lowest();
-  assert(it.valid());
-  Card my_play = it.card();
+  Cards valid_plays = game_.valid_plays_all().intersect(suit);
+  assert(!valid_plays.empty());
+  Card my_play = valid_plays.lowest();
   game_.play(my_play);
   return my_play;
 }
 
 void MiniSolver::play_partner_lowest() {
   Cards valid_plays = game_.valid_plays_all();
-  auto  it          = valid_plays.iter_lowest();
-  assert(it.valid());
-  game_.play(it.card());
+  assert(!valid_plays.empty());
+  game_.play(valid_plays.lowest());
 }
 
 void MiniSolver::play_partner_ruff() {
   assert(game_.trump_suit() != NO_TRUMP);
   Cards ruffs = game_.valid_plays_all().intersect(game_.trump_suit());
   assert(!ruffs.empty());
-  game_.play(ruffs.iter_lowest().card());
+  game_.play(ruffs.lowest());
 }
 
 void MiniSolver::play_opp_lowest() {
@@ -154,6 +154,6 @@ void MiniSolver::play_opp_lowest() {
   if (cards_in_suit.empty()) {
     game_.play_null();
   } else {
-    game_.play(cards_in_suit.iter_lowest().card());
+    game_.play(cards_in_suit.lowest());
   }
 }

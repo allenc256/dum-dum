@@ -10,14 +10,12 @@ void PlayOrder::append_plays(Cards cards, bool low_to_high) {
   all_cards_.add_all(cards);
   assert(all_cards_.count() <= 13);
   if (low_to_high) {
-    for (auto it = cards.iter_lowest(); it.valid();
-         it      = cards.iter_higher(it)) {
-      cards_[card_count_++] = it.card();
+    for (Card c : cards.low_to_high()) {
+      cards_[card_count_++] = c;
     }
   } else {
-    for (auto it = cards.iter_highest(); it.valid();
-         it      = cards.iter_lower(it)) {
-      cards_[card_count_++] = it.card();
+    for (Card c : cards.high_to_low()) {
+      cards_[card_count_++] = c;
     }
   }
 }
