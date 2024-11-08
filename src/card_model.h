@@ -258,11 +258,36 @@ public:
     return *high_to_low().begin();
   }
 
+  Card lowest_equivalent(Card card, Cards removed) const {
+    uint64_t mask = to_card_bit(card);
+    Rank     curr = card.rank();
+    Rank     low  = curr;
+
+    while (curr > 0) {
+      curr--;
+      mask >>= 4;
+      bool pres_here      = mask & bits_;
+      bool pres_elsewhere = !(mask & removed.bits_);
+      if (pres_here) {
+        low = curr;
+      } else if (pres_elsewhere) {
+        break;
+      }
+    }
+
+    return Card(low, card.suit());
+  }
+
   static Cards all() { return Cards(ALL_MASK); }
   static Cards all(Suit s) { return Cards(SUIT_MASK << s); }
 
   static Cards higher_ranking(Card card) {
     uint64_t rank_bits = (SUIT_MASK << ((card.rank() + 1) * 4)) & ALL_MASK;
+    return Cards(rank_bits << card.suit());
+  }
+
+  static Cards higher_ranking_or_eq(Card card) {
+    uint64_t rank_bits = (SUIT_MASK << (card.rank() * 4)) & ALL_MASK;
     return Cards(rank_bits << card.suit());
   }
 

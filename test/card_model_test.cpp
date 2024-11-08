@@ -203,6 +203,21 @@ TEST(Cards, prune_equivalent) {
   EXPECT_EQ(c.prune_equivalent(c.complement()), Cards("♠ K ♥ 5 ♦ - ♣ 7"));
 }
 
+TEST(Cards, lowest_equivalent_none_removed) {
+  Cards c("♠ AK32 ♥ T8 ♦ - ♣ -");
+  EXPECT_EQ(c.lowest_equivalent(Card("A♠"), Cards()), Card("K♠"));
+  EXPECT_EQ(c.lowest_equivalent(Card("3♠"), Cards()), Card("2♠"));
+  EXPECT_EQ(c.lowest_equivalent(Card("T♥"), Cards()), Card("T♥"));
+  EXPECT_EQ(c.lowest_equivalent(Card("8♥"), Cards()), Card("8♥"));
+}
+
+TEST(Cards, lowest_equivalent_removed) {
+  Cards c("♠ AK32 ♥ T8 ♦ - ♣ -");
+  EXPECT_EQ(c.lowest_equivalent(Card("T♥"), Cards({"9♥"})), Card("8♥"));
+  EXPECT_EQ(c.lowest_equivalent(Card("T♥"), c.complement()), Card("8♥"));
+  EXPECT_EQ(c.lowest_equivalent(Card("K♠"), c.complement()), Card("2♠"));
+}
+
 TEST(SuitNormalizer, empty) {
   SuitNormalizer sn;
   for (Rank r = RANK_2; r <= ACE; r++) {

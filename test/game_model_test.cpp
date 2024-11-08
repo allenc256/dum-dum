@@ -191,6 +191,42 @@ TEST(Trick, is_higher_card_trump) {
   EXPECT_FALSE(trick.is_higher_card(Card("5C"), Card("2H")));
 }
 
+TEST(Trick, winners_by_rank_no_trump) {
+  Trick trick   = make_trick(NO_TRUMP, WEST, {"2C", "5C", "6D", "AD"});
+  Cards winners = trick.winners_by_rank(Hands());
+  EXPECT_EQ(winners, Cards("S - H - D - C AKQJT98765"));
+}
+
+TEST(Trick, winners_by_rank_no_trump_none) {
+  Trick trick   = make_trick(NO_TRUMP, WEST, {"5C", "2D", "6D", "AD"});
+  Cards winners = trick.winners_by_rank(Hands());
+  EXPECT_EQ(winners, Cards());
+}
+
+TEST(Trick, winners_by_rank_ruff) {
+  Trick trick   = make_trick(HEARTS, WEST, {"5C", "2D", "3H", "AD"});
+  Cards winners = trick.winners_by_rank(Hands());
+  EXPECT_EQ(winners, Cards());
+}
+
+TEST(Trick, winners_by_rank_overruff) {
+  Trick trick   = make_trick(HEARTS, WEST, {"5C", "3H", "4H", "AD"});
+  Cards winners = trick.winners_by_rank(Hands());
+  EXPECT_EQ(winners, Cards("S - H AKQJT987654 D - C -"));
+}
+
+TEST(Trick, winners_by_rank_lowest_equivalent) {
+  Trick trick = make_trick(NO_TRUMP, WEST, {"5C", "TC", "JC", "KC"});
+  Hands hands = {
+      Cards(),
+      Cards(),
+      Cards(),
+      Cards("S - H - D - C QT"),
+  };
+  Cards winners = trick.winners_by_rank(hands);
+  EXPECT_EQ(winners, Cards("S - H - D - C AKQ"));
+}
+
 TEST(Game, play_unplay) {
   Hands hands = {
       Cards("S A2 H - D - C -"),

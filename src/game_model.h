@@ -36,6 +36,54 @@ inline Seat right_seat(Seat s, int i) {
 std::ostream &operator<<(std::ostream &os, Seat s);
 std::istream &operator>>(std::istream &is, Seat &s);
 
+class Hands {
+public:
+  Hands() {}
+  Hands(Cards w, Cards n, Cards e, Cards s) : hands_{w, n, e, s} {}
+
+  Cards hand(Seat seat) const { return hands_[seat]; }
+  void  add_card(Seat seat, Card card) { hands_[seat].add(card); }
+  void  remove_card(Seat seat, Card card) { hands_[seat].remove(card); }
+
+  bool all_same_size() const {
+    int size = hands_[0].count();
+    for (int i = 1; i < 4; i++) {
+      if (hands_[i].count() != size) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool all_disjoint() const {
+    for (int i = 0; i < 4; i++) {
+      for (int j = i + 1; j < 4; j++) {
+        if (!hands_[i].disjoint(hands_[j])) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  Cards all_cards() const {
+    Cards c;
+    for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
+      c.add_all(hands_[seat]);
+    }
+    return c;
+  }
+
+  template <typename H> friend H AbslHashValue(H h, const Hands &hands) {
+    return H::combine(std::move(h), hands.hands_);
+  }
+
+  bool operator==(const Hands &hands) const = default;
+
+private:
+  std::array<Cards, 4> hands_;
+};
+
 class Trick {
 public:
   Trick()
@@ -182,7 +230,45 @@ public:
     return is_higher_card(c1, c2) ? c1 : c2;
   }
 
+  Cards all_cards() const {
+    Cards cards;
+    for (int i = 0; i < card_count_; i++) {
+      if (has_card(i)) {
+        cards.add(card(i));
+      }
+    }
+    return cards;
+  }
+
+  Cards winners_by_rank(const Hands &hands) const {
+    assert(finished());
+    if (!won_by_rank()) {
+      return Cards();
+    }
+
+    Card  w_card  = winning_card();
+    Cards w_hand  = hands.hand(winning_seat());
+    Cards removed = hands.all_cards().with_all(all_cards()).complement();
+
+    w_card = w_hand.lowest_equivalent(w_card, removed);
+
+    return Cards::higher_ranking_or_eq(w_card);
+  }
+
 private:
+  bool won_by_rank() const {
+    Card w = winning_card();
+    for (int i = 0; i < 4; i++) {
+      if (has_card(i)) {
+        Card c = card(i);
+        if (c.suit() == w.suit() && c.rank() < w.rank()) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   int card_value(Card c) const {
     if (c.suit() == trump_suit_) {
       return c.rank() + 14;
@@ -203,54 +289,6 @@ private:
 };
 
 std::ostream &operator<<(std::ostream &os, const Trick &t);
-
-class Hands {
-public:
-  Hands() {}
-  Hands(Cards w, Cards n, Cards e, Cards s) : hands_{w, n, e, s} {}
-
-  Cards hand(Seat seat) const { return hands_[seat]; }
-  void  add_card(Seat seat, Card card) { hands_[seat].add(card); }
-  void  remove_card(Seat seat, Card card) { hands_[seat].remove(card); }
-
-  bool all_same_size() const {
-    int size = hands_[0].count();
-    for (int i = 1; i < 4; i++) {
-      if (hands_[i].count() != size) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  bool all_disjoint() const {
-    for (int i = 0; i < 4; i++) {
-      for (int j = i + 1; j < 4; j++) {
-        if (!hands_[i].disjoint(hands_[j])) {
-          return false;
-        }
-      }
-    }
-    return true;
-  }
-
-  Cards all_cards() const {
-    Cards c;
-    for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
-      c.add_all(hands_[seat]);
-    }
-    return c;
-  }
-
-  template <typename H> friend H AbslHashValue(H h, const Hands &hands) {
-    return H::combine(std::move(h), hands.hands_);
-  }
-
-  bool operator==(const Hands &hands) const = default;
-
-private:
-  std::array<Cards, 4> hands_;
-};
 
 class Game {
 public:
