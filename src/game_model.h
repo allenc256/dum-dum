@@ -80,6 +80,8 @@ public:
 
   bool operator==(const Hands &hands) const = default;
 
+  void pretty_print(std::ostream &os, Cards winner_by_rank) const;
+
 private:
   std::array<Cards, 4> hands_;
 };
@@ -321,6 +323,11 @@ public:
   Trick       &current_trick() { return tricks_[tricks_taken_]; }
   const Trick &current_trick() const { return tricks_[tricks_taken_]; }
 
+  const Trick &last_trick() const {
+    assert(tricks_taken_ > 0);
+    return tricks_[tricks_taken_ - 1];
+  }
+
   const Trick &trick(int i) const {
     assert(i < tricks_taken_);
     return tricks_[i];
@@ -356,6 +363,8 @@ public:
     return card_normalizer_.denormalize(card);
   }
 
+  void pretty_print(std::ostream &os) const;
+
 private:
   void finish_play();
 
@@ -371,6 +380,6 @@ private:
   int                tricks_taken_by_ns_;
   CardNormalizer     card_normalizer_;
   mutable StateStack state_stack_;
-
-  friend std::ostream &operator<<(std::ostream &os, const Game &g);
 };
+
+std::ostream &operator<<(std::ostream &os, const Game &g);

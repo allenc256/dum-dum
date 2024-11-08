@@ -31,9 +31,10 @@ private:
 class Solver {
 public:
   struct Result {
-    int  tricks_taken_by_ns;
-    int  tricks_taken_by_ew;
-    Card best_play;
+    int   tricks_taken_by_ns;
+    int   tricks_taken_by_ew;
+    Card  best_play;
+    Cards winners_by_rank;
   };
 
   Solver(Game g);
@@ -66,13 +67,20 @@ public:
   Result solve(int alpha, int beta, int max_depth);
 
 private:
-  enum Order { LOW_TO_HIGH, HIGH_TO_LOW };
+  int solve_internal(
+      int alpha, int beta, int max_depth, Cards &winners_by_rank
+  );
 
-  int  solve_internal(int alpha, int beta, int max_depth);
   void lookup_tpn_value(int max_depth, TpnTable::Value &value);
   void order_plays(PlayOrder &order) const;
+
   void search_all_cards(
-      int max_depth, int alpha, int beta, int &best_score, Card &best_play
+      int    max_depth,
+      int    alpha,
+      int    beta,
+      int   &best_score,
+      Card  &best_play,
+      Cards &winners_by_rank
   );
 
   void trace(const char *tag, int alpha, int beta, int tricks_taken_by_ns);
