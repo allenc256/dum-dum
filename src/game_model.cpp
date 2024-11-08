@@ -1,13 +1,5 @@
 #include "game_model.h"
 
-static void print_chars(std::ostream &os, int n, char ch) {
-  for (int i = 0; i < n; i++) {
-    os << ch;
-  }
-}
-
-int print_cards_in_suit(std::ostream &os, Cards c, Suit s);
-
 const char *SEAT_STR = "WNES";
 
 std::ostream &operator<<(std::ostream &os, Seat s) {
@@ -49,47 +41,65 @@ std::ostream &operator<<(std::ostream &os, const Trick &t) {
   return os;
 }
 
-std::ostream &operator<<(std::ostream &os, const Game &g) {
+static void print_chars(std::ostream &os, int n, char ch) {
+  for (int i = 0; i < n; i++) {
+    os << ch;
+  }
+}
+
+static int print_cards_in_suit(
+    std::ostream &os, Cards cards, Suit suit, Cards winners_by_rank
+) {
+  cards = cards.intersect(suit);
+  os << suit << ' ';
+  if (cards.empty()) {
+    os << '-';
+    return 3;
+  }
+  for (Card c : cards.high_to_low()) {
+    if (winners_by_rank.contains(c)) {
+      os << c.rank();
+    } else {
+      os << 'X';
+    }
+  }
+  return 2 + cards.count();
+}
+
+void Hands::pretty_print(std::ostream &os, Cards winners_by_rank) const {
   constexpr int spacing = 15;
 
   for (Suit suit = LAST_SUIT; suit >= FIRST_SUIT; suit--) {
     print_chars(os, spacing, ' ');
-    print_cards_in_suit(os, g.hand(NORTH), suit);
-    os << std::endl;
+    print_cards_in_suit(os, hand(NORTH), suit, winners_by_rank);
+    os << '\n';
   }
 
   for (Suit suit = LAST_SUIT; suit >= FIRST_SUIT; suit--) {
-    int count = print_cards_in_suit(os, g.hand(WEST), suit);
+    int count = print_cards_in_suit(os, hand(WEST), suit, winners_by_rank);
     print_chars(os, 2 * spacing - count, ' ');
-    print_cards_in_suit(os, g.hand(EAST), suit);
-    os << std::endl;
+    print_cards_in_suit(os, hand(EAST), suit, winners_by_rank);
+    os << '\n';
   }
 
   for (Suit suit = LAST_SUIT; suit >= FIRST_SUIT; suit--) {
     print_chars(os, spacing, ' ');
-    print_cards_in_suit(os, g.hand(SOUTH), suit);
-    os << std::endl;
+    print_cards_in_suit(os, hand(SOUTH), suit, winners_by_rank);
+    os << '\n';
   }
+}
 
-  print_chars(os, spacing * 3, '-');
-  os << std::endl;
-  os << "trump_suit:         " << g.trump_suit_ << std::endl;
-  os << "lead_seat:          " << g.lead_seat_ << std::endl;
-  os << "trick:              ";
-  if (g.current_trick().started()) {
-    os << g.current_trick() << std::endl;
-  } else if (g.tricks_taken_ > 0) {
-    os << g.tricks_[g.tricks_taken_ - 1] << std::endl;
-  } else {
-    os << "-" << std::endl;
-  }
-  os << "next_seat:          " << g.next_seat_ << std::endl;
-  os << "tricks_taken_by_ns: " << g.tricks_taken_by_ns_ << std::endl;
-  os << "tricks_taken_by_ew: " << g.tricks_taken_by_ew() << std::endl;
-  os << "tricks_max:         " << g.tricks_max_ << std::endl;
-  print_chars(os, spacing * 3, '-');
-  os << std::endl;
+void Game::pretty_print(std::ostream &os) const {
+  hands_.pretty_print(os, Cards::all());
+  os << '\n';
+  os << "trump_suit:         " << trump_suit_ << '\n';
+  os << "next_seat:          " << next_seat_ << '\n';
+  os << "tricks_taken_by_ns: " << tricks_taken_by_ns_ << '\n';
+  os << "tricks_taken_by_ew: " << tricks_taken_by_ew() << '\n';
+}
 
+std::ostream &operator<<(std::ostream &os, const Game &g) {
+  g.pretty_print(os);
   return os;
 }
 
