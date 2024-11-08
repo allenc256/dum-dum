@@ -9,6 +9,11 @@ if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
 endif()
 
+find_program(CCACHE "ccache")
+if (CCACHE)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCACHE}")
+endif()
+
 enable_testing()
 
 add_subdirectory(src)
