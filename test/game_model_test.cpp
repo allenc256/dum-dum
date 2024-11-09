@@ -227,6 +227,24 @@ TEST(Trick, winners_by_rank_lowest_equivalent) {
   EXPECT_EQ(winners, Cards("S - H - D - C AKQ"));
 }
 
+TEST(Hands, iostream) {
+  Hands hands = {
+      Cards("S A2 H - D - C -"),
+      Cards("S 93 H - D - C -"),
+      Cards("S 5  H 2 D - C -"),
+      Cards("S 6  H 3 D - C -")
+  };
+
+  std::ostringstream os;
+  os << hands;
+  EXPECT_EQ(os.str(), "A2.../93.../5.2../6.3..");
+
+  Hands              hands2;
+  std::istringstream is(os.str());
+  is >> hands2;
+  EXPECT_EQ(hands, hands2);
+}
+
 TEST(Game, play_unplay) {
   Hands hands = {
       Cards("S A2 H - D - C -"),

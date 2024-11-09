@@ -40,6 +40,16 @@ class Hands {
 public:
   Hands() {}
   Hands(Cards w, Cards n, Cards e, Cards s) : hands_{w, n, e, s} {}
+  Hands(std::string_view s);
+
+  Hands make_partition(Cards winners_by_rank) const {
+    return Hands(
+        hands_[0].intersect(winners_by_rank),
+        hands_[1].intersect(winners_by_rank),
+        hands_[2].intersect(winners_by_rank),
+        hands_[3].intersect(winners_by_rank)
+    );
+  }
 
   Cards hand(Seat seat) const { return hands_[seat]; }
   void  add_card(Seat seat, Card card) { hands_[seat].add(card); }
@@ -74,6 +84,15 @@ public:
     return c;
   }
 
+  bool contains_all(const Hands &other) const {
+    for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
+      if (!hands_[seat].contains_all(other.hands_[seat])) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   template <typename H> friend H AbslHashValue(H h, const Hands &hands) {
     return H::combine(std::move(h), hands.hands_);
   }
@@ -81,6 +100,11 @@ public:
   bool operator==(const Hands &hands) const = default;
 
   void pretty_print(std::ostream &os, Cards winner_by_rank) const;
+
+  std::string to_string() const;
+
+  friend std::ostream &operator<<(std::ostream &os, const Hands &hands);
+  friend std::istream &operator>>(std::istream &is, Hands &hands);
 
 private:
   std::array<Cards, 4> hands_;
