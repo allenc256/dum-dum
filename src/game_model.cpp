@@ -1,5 +1,7 @@
 #include "game_model.h"
 
+#include <sstream>
+
 const char *SEAT_STR = "WNES";
 
 std::ostream &operator<<(std::ostream &os, Seat s) {
@@ -39,6 +41,48 @@ std::ostream &operator<<(std::ostream &os, const Trick &t) {
     }
   }
   return os;
+}
+
+Hands::Hands(std::string_view s) {
+  std::istringstream is(std::string(s), std::ios_base::in);
+  is >> *this;
+}
+
+std::ostream &operator<<(std::ostream &os, const Hands &hands) {
+  for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
+    if (seat != FIRST_SEAT) {
+      os << '/';
+    }
+    Cards hand = hands.hand(seat);
+    for (Suit suit = LAST_SUIT; suit >= FIRST_SUIT; suit--) {
+      if (suit != LAST_SUIT) {
+        os << '.';
+      }
+      for (Card card : hand.intersect(suit).high_to_low()) {
+        os << card.rank();
+      }
+    }
+  }
+  return os;
+}
+
+std::istream &operator>>(std::istream &is, Hands &hands) {
+  for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
+    if (seat != FIRST_SEAT && is.get() != '/') {
+      throw ParseFailure("expected '/' delimiter");
+    }
+    for (Suit suit = LAST_SUIT; suit >= FIRST_SUIT; suit--) {
+      if (suit != LAST_SUIT && is.get() != '.') {
+        throw ParseFailure("expected '.' delimiter");
+      }
+      while (is.peek() != EOF && is.peek() != '.' && is.peek() != '/') {
+        Rank rank;
+        is >> rank;
+        hands.hands_[seat].add(Card(rank, suit));
+      }
+    }
+  }
+  return is;
 }
 
 static void print_chars(std::ostream &os, int n, char ch) {
@@ -87,6 +131,12 @@ void Hands::pretty_print(std::ostream &os, Cards winners_by_rank) const {
     print_cards_in_suit(os, hand(SOUTH), suit, winners_by_rank);
     os << '\n';
   }
+}
+
+std::string Hands::to_string() const {
+  std::ostringstream os;
+  os << *this;
+  return os.str();
 }
 
 void Game::pretty_print(std::ostream &os) const {

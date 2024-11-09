@@ -1,5 +1,99 @@
 #include "tpn_table.h"
 
+static bool generalizes(const Hands &partition1, const Hands &partition2) {
+  return partition2.contains_all(partition1);
+}
+
+bool TpnBucket::lookup(
+    const Slice<Entry> &slice, const Hands &hands, int alpha, int beta
+) const {
+  for (auto &entry : slice) {
+    if (hands.contains_all(entry.partition) &&
+        (entry.bounds.upper_bound <= alpha || entry.bounds.lower_bound >= beta
+        )) {
+      return true;
+    }
+    if (lookup(entry.children, hands, alpha, beta)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void TpnBucket::transfer_generalized(Slice<Entry> &src, Entry &dest) const {
+  for (int i = 0; i < src.size(); i++) {
+    auto &e = src[i];
+    if (generalizes(dest.partition, e.partition)) {
+      dest.children.expand() = std::move(e);
+      src.remove_at(i);
+      i--;
+    }
+  }
+}
+
+void TpnBucket::insert(
+    Slice<Entry> &slice, const Hands &partition, Bounds bounds
+) {
+  if (bounds.lower_bound == MIN_BOUND && bounds.upper_bound == MAX_BOUND) {
+    return;
+  }
+
+  for (auto &entry : slice) {
+    if (partition == entry.partition) {
+      if (!entry.bounds.tighter_or_eq(bounds)) {
+        entry.bounds.tighten(bounds);
+        tighten_child_bounds(entry);
+      }
+      return;
+    } else if (generalizes(entry.partition, partition)) {
+      if (!entry.bounds.tighter_or_eq(bounds)) {
+        bounds.tighten(entry.bounds);
+        insert(entry.children, partition, bounds);
+      }
+      return;
+    } else if (generalizes(partition, entry.partition)) {
+      Entry new_entry = {.partition = partition, .bounds = bounds};
+      transfer_generalized(slice, new_entry);
+      tighten_child_bounds(new_entry);
+      slice.expand() = std::move(new_entry);
+      return;
+    }
+  }
+
+  Entry &entry    = slice.expand();
+  entry.partition = partition;
+  entry.bounds    = bounds;
+  assert(entry.children.size() == 0);
+}
+
+void TpnBucket::check_invariants(const Entry &entry) const {
+  assert(entry.bounds.lower_bound <= entry.bounds.upper_bound);
+  for (const Entry &child : entry.children) {
+    assert(generalizes(entry.partition, child.partition));
+    assert(entry.partition != child.partition);
+    assert(child.bounds.tighter_or_eq(entry.bounds));
+    assert(entry.bounds != child.bounds);
+    check_invariants(child);
+  }
+}
+
+void TpnBucket::tighten_child_bounds(Entry &entry) {
+  for (int i = 0; i < entry.children.size(); i++) {
+    auto &child = entry.children[i];
+    if (!child.bounds.tighter(entry.bounds)) {
+      child.bounds.tighten(entry.bounds);
+      tighten_child_bounds(child);
+      if (child.bounds == entry.bounds) {
+        for (auto &grandchild : child.children) {
+          entry.children.expand() = std::move(grandchild);
+        }
+        entry.children.remove_at(i);
+        i--;
+      }
+    }
+  }
+}
+
 bool TpnTable::lookup_value(int max_depth, Value &value) const {
   bool found = lookup_value_normed(max_depth, value);
 

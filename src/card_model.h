@@ -175,6 +175,7 @@ public:
   void     remove(Card c) { bits_ &= ~to_card_bit(c); }
   void     remove_all(Cards c) { bits_ &= ~c.bits_; }
   bool     contains(Card c) const { return bits_ & to_card_bit(c); }
+  bool     contains_all(Cards c) const { return intersect(c) == c; }
   int      count() const { return std::popcount(bits_); }
   Cards    with(Card c) const { return Cards(bits_ | to_card_bit(c)); }
   Cards    with_all(Cards c) const { return Cards(bits_ | c.bits_); }
