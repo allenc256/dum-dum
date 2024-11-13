@@ -22,10 +22,8 @@ void PlayOrder::append_plays(Cards cards, bool low_to_high) {
 
 Solver::Solver(Game g)
     : game_(g),
-      search_ply_(0),
       states_explored_(0),
       tpn_table_(game_),
-      mini_solver_(game_, tpn_table_),
       trace_ostream_(nullptr),
       trace_lineno_(0) {
   enable_all_optimizations(true);
@@ -33,23 +31,15 @@ Solver::Solver(Game g)
 
 Solver::~Solver() {}
 
-Solver::Result Solver::solve() {
-  return solve(-1, game_.tricks_max() + 1, game_.tricks_max());
-}
+Solver::Result Solver::solve() { return solve(-1, game_.tricks_max() + 1); }
 
-Solver::Result Solver::solve(int alpha, int beta, int max_depth) {
+Solver::Result Solver::solve(int alpha, int beta) {
   Cards winners_by_rank;
-  best_play_.reset();
-  assert(search_ply_ == 0);
-  int tricks_taken_by_ns =
-      solve_internal(alpha, beta, max_depth, winners_by_rank);
-  assert(search_ply_ == 0);
-  int tricks_taken_by_ew = game_.tricks_max() - tricks_taken_by_ns;
-  assert(best_play_.has_value());
+  int   tricks_taken_by_ns = solve_internal(alpha, beta, winners_by_rank);
+  int   tricks_taken_by_ew = game_.tricks_max() - tricks_taken_by_ns;
   return {
       .tricks_taken_by_ns = tricks_taken_by_ns,
       .tricks_taken_by_ew = tricks_taken_by_ew,
-      .best_play          = *best_play_,
       .winners_by_rank    = winners_by_rank,
   };
 }
@@ -59,9 +49,7 @@ Solver::Result Solver::solve(int alpha, int beta, int max_depth) {
     trace(tag, alpha, beta, tricks_taken_by_ns);                               \
   }
 
-int Solver::solve_internal(
-    int alpha, int beta, int max_depth, Cards &winners_by_rank
-) {
+int Solver::solve_internal(int alpha, int beta, Cards &winners_by_rank) {
   if (game_.finished()) {
     TRACE("terminal", alpha, beta, game_.tricks_taken_by_ns());
     return game_.tricks_taken_by_ns();
@@ -72,13 +60,10 @@ int Solver::solve_internal(
 
   if (game_.start_of_trick()) {
     if (tpn_table_enabled_) {
-      lookup_tpn_value(max_depth, tpn_value);
+      tpn_table_.lookup_value(game_.tricks_max(), tpn_value);
       if (tpn_value.lower_bound >= beta ||
           tpn_value.lower_bound == tpn_value.upper_bound) {
         TRACE("prune", alpha, beta, tpn_value.lower_bound);
-        if (search_ply_ == 0) {
-          best_play_ = tpn_value.pv_play;
-        }
         return tpn_value.lower_bound;
       }
       if (tpn_value.upper_bound <= alpha) {
@@ -90,11 +75,8 @@ int Solver::solve_internal(
     TRACE("start", alpha, beta, -1);
   }
 
-  int  best_score = maximizing ? -1 : game_.tricks_max() + 1;
-  Card best_play;
-  search_all_cards(
-      max_depth, alpha, beta, best_score, best_play, winners_by_rank
-  );
+  int best_score = maximizing ? -1 : game_.tricks_max() + 1;
+  search_all_cards(alpha, beta, best_score, winners_by_rank);
 
   if (game_.start_of_trick()) {
     TRACE("end", alpha, beta, best_score);
@@ -110,27 +92,12 @@ int Solver::solve_internal(
         changed               = true;
       }
       if (changed) {
-        if (tpn_value.lower_bound == tpn_value.upper_bound) {
-          tpn_value.pv_play = best_play;
-        }
-        tpn_table_.upsert_value(max_depth, tpn_value);
+        tpn_table_.upsert_value(game_.tricks_max(), tpn_value);
       }
     }
   }
 
-  if (search_ply_ == 0 && alpha < best_score && best_score < beta) {
-    best_play_ = best_play;
-  }
-
   return best_score;
-}
-
-void Solver::lookup_tpn_value(int max_depth, TpnTable::Value &value) {
-  // if (mini_solver_enabled_) {
-  //   mini_solver_.solve(max_depth, value);
-  // } else {
-  tpn_table_.lookup_value(max_depth, value);
-  // }
 }
 
 static Cards compute_sure_winners(
@@ -172,12 +139,7 @@ void Solver::order_plays(PlayOrder &order) const {
 }
 
 void Solver::search_all_cards(
-    int    max_depth,
-    int    alpha,
-    int    beta,
-    int   &best_score,
-    Card  &best_play,
-    Cards &winners_by_rank
+    int alpha, int beta, int &best_score, Cards &winners_by_rank
 ) {
   states_explored_++;
 
@@ -188,22 +150,18 @@ void Solver::search_all_cards(
 
   for (Card c : order) {
     game_.play(c);
-    search_ply_++;
 
     Cards child_winners_by_rank;
-    int   child_score =
-        solve_internal(alpha, beta, max_depth, child_winners_by_rank);
+    int   child_score = solve_internal(alpha, beta, child_winners_by_rank);
 
     if (maximizing) {
       if (child_score > best_score) {
         best_score = child_score;
-        best_play  = c;
       }
       if (ab_pruning_enabled_) {
         alpha = std::max(alpha, best_score);
         if (best_score >= beta) {
           winners_by_rank = child_winners_by_rank;
-          search_ply_--;
           game_.unplay();
           return;
         }
@@ -211,13 +169,11 @@ void Solver::search_all_cards(
     } else {
       if (child_score < best_score) {
         best_score = child_score;
-        best_play  = c;
       }
       if (ab_pruning_enabled_) {
         beta = std::min(beta, best_score);
         if (best_score <= alpha) {
           winners_by_rank = child_winners_by_rank;
-          search_ply_--;
           game_.unplay();
           return;
         }
@@ -231,7 +187,6 @@ void Solver::search_all_cards(
       winners_by_rank.add_all(trick_winners_by_rank);
     }
 
-    search_ply_--;
     game_.unplay();
   }
 }
