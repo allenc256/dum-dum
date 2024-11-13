@@ -90,8 +90,16 @@ public:
   static constexpr int MIN_BOUND = 0;
   static constexpr int MAX_BOUND = 13;
 
-  bool lookup(const Hands &hands, int alpha, int beta) const {
-    return lookup(entries_, hands, alpha, beta);
+  void lookup(
+      const Hands &hands,
+      int          alpha,
+      int          beta,
+      int         &lower_bound,
+      int         &upper_bound
+  ) const {
+    lower_bound = MIN_BOUND;
+    upper_bound = MAX_BOUND;
+    lookup(entries_, hands, alpha, beta, lower_bound, upper_bound);
   }
 
   void insert(const Hands &partition, int lower_bound, int upper_bound) {
@@ -140,7 +148,12 @@ private:
   };
 
   bool lookup(
-      const Slice<Entry> &slice, const Hands &hands, int alpha, int beta
+      const Slice<Entry> &slice,
+      const Hands        &hands,
+      int                 alpha,
+      int                 beta,
+      int                &lower_bound,
+      int                &upper_bound
   ) const;
 
   void insert(Slice<Entry> &slice, const Hands &partition, Bounds bounds);
@@ -176,7 +189,7 @@ class TpnTable2 {
 public:
   TpnTable2(const Game &game) : game_(game) {}
 
-  bool lookup(int alpha, int beta) const;
+  void lookup(int alpha, int beta, int &lower_bound, int &upper_bound) const;
   void insert(Cards winners_by_rank, int lower_bound, int upper_bound);
 
 private:
