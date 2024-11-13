@@ -378,9 +378,14 @@ public:
   Cards valid_plays_all() const;
 
   const State &normalized_state() const;
+  const Hands &normalized_hands() const;
 
   Card normalize_card(Card card) const {
     return card_normalizer_.normalize(card);
+  }
+
+  Cards normalize_wbr(Cards winners_by_rank) const {
+    return card_normalizer_.normalize_wbr(winners_by_rank);
   }
 
   Card denormalize_card(Card card) const {
@@ -393,6 +398,7 @@ private:
   void finish_play();
 
   using StateStack = std::array<std::optional<State>, 14>;
+  using HandsStack = std::array<std::optional<Hands>, 14>;
 
   Hands              hands_;
   Suit               trump_suit_;
@@ -404,6 +410,7 @@ private:
   int                tricks_taken_by_ns_;
   CardNormalizer     card_normalizer_;
   mutable StateStack state_stack_;
+  mutable HandsStack norm_hands_stack_;
 };
 
 std::ostream &operator<<(std::ostream &os, const Game &g);

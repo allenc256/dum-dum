@@ -172,6 +172,20 @@ private:
   uint64_t bits_;
 };
 
+class TpnTable2 {
+public:
+  TpnTable2(const Game &game) : game_(game) {}
+
+  bool lookup(int alpha, int beta) const;
+  void insert(Cards winners_by_rank, int lower_bound, int upper_bound);
+
+private:
+  using HashTable = absl::flat_hash_map<TpnBucketKey, TpnBucket>;
+
+  const Game &game_;
+  HashTable   table_;
+};
+
 class TpnTable {
 public:
   struct Value {

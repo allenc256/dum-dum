@@ -94,6 +94,31 @@ void TpnBucket::tighten_child_bounds(Entry &entry) {
   }
 }
 
+bool TpnTable2::lookup(int alpha, int beta) const {
+  TpnBucketKey key(game_.next_seat(), game_.normalized_hands());
+  auto         it = table_.find(key);
+  if (it == table_.end()) {
+    return false;
+  } else {
+    alpha -= game_.tricks_taken_by_ns();
+    beta -= game_.tricks_taken_by_ns();
+    return it->second.lookup(game_.normalized_hands(), alpha, beta);
+  }
+}
+
+void TpnTable2::insert(
+    Cards winners_by_rank, int lower_bound, int upper_bound
+) {
+  lower_bound -= game_.tricks_taken_by_ns();
+  upper_bound -= game_.tricks_taken_by_ns();
+  const Hands &hands = game_.normalized_hands();
+  winners_by_rank    = game_.normalize_wbr(winners_by_rank);
+  Hands partition    = hands.make_partition(winners_by_rank);
+
+  TpnBucketKey key(game_.next_seat(), hands);
+  table_[key].insert(partition, lower_bound, upper_bound);
+}
+
 bool TpnTable::lookup_value(int max_depth, Value &value) const {
   bool found = lookup_value_normed(max_depth, value);
 

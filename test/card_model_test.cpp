@@ -186,6 +186,16 @@ TEST(Cards, normalize) {
   );
 }
 
+TEST(Cards, normalize_wbr) {
+  Cards wbr("♠ AK ♥ AKQJT ♦ A ♣ -");
+  EXPECT_EQ(wbr.normalize_wbr(Cards()), wbr);
+  EXPECT_EQ(wbr.normalize_wbr(wbr), Cards());
+  EXPECT_EQ(
+      wbr.normalize_wbr(Cards("♠ AQJ ♥ AKT9 ♦ - ♣ -")),
+      Cards("♠ A ♥ AK ♦ A ♣ -")
+  );
+}
+
 TEST(Cards, prune_equivalent) {
   EXPECT_EQ(
       Cards("♠ - ♥ - ♦ - ♣ AK").prune_equivalent(Cards()),
