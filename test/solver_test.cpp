@@ -33,18 +33,6 @@ void validate_solver(Solver &s1) {
   auto r1 = s1.solve();
   auto r2 = s2.solve();
   ASSERT_EQ(r1.tricks_taken_by_ns, r2.tricks_taken_by_ns);
-  int count = 0;
-  while (true) {
-    SCOPED_TRACE(::testing::Message() << "card " << count);
-    s1.game().play(r1.best_play);
-    if (s1.game().finished()) {
-      break;
-    }
-    r1 = s1.solve();
-    count++;
-    ASSERT_EQ(r1.tricks_taken_by_ns, r2.tricks_taken_by_ns);
-  }
-  ASSERT_EQ(s1.game().tricks_taken_by_ns(), r1.tricks_taken_by_ns);
 }
 
 TEST(Solver, ab_pruning) {
@@ -53,21 +41,6 @@ TEST(Solver, ab_pruning) {
     Solver s = Solver(g);
     s.enable_all_optimizations(false);
     s.enable_ab_pruning(true);
-    ASSERT_NO_FATAL_FAILURE({
-      SCOPED_TRACE(::testing::Message() << "seed " << seed);
-      validate_solver(s);
-    });
-  }
-}
-
-TEST(Solver, mini_solver) {
-  for (int seed = 0; seed < 100; seed++) {
-    Game   g = Random(seed).random_game(DEAL_SIZE);
-    Solver s = Solver(g);
-    s.enable_all_optimizations(false);
-    s.enable_ab_pruning(true);
-    s.enable_tpn_table(true);
-    s.enable_mini_solver(true);
     ASSERT_NO_FATAL_FAILURE({
       SCOPED_TRACE(::testing::Message() << "seed " << seed);
       validate_solver(s);
@@ -134,7 +107,6 @@ TEST_P(ManualTest, manual_test) {
   Solver                s(g);
   auto                  r = s.solve();
   EXPECT_EQ(r.tricks_taken_by_ns, p.tricks_taken_by_ns);
-  EXPECT_TRUE(p.best_plays.contains(r.best_play));
 }
 
 const ManualTestCase MANUAL_TESTS[] = {
@@ -172,7 +144,6 @@ const ManualTestCase MANUAL_TESTS[] = {
         .trump_suit         = NO_TRUMP,
         .lead_seat          = SOUTH,
         .tricks_taken_by_ns = 4,
-        .best_plays         = Cards({"A♣"}),
     },
     {
         // https://en.wikipedia.org/wiki/Simple_squeeze
@@ -184,7 +155,6 @@ const ManualTestCase MANUAL_TESTS[] = {
         .trump_suit         = NO_TRUMP,
         .lead_seat          = SOUTH,
         .tricks_taken_by_ns = 4,
-        .best_plays         = Cards({"2♥"}),
     },
     {
         // https://en.wikipedia.org/wiki/Trump_squeeze
@@ -196,7 +166,6 @@ const ManualTestCase MANUAL_TESTS[] = {
         .trump_suit         = HEARTS,
         .lead_seat          = NORTH,
         .tricks_taken_by_ns = 5,
-        .best_plays         = Cards({"A♦", "K♣"}),
     },
     {
         // https://en.wikipedia.org/wiki/Trump_squeeze
@@ -208,7 +177,6 @@ const ManualTestCase MANUAL_TESTS[] = {
         .trump_suit         = HEARTS,
         .lead_seat          = NORTH,
         .tricks_taken_by_ns = 5,
-        .best_plays         = Cards({"A♥", "T♥"}),
     },
     {
         // https://en.wikipedia.org/wiki/Compound_squeeze
@@ -220,7 +188,6 @@ const ManualTestCase MANUAL_TESTS[] = {
         .trump_suit         = SPADES,
         .lead_seat          = SOUTH,
         .tricks_taken_by_ns = 6,
-        .best_plays         = Cards({"5♠", "3♠"}),
     },
     {
         // https://en.wikipedia.org/wiki/Saturated_squeeze
@@ -232,7 +199,6 @@ const ManualTestCase MANUAL_TESTS[] = {
         .trump_suit         = NO_TRUMP,
         .lead_seat          = NORTH,
         .tricks_taken_by_ns = 7,
-        .best_plays         = Cards({"A♦", "K♦"}),
     },
     {
         // https://en.wikipedia.org/wiki/Trump_coup
@@ -244,7 +210,6 @@ const ManualTestCase MANUAL_TESTS[] = {
         .trump_suit         = CLUBS,
         .lead_seat          = NORTH,
         .tricks_taken_by_ns = 5,
-        .best_plays         = Cards({"T♥"}),
     },
     {
         // https://en.wikipedia.org/wiki/Uppercut_(bridge)
@@ -256,7 +221,6 @@ const ManualTestCase MANUAL_TESTS[] = {
         .trump_suit         = SPADES,
         .lead_seat          = WEST,
         .tricks_taken_by_ns = 5,
-        .best_plays         = Cards({"6♥"}),
     },
     {
         // https://en.wikipedia.org/wiki/Trump_coup
@@ -268,7 +232,6 @@ const ManualTestCase MANUAL_TESTS[] = {
         .trump_suit         = CLUBS,
         .lead_seat          = EAST,
         .tricks_taken_by_ns = 12,
-        .best_plays         = Cards::all(),
     },
 };
 

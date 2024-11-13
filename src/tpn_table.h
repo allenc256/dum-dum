@@ -24,7 +24,7 @@ public:
   Slice &operator=(const Slice &) = delete;
 
   Slice(Slice &&slice) noexcept {
-    values_         = std::move(slice.value_);
+    values_         = std::move(slice.values_);
     count_          = slice.count_;
     capacity_       = slice.capacity_;
     slice.capacity_ = 0;
