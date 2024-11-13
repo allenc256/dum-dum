@@ -225,6 +225,16 @@ public:
     return Cards(bits);
   }
 
+  Cards normalize_wbr(Cards removed) const {
+    uint64_t bits = 0;
+    for (Suit suit = FIRST_SUIT; suit <= LAST_SUIT; suit++) {
+      Cards suit_cards = intersect(suit);
+      int   n          = suit_cards.intersect(removed).count();
+      bits |= (suit_cards.bits_ << (4 * n)) & ALL_MASK;
+    }
+    return Cards(bits);
+  }
+
   Cards prune_equivalent(Cards removed) const {
     assert(disjoint(removed));
 
@@ -374,6 +384,10 @@ public:
   }
 
   Cards normalize(Cards cards) const { return cards.normalize(removed_); }
+
+  Cards normalize_wbr(Cards cards) const {
+    return cards.normalize_wbr(removed_);
+  }
 
   Cards prune_equivalent(Cards cards) const {
     return cards.prune_equivalent(removed_);

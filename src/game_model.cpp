@@ -220,6 +220,7 @@ void Game::finish_play() {
     tricks_taken_++;
     assert(tricks_taken_ <= 13);
     assert(!state_stack_[tricks_taken_].has_value());
+    assert(!norm_hands_stack_[tricks_taken_].has_value());
   } else {
     next_seat_ = t.next_seat();
   }
@@ -259,6 +260,7 @@ void Game::unplay() {
         tricks_taken_by_ns_--;
       }
       state_stack_[tricks_taken_].reset();
+      norm_hands_stack_[tricks_taken_].reset();
       tricks_taken_--;
     } else {
       throw std::runtime_error("no cards played");
@@ -296,6 +298,20 @@ const Game::State &Game::normalized_state() const {
         card_normalizer_.normalize(hands_.hand(EAST)),
         card_normalizer_.normalize(hands_.hand(SOUTH)),
         next_seat_
+    );
+  }
+  return *cached;
+}
+
+const Hands &Game::normalized_hands() const {
+  assert(start_of_trick());
+  auto &cached = norm_hands_stack_[tricks_taken_];
+  if (!cached.has_value()) {
+    cached.emplace(
+        card_normalizer_.normalize(hands_.hand(WEST)),
+        card_normalizer_.normalize(hands_.hand(NORTH)),
+        card_normalizer_.normalize(hands_.hand(EAST)),
+        card_normalizer_.normalize(hands_.hand(SOUTH))
     );
   }
   return *cached;
