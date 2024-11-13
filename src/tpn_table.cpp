@@ -5,15 +5,25 @@ static bool generalizes(const Hands &partition1, const Hands &partition2) {
 }
 
 bool TpnBucket::lookup(
-    const Slice<Entry> &slice, const Hands &hands, int alpha, int beta
+    const Slice<Entry> &slice,
+    const Hands        &hands,
+    int                 alpha,
+    int                 beta,
+    int                &lower_bound,
+    int                &upper_bound
 ) const {
   for (auto &entry : slice) {
-    if (hands.contains_all(entry.partition) &&
-        (entry.bounds.upper_bound <= alpha || entry.bounds.lower_bound >= beta
-        )) {
-      return true;
+    if (hands.contains_all(entry.partition)) {
+      assert(entry.bounds.lower_bound <= upper_bound);
+      assert(entry.bounds.upper_bound >= lower_bound);
+      lower_bound = std::max(lower_bound, (int)entry.bounds.lower_bound);
+      upper_bound = std::min(upper_bound, (int)entry.bounds.upper_bound);
+      if (lower_bound == upper_bound || lower_bound >= beta ||
+          upper_bound <= alpha) {
+        return true;
+      }
     }
-    if (lookup(entry.children, hands, alpha, beta)) {
+    if (lookup(entry.children, hands, alpha, beta, lower_bound, upper_bound)) {
       return true;
     }
   }
@@ -94,15 +104,21 @@ void TpnBucket::tighten_child_bounds(Entry &entry) {
   }
 }
 
-bool TpnTable2::lookup(int alpha, int beta) const {
+void TpnTable2::lookup(int alpha, int beta, int &lower_bound, int &upper_bound)
+    const {
   TpnBucketKey key(game_.next_seat(), game_.normalized_hands());
   auto         it = table_.find(key);
   if (it == table_.end()) {
-    return false;
+    lower_bound = TpnBucket::MIN_BOUND;
+    upper_bound = TpnBucket::MAX_BOUND;
   } else {
     alpha -= game_.tricks_taken_by_ns();
     beta -= game_.tricks_taken_by_ns();
-    return it->second.lookup(game_.normalized_hands(), alpha, beta);
+    it->second.lookup(
+        game_.normalized_hands(), alpha, beta, lower_bound, upper_bound
+    );
+    lower_bound += game_.tricks_taken_by_ns();
+    upper_bound += game_.tricks_taken_by_ns();
   }
 }
 

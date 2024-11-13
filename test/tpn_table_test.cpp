@@ -39,14 +39,16 @@ struct NaiveTpnBucket {
     }
   }
 
-  bool lookup(const Hands &hands, int alpha, int beta) const {
+  void lookup(const Hands &hands, int &lower_bound, int &upper_bound) const {
+    lower_bound = TpnBucket::MIN_BOUND;
+    upper_bound = TpnBucket::MAX_BOUND;
     for (auto &entry : entries) {
-      if (hands.contains_all(entry.partition) &&
-          (entry.upper_bound <= alpha || entry.lower_bound >= beta)) {
-        return true;
+      if (hands.contains_all(entry.partition)) {
+        lower_bound = std::max(lower_bound, entry.lower_bound);
+        upper_bound = std::min(upper_bound, entry.upper_bound);
+        assert(lower_bound <= upper_bound);
       }
     }
-    return false;
   }
 
   void insert(const Hands &partition, int lower_bound, int upper_bound) {
@@ -108,9 +110,19 @@ TEST(TpnBucket, random) {
   for (int i = 0; i < 1000; i++) {
     Hands hands = random.random_deal(4);
     for (int j = 0; j < 13; j++) {
-      bool lookup1 = bucket1.lookup(hands, j, j + 1);
-      bool lookup2 = bucket2.lookup(hands, j, j + 1);
-      ASSERT_EQ(lookup1, lookup2);
+      int alpha = j;
+      int beta  = j + 1;
+      int lb1, lb2, ub1, ub2;
+      bucket1.lookup(hands, alpha, beta, lb1, ub1);
+      bucket2.lookup(hands, lb2, ub2);
+      if (lb2 >= beta) {
+        ASSERT_TRUE(lb1 >= beta);
+      } else if (ub2 <= alpha) {
+        ASSERT_TRUE(ub1 <= alpha);
+      } else {
+        ASSERT_EQ(lb1, lb2);
+        ASSERT_EQ(ub1, ub2);
+      }
     }
   }
 }
