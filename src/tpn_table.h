@@ -90,24 +90,27 @@ public:
   static constexpr int MIN_BOUND = 0;
   static constexpr int MAX_BOUND = 13;
 
+  struct Stats {
+    int64_t entries       = 0;
+    int64_t lookup_hits   = 0;
+    int64_t lookup_misses = 0;
+    int64_t lookup_reads  = 0;
+    int64_t insert_hits   = 0;
+    int64_t insert_misses = 0;
+    int64_t insert_reads  = 0;
+  };
+
+  const Stats &stats() const { return stats_; }
+
   bool lookup(
       const Hands &hands,
       int          alpha,
       int          beta,
       int         &score,
       Cards       &winners_by_rank
-  ) const {
-    return lookup(entries_, hands, alpha, beta, score, winners_by_rank);
-  }
+  ) const;
 
-  void insert(const Hands &partition, int lower_bound, int upper_bound) {
-    assert(lower_bound <= upper_bound);
-    assert(lower_bound >= MIN_BOUND && upper_bound <= MAX_BOUND);
-    Bounds bounds = {
-        .lower_bound = (int8_t)lower_bound, .upper_bound = (int8_t)upper_bound
-    };
-    insert(entries_, partition, bounds);
-  }
+  void insert(const Hands &partition, int lower_bound, int upper_bound);
 
   void check_invariants() const {
     for (const Entry &entry : entries_) {
@@ -159,7 +162,8 @@ private:
   void tighten_child_bounds(Entry &entry);
   void check_invariants(const Entry &entry) const;
 
-  Slice<Entry> entries_;
+  Slice<Entry>  entries_;
+  mutable Stats stats_;
 };
 
 class TpnBucketKey {
@@ -187,15 +191,32 @@ private:
 
 class TpnTable {
 public:
-  TpnTable(const Game &game) : game_(game) {}
+  struct Stats {
+    int64_t buckets       = 0;
+    int64_t entries       = 0;
+    int64_t lookup_hits   = 0;
+    int64_t lookup_misses = 0;
+    int64_t lookup_reads  = 0;
+    int64_t insert_hits   = 0;
+    int64_t insert_misses = 0;
+    int64_t insert_reads  = 0;
+  };
 
-  bool   lookup(int alpha, int beta, int &score, Cards &winners_by_rank) const;
-  void   insert(Cards winners_by_rank, int lower_bound, int upper_bound);
-  size_t size() const { return table_.size(); }
+  TpnTable(const Game &game)
+      : game_(game),
+        lookup_misses_(0),
+        insert_misses_(0) {}
+
+  bool  lookup(int alpha, int beta, int &score, Cards &winners_by_rank) const;
+  void  insert(Cards winners_by_rank, int lower_bound, int upper_bound);
+  Stats stats() const;
+  void  check_invariants() const;
 
 private:
   using HashTable = absl::flat_hash_map<TpnBucketKey, TpnBucket>;
 
   const Game &game_;
   HashTable   table_;
+  int64_t     lookup_misses_;
+  int64_t     insert_misses_;
 };

@@ -5,6 +5,29 @@ static bool generalizes(const Hands &partition1, const Hands &partition2) {
 }
 
 bool TpnBucket::lookup(
+    const Hands &hands, int alpha, int beta, int &score, Cards &winners_by_rank
+) const {
+  bool success = lookup(entries_, hands, alpha, beta, score, winners_by_rank);
+  if (success) {
+    stats_.lookup_hits++;
+  } else {
+    stats_.lookup_misses++;
+  }
+  return success;
+}
+
+void TpnBucket::insert(
+    const Hands &partition, int lower_bound, int upper_bound
+) {
+  assert(lower_bound <= upper_bound);
+  assert(lower_bound >= MIN_BOUND && upper_bound <= MAX_BOUND);
+  Bounds bounds = {
+      .lower_bound = (int8_t)lower_bound, .upper_bound = (int8_t)upper_bound
+  };
+  insert(entries_, partition, bounds);
+}
+
+bool TpnBucket::lookup(
     const Slice<Entry> &slice,
     const Hands        &hands,
     int                 alpha,
@@ -13,6 +36,7 @@ bool TpnBucket::lookup(
     Cards              &winners_by_rank
 ) const {
   for (auto &entry : slice) {
+    stats_.lookup_reads++;
     if (hands.contains_all(entry.partition)) {
       if (entry.bounds.lower_bound == entry.bounds.upper_bound ||
           entry.bounds.lower_bound >= beta) {
@@ -48,23 +72,30 @@ void TpnBucket::insert(
     Slice<Entry> &slice, const Hands &partition, Bounds bounds
 ) {
   for (auto &entry : slice) {
+    stats_.insert_reads++;
     if (partition == entry.partition) {
       if (!entry.bounds.tighter_or_eq(bounds)) {
         entry.bounds.tighten(bounds);
         tighten_child_bounds(entry);
       }
+      stats_.insert_hits++;
       return;
     } else if (generalizes(entry.partition, partition)) {
-      if (!entry.bounds.tighter_or_eq(bounds)) {
+      if (entry.bounds.tighter_or_eq(bounds)) {
+        stats_.insert_hits++;
+        return;
+      } else {
         bounds.tighten(entry.bounds);
         insert(entry.children, partition, bounds);
+        return;
       }
-      return;
     } else if (generalizes(partition, entry.partition)) {
       Entry new_entry = {.partition = partition, .bounds = bounds};
       transfer_generalized(slice, new_entry);
       tighten_child_bounds(new_entry);
       slice.expand() = std::move(new_entry);
+      stats_.insert_misses++;
+      stats_.entries++;
       return;
     }
   }
@@ -73,6 +104,8 @@ void TpnBucket::insert(
   entry.partition = partition;
   entry.bounds    = bounds;
   assert(entry.children.size() == 0);
+  stats_.insert_misses++;
+  stats_.entries++;
 }
 
 void TpnBucket::check_invariants(const Entry &entry) const {
@@ -88,6 +121,7 @@ void TpnBucket::check_invariants(const Entry &entry) const {
 
 void TpnBucket::tighten_child_bounds(Entry &entry) {
   for (int i = 0; i < entry.children.size(); i++) {
+    stats_.insert_reads++;
     auto &child = entry.children[i];
     if (!child.bounds.tighter(entry.bounds)) {
       child.bounds.tighten(entry.bounds);
@@ -98,6 +132,7 @@ void TpnBucket::tighten_child_bounds(Entry &entry) {
         }
         entry.children.remove_at(i);
         i--;
+        stats_.entries--;
       }
     }
   }
@@ -144,4 +179,31 @@ void TpnTable::insert(Cards winners_by_rank, int lower_bound, int upper_bound) {
 
   TpnBucketKey key(game_.next_seat(), hands);
   table_[key].insert(partition, lower_bound, upper_bound);
+}
+
+TpnTable::Stats TpnTable::stats() const {
+  Stats stats;
+
+  stats.lookup_misses += lookup_misses_;
+  stats.insert_misses += insert_misses_;
+
+  for (auto &entry : table_) {
+    auto &bucket_stats = entry.second.stats();
+    stats.buckets++;
+    stats.entries += bucket_stats.entries;
+    stats.lookup_hits += bucket_stats.lookup_hits;
+    stats.lookup_misses += bucket_stats.lookup_misses;
+    stats.lookup_reads += bucket_stats.lookup_reads;
+    stats.insert_hits += bucket_stats.insert_hits;
+    stats.insert_misses += bucket_stats.insert_misses;
+    stats.insert_reads += bucket_stats.insert_reads;
+  }
+
+  return stats;
+}
+
+void TpnTable::check_invariants() const {
+  for (auto &entry : table_) {
+    entry.second.check_invariants();
+  }
 }
