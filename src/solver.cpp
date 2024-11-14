@@ -24,7 +24,7 @@ Solver::Solver(Game g)
     : game_(g),
       states_explored_(0),
       tpn_table_(game_),
-      trace_ostream_(nullptr),
+      trace_os_(nullptr),
       trace_lineno_(0) {
   enable_all_optimizations(true);
 }
@@ -44,9 +44,9 @@ Solver::Result Solver::solve(int alpha, int beta) {
   };
 }
 
-#define TRACE(tag, alpha, beta, tricks_taken_by_ns)                            \
-  if (trace_ostream_) {                                                        \
-    trace(tag, alpha, beta, tricks_taken_by_ns);                               \
+#define TRACE(tag, alpha, beta, score)                                         \
+  if (trace_os_) {                                                             \
+    trace(tag, alpha, beta, score);                                            \
   }
 
 int Solver::solve_internal(int alpha, int beta, Cards &winners_by_rank) {
@@ -56,19 +56,13 @@ int Solver::solve_internal(int alpha, int beta, Cards &winners_by_rank) {
   }
 
   bool maximizing = game_.next_seat() == NORTH || game_.next_seat() == SOUTH;
-  TpnTable::Value tpn_value;
 
   if (game_.start_of_trick()) {
     if (tpn_table_enabled_) {
-      tpn_table_.lookup_value(game_.tricks_max(), tpn_value);
-      if (tpn_value.lower_bound >= beta ||
-          tpn_value.lower_bound == tpn_value.upper_bound) {
-        TRACE("prune", alpha, beta, tpn_value.lower_bound);
-        return tpn_value.lower_bound;
-      }
-      if (tpn_value.upper_bound <= alpha) {
-        TRACE("prune", alpha, beta, tpn_value.upper_bound);
-        return tpn_value.upper_bound;
+      int score;
+      if (tpn_table_.lookup(alpha, beta, score, winners_by_rank)) {
+        TRACE("lookup", alpha, beta, score);
+        return score;
       }
     }
 
@@ -82,18 +76,15 @@ int Solver::solve_internal(int alpha, int beta, Cards &winners_by_rank) {
     TRACE("end", alpha, beta, best_score);
 
     if (tpn_table_enabled_) {
-      bool changed = false;
-      if (best_score < beta && best_score < tpn_value.upper_bound) {
-        tpn_value.upper_bound = best_score;
-        changed               = true;
+      int lower_bound = game_.tricks_taken_by_ns();
+      int upper_bound = game_.tricks_taken_by_ns() + game_.tricks_left();
+      if (best_score < beta) {
+        upper_bound = best_score;
       }
-      if (best_score > alpha && best_score > tpn_value.lower_bound) {
-        tpn_value.lower_bound = best_score;
-        changed               = true;
+      if (best_score > alpha) {
+        lower_bound = best_score;
       }
-      if (changed) {
-        tpn_table_.upsert_value(game_.tricks_max(), tpn_value);
-      }
+      tpn_table_.insert(winners_by_rank, lower_bound, upper_bound);
     }
   }
 
@@ -138,6 +129,13 @@ void Solver::order_plays(PlayOrder &order) const {
   order.append_plays(valid_plays, PlayOrder::LOW_TO_HIGH);
 }
 
+static void add_last_trick_wbr(const Game &game, Cards &winners_by_rank) {
+  if (game.start_of_trick()) {
+    Cards last_trick_wbr = game.last_trick().winners_by_rank(game.hands());
+    winners_by_rank.add_all(last_trick_wbr);
+  }
+}
+
 void Solver::search_all_cards(
     int alpha, int beta, int &best_score, Cards &winners_by_rank
 ) {
@@ -162,6 +160,7 @@ void Solver::search_all_cards(
         alpha = std::max(alpha, best_score);
         if (best_score >= beta) {
           winners_by_rank = child_winners_by_rank;
+          add_last_trick_wbr(game_, winners_by_rank);
           game_.unplay();
           return;
         }
@@ -174,6 +173,7 @@ void Solver::search_all_cards(
         beta = std::min(beta, best_score);
         if (best_score <= alpha) {
           winners_by_rank = child_winners_by_rank;
+          add_last_trick_wbr(game_, winners_by_rank);
           game_.unplay();
           return;
         }
@@ -181,62 +181,31 @@ void Solver::search_all_cards(
     }
 
     winners_by_rank.add_all(child_winners_by_rank);
-    if (game_.start_of_trick()) {
-      Cards trick_winners_by_rank =
-          game_.last_trick().winners_by_rank(game_.hands());
-      winners_by_rank.add_all(trick_winners_by_rank);
-    }
-
+    add_last_trick_wbr(game_, winners_by_rank);
     game_.unplay();
   }
 }
 
-static void sha256_hash(Game &game, char *buf, size_t buflen) {
-  if (!game.start_of_trick()) {
-    buf[0] = 0;
-    return;
-  }
-
-  Game::State state;
-  memset(&state, 0, sizeof(state));
-  state = game.normalized_state();
-
-  uint8_t  digest[32];
-  uint8_t *in_begin = (uint8_t *)&state;
-  uint8_t *in_end   = in_begin + sizeof(state);
-  picosha2::hash256(in_begin, in_end, digest, digest + 32);
-
-  std::snprintf(
-      buf, buflen, "%08x%08x", *(uint32_t *)&digest[0], *(uint32_t *)&digest[4]
-  );
-}
-
-void Solver::trace(
-    const char *tag, int alpha, int beta, int tricks_taken_by_ns
-) {
-  char line_buf[121], tricks_buf[3], hash_buf[17];
-  sha256_hash(game_, hash_buf, sizeof(hash_buf));
-  if (tricks_taken_by_ns >= 0) {
-    std::snprintf(tricks_buf, sizeof(tricks_buf), "%2d", tricks_taken_by_ns);
+void Solver::trace(const char *tag, int alpha, int beta, int score) {
+  *trace_os_ << std::left;
+  *trace_os_ << std::setw(7) << trace_lineno_ << ' ';
+  *trace_os_ << std::setw(8) << tag << ' ';
+  *trace_os_ << std::right;
+  *trace_os_ << game_.hands();
+  int max_len = game_.tricks_max() * 4 + 15;
+  int cur_len = game_.hands().all_cards().count() + 15;
+  *trace_os_ << std::setw(max_len - cur_len + 1) << ' ';
+  *trace_os_ << std::setw(2) << alpha << ' ';
+  *trace_os_ << std::setw(2) << beta << ' ';
+  *trace_os_ << std::setw(2) << game_.tricks_taken_by_ns() << ' ';
+  if (score >= 0) {
+    *trace_os_ << std::setw(2) << score << ' ';
   } else {
-    std::strcpy(tricks_buf, "  ");
+    *trace_os_ << "   ";
   }
-  std::snprintf(
-      line_buf,
-      sizeof(line_buf),
-      "%-7llu %-8s %16s %2d %2d %2d %s",
-      trace_lineno_,
-      tag,
-      hash_buf,
-      alpha,
-      beta,
-      game_.tricks_taken_by_ns(),
-      tricks_buf
-  );
-  *trace_ostream_ << line_buf;
   for (int i = 0; i < game_.tricks_taken(); i++) {
-    *trace_ostream_ << " " << game_.trick(i);
+    *trace_os_ << " " << game_.trick(i);
   }
-  *trace_ostream_ << std::endl;
+  *trace_os_ << '\n';
   trace_lineno_++;
 }

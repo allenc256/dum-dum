@@ -39,16 +39,24 @@ struct NaiveTpnBucket {
     }
   }
 
-  void lookup(const Hands &hands, int &lower_bound, int &upper_bound) const {
-    lower_bound = TpnBucket::MIN_BOUND;
-    upper_bound = TpnBucket::MAX_BOUND;
+  bool lookup(const Hands &hands, int alpha, int beta, int &score, Cards &wbr)
+      const {
     for (auto &entry : entries) {
       if (hands.contains_all(entry.partition)) {
-        lower_bound = std::max(lower_bound, entry.lower_bound);
-        upper_bound = std::min(upper_bound, entry.upper_bound);
-        assert(lower_bound <= upper_bound);
+        if (entry.lower_bound == entry.upper_bound ||
+            entry.lower_bound >= beta) {
+          score = entry.lower_bound;
+          wbr   = entry.partition.all_cards();
+          return true;
+        }
+        if (entry.upper_bound <= alpha) {
+          score = entry.upper_bound;
+          wbr   = entry.partition.all_cards();
+          return true;
+        }
       }
     }
+    return false;
   }
 
   void insert(const Hands &partition, int lower_bound, int upper_bound) {
@@ -110,18 +118,20 @@ TEST(TpnBucket, random) {
   for (int i = 0; i < 1000; i++) {
     Hands hands = random.random_deal(4);
     for (int j = 0; j < 13; j++) {
-      int alpha = j;
-      int beta  = j + 1;
-      int lb1, lb2, ub1, ub2;
-      bucket1.lookup(hands, alpha, beta, lb1, ub1);
-      bucket2.lookup(hands, lb2, ub2);
-      if (lb2 >= beta) {
-        ASSERT_TRUE(lb1 >= beta);
-      } else if (ub2 <= alpha) {
-        ASSERT_TRUE(ub1 <= alpha);
+      int   alpha = j;
+      int   beta  = j + 1;
+      int   score1, score2;
+      Cards wbr1, wbr2;
+      bool  found1 = bucket1.lookup(hands, alpha, beta, score1, wbr1);
+      bool  found2 = bucket2.lookup(hands, alpha, beta, score2, wbr2);
+      ASSERT_EQ(found1, found2);
+      if (score2 <= alpha) {
+        ASSERT_TRUE(score1 <= alpha);
+      } else if (score2 >= beta) {
+        ASSERT_TRUE(score1 >= beta);
       } else {
-        ASSERT_EQ(lb1, lb2);
-        ASSERT_EQ(ub1, ub2);
+        ASSERT_EQ(score1, score2);
+        ASSERT_EQ(wbr1, wbr2);
       }
     }
   }

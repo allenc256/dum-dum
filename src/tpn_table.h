@@ -90,16 +90,14 @@ public:
   static constexpr int MIN_BOUND = 0;
   static constexpr int MAX_BOUND = 13;
 
-  void lookup(
+  bool lookup(
       const Hands &hands,
       int          alpha,
       int          beta,
-      int         &lower_bound,
-      int         &upper_bound
+      int         &score,
+      Cards       &winners_by_rank
   ) const {
-    lower_bound = MIN_BOUND;
-    upper_bound = MAX_BOUND;
-    lookup(entries_, hands, alpha, beta, lower_bound, upper_bound);
+    return lookup(entries_, hands, alpha, beta, score, winners_by_rank);
   }
 
   void insert(const Hands &partition, int lower_bound, int upper_bound) {
@@ -152,8 +150,8 @@ private:
       const Hands        &hands,
       int                 alpha,
       int                 beta,
-      int                &lower_bound,
-      int                &upper_bound
+      int                &score,
+      Cards              &winners_by_rank
   ) const;
 
   void insert(Slice<Entry> &slice, const Hands &partition, Bounds bounds);
@@ -167,7 +165,7 @@ private:
 class TpnBucketKey {
 public:
   TpnBucketKey(Seat next_seat, const Hands &hands) : bits_(next_seat) {
-    for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
+    for (Seat seat = LAST_SEAT; seat >= FIRST_SEAT; seat--) {
       Cards hand = hands.hand(seat);
       for (Suit suit = FIRST_SUIT; suit <= LAST_SUIT; suit++) {
         bits_ = (bits_ << 3) | hand.intersect(suit).count();
@@ -181,61 +179,22 @@ public:
 
   bool operator==(const TpnBucketKey &other) const = default;
 
+  friend std::ostream &operator<<(std::ostream &os, const TpnBucketKey &key);
+
 private:
   uint64_t bits_;
 };
 
-class TpnTable2 {
-public:
-  TpnTable2(const Game &game) : game_(game) {}
-
-  void lookup(int alpha, int beta, int &lower_bound, int &upper_bound) const;
-  void insert(Cards winners_by_rank, int lower_bound, int upper_bound);
-
-private:
-  using HashTable = absl::flat_hash_map<TpnBucketKey, TpnBucket>;
-
-  const Game &game_;
-  HashTable   table_;
-};
-
 class TpnTable {
 public:
-  struct Value {
-    int                 lower_bound;
-    int                 upper_bound;
-    std::optional<Card> pv_play;
-  };
-
   TpnTable(const Game &game) : game_(game) {}
 
-  bool   lookup_value(int max_depth, Value &value) const;
-  void   upsert_value(int max_depth, const Value &value);
+  bool   lookup(int alpha, int beta, int &score, Cards &winners_by_rank) const;
+  void   insert(Cards winners_by_rank, int lower_bound, int upper_bound);
   size_t size() const { return table_.size(); }
 
 private:
-  struct Entry {
-    int8_t              lower_bound;
-    int8_t              upper_bound;
-    int8_t              max_depth;
-    std::optional<Card> pv_play;
-
-    Entry(
-        int8_t              lower_bound,
-        int8_t              upper_bound,
-        int8_t              max_depth,
-        std::optional<Card> pv_play
-    )
-        : lower_bound(lower_bound),
-          upper_bound(upper_bound),
-          max_depth(max_depth),
-          pv_play(pv_play) {}
-  };
-
-  using HashTable = absl::flat_hash_map<Game::State, Entry>;
-
-  bool lookup_value_normed(int max_depth, Value &value) const;
-  void upsert_value_normed(int max_depth, const Value &value);
+  using HashTable = absl::flat_hash_map<TpnBucketKey, TpnBucket>;
 
   const Game &game_;
   HashTable   table_;
