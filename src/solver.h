@@ -36,11 +36,20 @@ public:
     Cards winners_by_rank;
   };
 
+  struct Stats {
+    int64_t         nodes_explored;
+    TpnTable::Stats tpn_table_stats;
+  };
+
   Solver(Game g);
   ~Solver();
 
-  int64_t states_explored() const { return states_explored_; }
-  int64_t states_memoized() const { return tpn_table_.size(); }
+  Stats stats() const {
+    return {
+        .nodes_explored  = nodes_explored_,
+        .tpn_table_stats = tpn_table_.stats(),
+    };
+  }
 
   void enable_all_optimizations(bool enabled) {
     ab_pruning_enabled_    = enabled;
@@ -74,7 +83,7 @@ private:
   void trace(const char *tag, int alpha, int beta, int tricks_taken_by_ns);
 
   Game          game_;
-  int64_t       states_explored_;
+  int64_t       nodes_explored_;
   TpnTable      tpn_table_;
   bool          ab_pruning_enabled_;
   bool          tpn_table_enabled_;

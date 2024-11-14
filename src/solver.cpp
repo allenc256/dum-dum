@@ -1,7 +1,5 @@
 #include "solver.h"
 
-#include <picosha2.h>
-
 void PlayOrder::append_plays(Cards cards, bool low_to_high) {
   cards.remove_all(all_cards_);
   if (cards.empty()) {
@@ -22,7 +20,7 @@ void PlayOrder::append_plays(Cards cards, bool low_to_high) {
 
 Solver::Solver(Game g)
     : game_(g),
-      states_explored_(0),
+      nodes_explored_(0),
       tpn_table_(game_),
       trace_os_(nullptr),
       trace_lineno_(0) {
@@ -37,6 +35,11 @@ Solver::Result Solver::solve(int alpha, int beta) {
   Cards winners_by_rank;
   int   tricks_taken_by_ns = solve_internal(alpha, beta, winners_by_rank);
   int   tricks_taken_by_ew = game_.tricks_max() - tricks_taken_by_ns;
+#ifndef NDEBUG
+  if (tpn_table_enabled_) {
+    tpn_table_.check_invariants();
+  }
+#endif
   return {
       .tricks_taken_by_ns = tricks_taken_by_ns,
       .tricks_taken_by_ew = tricks_taken_by_ew,
@@ -139,7 +142,7 @@ static void add_last_trick_wbr(const Game &game, Cards &winners_by_rank) {
 void Solver::search_all_cards(
     int alpha, int beta, int &best_score, Cards &winners_by_rank
 ) {
-  states_explored_++;
+  nodes_explored_++;
 
   bool maximizing = game_.next_seat() == NORTH || game_.next_seat() == SOUTH;
 
