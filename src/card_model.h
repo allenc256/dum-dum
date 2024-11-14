@@ -389,6 +389,19 @@ public:
     return cards.normalize_wbr(removed_);
   }
 
+  Cards denormalize_wbr(Cards cards) const {
+    Cards result;
+    for (Suit suit = FIRST_SUIT; suit <= LAST_SUIT; suit++) {
+      Cards suit_cards = cards.intersect(suit);
+      if (!suit_cards.empty()) {
+        result.add_all(
+            Cards::higher_ranking_or_eq(denormalize(suit_cards.lowest()))
+        );
+      }
+    }
+    return result;
+  }
+
   Cards prune_equivalent(Cards cards) const {
     return cards.prune_equivalent(removed_);
   }

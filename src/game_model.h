@@ -99,7 +99,8 @@ public:
 
   bool operator==(const Hands &hands) const = default;
 
-  void pretty_print(std::ostream &os, Cards winner_by_rank) const;
+  void pretty_print(std::ostream &os, Cards winners_by_rank) const;
+  void compact_print(std::ostream &os, Cards winners_by_rank) const;
 
   std::string to_string() const;
 
@@ -386,6 +387,10 @@ public:
 
   Cards normalize_wbr(Cards winners_by_rank) const {
     return card_normalizer_.normalize_wbr(winners_by_rank);
+  }
+
+  Cards denormalize_wbr(Cards winners_by_rank) const {
+    return card_normalizer_.denormalize_wbr(winners_by_rank);
   }
 
   Card denormalize_card(Card card) const {

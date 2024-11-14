@@ -1,7 +1,7 @@
 #pragma once
 
 #include "game_model.h"
-#include "mini_solver.h"
+#include "tpn_table.h"
 
 #include <absl/container/flat_hash_map.h>
 #include <array>
@@ -53,8 +53,8 @@ public:
   void enable_move_ordering(bool enabled) { move_ordering_enabled_ = enabled; }
 
   void enable_tracing(std::ostream *os) {
-    trace_ostream_ = os;
-    trace_lineno_  = 0;
+    trace_os_     = os;
+    trace_lineno_ = 0;
   }
 
   Game       &game() { return game_; }
@@ -79,6 +79,6 @@ private:
   bool          ab_pruning_enabled_;
   bool          tpn_table_enabled_;
   bool          move_ordering_enabled_;
-  std::ostream *trace_ostream_;
+  std::ostream *trace_os_;
   int64_t       trace_lineno_;
 };

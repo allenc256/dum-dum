@@ -48,21 +48,29 @@ Hands::Hands(std::string_view s) {
   is >> *this;
 }
 
-std::ostream &operator<<(std::ostream &os, const Hands &hands) {
+void Hands::compact_print(std::ostream &os, Cards winners_by_rank) const {
   for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
     if (seat != FIRST_SEAT) {
       os << '/';
     }
-    Cards hand = hands.hand(seat);
+    Cards hand = hands_[seat];
     for (Suit suit = LAST_SUIT; suit >= FIRST_SUIT; suit--) {
       if (suit != LAST_SUIT) {
         os << '.';
       }
       for (Card card : hand.intersect(suit).high_to_low()) {
-        os << card.rank();
+        if (winners_by_rank.contains(card)) {
+          os << card.rank();
+        } else {
+          os << 'X';
+        }
       }
     }
   }
+}
+
+std::ostream &operator<<(std::ostream &os, const Hands &hands) {
+  hands.compact_print(os, Cards::all());
   return os;
 }
 
