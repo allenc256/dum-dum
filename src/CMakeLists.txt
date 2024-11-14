@@ -7,7 +7,7 @@ else()
   set(CXX_FLAGS -Wall -Wextra -Wpedantic -Werror -Wconversion -Wno-gcc-compat -Wno-sign-conversion)
 endif()
 
-set(LINK_LIBS absl::flat_hash_map picosha2)
+set(LINK_LIBS absl::flat_hash_map)
 
 add_executable(dumdum main.cpp ${SOURCES})
 add_library(dumdum_test_lib STATIC ${SOURCES})
