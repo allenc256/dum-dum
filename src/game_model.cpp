@@ -76,19 +76,14 @@ std::ostream &operator<<(std::ostream &os, const Hands &hands) {
 
 std::istream &operator>>(std::istream &is, Hands &hands) {
   for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
-    if (seat != FIRST_SEAT && is.get() != '/') {
-      throw ParseFailure("expected '/' delimiter");
-    }
-    for (Suit suit = LAST_SUIT; suit >= FIRST_SUIT; suit--) {
-      if (suit != LAST_SUIT && is.get() != '.') {
-        throw ParseFailure("expected '.' delimiter");
-      }
-      while (is.peek() != EOF && is.peek() != '.' && is.peek() != '/') {
-        Rank rank;
-        is >> rank;
-        hands.hands_[seat].add(Card(rank, suit));
+    if (seat != FIRST_SEAT) {
+      char delim = 0;
+      is >> delim;
+      if (delim != '/') {
+        throw ParseFailure("expected delimiter: /");
       }
     }
+    is >> hands.hands_[seat];
   }
   return is;
 }

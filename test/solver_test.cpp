@@ -88,10 +88,7 @@ TEST(Solver, all_optimizations) {
 
 struct ManualTestCase {
   const char *name;
-  Cards       west;
-  Cards       north;
-  Cards       east;
-  Cards       south;
+  Hands       hands;
   Suit        trump_suit;
   Seat        lead_seat;
   int         tricks_taken_by_ns;
@@ -101,9 +98,8 @@ struct ManualTestCase {
 class ManualTest : public testing::TestWithParam<ManualTestCase> {};
 
 TEST_P(ManualTest, manual_test) {
-  const ManualTestCase &p     = GetParam();
-  Hands                 hands = {p.west, p.north, p.east, p.south};
-  Game                  g(p.trump_suit, p.lead_seat, hands);
+  const ManualTestCase &p = GetParam();
+  Game                  g(p.trump_suit, p.lead_seat, p.hands);
   Solver                s(g);
   auto                  r = s.solve();
   EXPECT_EQ(r.tricks_taken_by_ns, p.tricks_taken_by_ns);
@@ -113,10 +109,7 @@ const ManualTestCase MANUAL_TESTS[] = {
     {
         // https://en.wikipedia.org/wiki/Simple_squeeze
         .name               = "simple_squeeze",
-        .west               = Cards("♠ KQ ♥ A   ♦ - ♣ -"),
-        .north              = Cards("♠ AJ ♥ K   ♦ - ♣ -"),
-        .east               = Cards("♠ -  ♥ QJT ♦ - ♣ -"),
-        .south              = Cards("♠ 4  ♥ 2   ♦ - ♣ A"),
+        .hands              = Hands("KQ.A../AJ.K../.QJT../4.2..A"),
         .trump_suit         = NO_TRUMP,
         .lead_seat          = SOUTH,
         .tricks_taken_by_ns = 3,
@@ -125,10 +118,7 @@ const ManualTestCase MANUAL_TESTS[] = {
     {
         // https://en.wikipedia.org/wiki/Simple_squeeze
         .name               = "split_two_card_threat_squeeze",
-        .west               = Cards("♠ KQ ♥ A   ♦ - ♣ -"),
-        .north              = Cards("♠ A3 ♥ K   ♦ - ♣ -"),
-        .east               = Cards("♠ -  ♥ QJT ♦ - ♣ -"),
-        .south              = Cards("♠ J2 ♥ -   ♦ - ♣ A"),
+        .hands              = Hands("KQ.A../A3.K../.QJT../J2...A"),
         .trump_suit         = NO_TRUMP,
         .lead_seat          = SOUTH,
         .tricks_taken_by_ns = 3,
@@ -137,10 +127,7 @@ const ManualTestCase MANUAL_TESTS[] = {
     {
         // https://en.wikipedia.org/wiki/Simple_squeeze
         .name               = "criss_cross_squeeze",
-        .west               = Cards("♠ -  ♥ -  ♦ - ♣ 6543"),
-        .north              = Cards("♠ A  ♥ Q2 ♦ - ♣ 2"),
-        .east               = Cards("♠ K3 ♥ K3 ♦ - ♣ -"),
-        .south              = Cards("♠ Q2 ♥ A  ♦ - ♣ A"),
+        .hands              = Hands("...6543/A.Q2..2/K3.K3../Q2.A..A"),
         .trump_suit         = NO_TRUMP,
         .lead_seat          = SOUTH,
         .tricks_taken_by_ns = 4,
@@ -148,10 +135,7 @@ const ManualTestCase MANUAL_TESTS[] = {
     {
         // https://en.wikipedia.org/wiki/Simple_squeeze
         .name               = "vienna_coup",
-        .west               = Cards("♠ -  ♥ -  ♦ - ♣ 5432"),
-        .north              = Cards("♠ AJ ♥ A  ♦ 2 ♣ -"),
-        .east               = Cards("♠ KQ ♥ K3 ♦ - ♣ -"),
-        .south              = Cards("♠ 2  ♥ Q2 ♦ A ♣ -"),
+        .hands              = Hands("...5432/AJ.A.2./KQ.K3../2.Q2.A."),
         .trump_suit         = NO_TRUMP,
         .lead_seat          = SOUTH,
         .tricks_taken_by_ns = 4,
@@ -159,10 +143,7 @@ const ManualTestCase MANUAL_TESTS[] = {
     {
         // https://en.wikipedia.org/wiki/Trump_squeeze
         .name               = "trump_squeeze",
-        .west               = Cards("♠ -   ♥ - ♦ 65432 ♣ -"),
-        .north              = Cards("♠ A   ♥ - ♦ A     ♣ KT7"),
-        .east               = Cards("♠ Q9  ♥ - ♦ -     ♣ J98"),
-        .south              = Cards("♠ T83 ♥ 2 ♦ -     ♣ 3"),
+        .hands              = Hands("..65432./A..A.KT7/Q9...J98/T83.2..3"),
         .trump_suit         = HEARTS,
         .lead_seat          = NORTH,
         .tricks_taken_by_ns = 5,
@@ -170,10 +151,7 @@ const ManualTestCase MANUAL_TESTS[] = {
     {
         // https://en.wikipedia.org/wiki/Trump_squeeze
         .name               = "double_trump_squeeze",
-        .west               = Cards("♠ Q42 ♥ -  ♦ K7 ♣ -"),
-        .north              = Cards("♠ T73 ♥ AT ♦ -  ♣ -"),
-        .east               = Cards("♠ J96 ♥ -  ♦ J9 ♣ -"),
-        .south              = Cards("♠ AK8 ♥ -  ♦ QT ♣ -"),
+        .hands              = Hands("Q42..K7./T73.AT../J96..J9./AK8..QT."),
         .trump_suit         = HEARTS,
         .lead_seat          = NORTH,
         .tricks_taken_by_ns = 5,
@@ -181,32 +159,23 @@ const ManualTestCase MANUAL_TESTS[] = {
     {
         // https://en.wikipedia.org/wiki/Compound_squeeze
         .name               = "compound_squeeze",
-        .west               = Cards("♠ -  ♥ Q76 ♦ Q95 ♣ -"),
-        .north              = Cards("♠ -  ♥ AJ  ♦ K86 ♣ 7"),
-        .east               = Cards("♠ -  ♥ KT  ♦ JT2 ♣ K"),
-        .south              = Cards("♠ 53 ♥ 4   ♦ A7  ♣ J"),
+        .hands              = Hands(".Q76.Q95./.AJ.K86.7/.KT.JT2.K/53.4.A7.J"),
         .trump_suit         = SPADES,
         .lead_seat          = SOUTH,
         .tricks_taken_by_ns = 6,
     },
     {
         // https://en.wikipedia.org/wiki/Saturated_squeeze
-        .name               = "saturated_squeeze",
-        .west               = Cards("♠ A ♥ QT8 ♦ -   ♣ QJT"),
-        .north              = Cards("♠ 2 ♥ -   ♦ AK9 ♣ A42"),
-        .east               = Cards("♠ K ♥ J97 ♦ QJT ♣ -"),
-        .south              = Cards("♠ - ♥ AK2 ♦ 2   ♣ K53"),
-        .trump_suit         = NO_TRUMP,
-        .lead_seat          = NORTH,
+        .name       = "saturated_squeeze",
+        .hands      = Hands("A.QT8..QJT/2..AK9.A42/K.J97.QJT./.AK2.2.K53"),
+        .trump_suit = NO_TRUMP,
+        .lead_seat  = NORTH,
         .tricks_taken_by_ns = 7,
     },
     {
         // https://en.wikipedia.org/wiki/Trump_coup
         .name               = "trump_coup_endplay",
-        .west               = Cards("♠ JT87  ♥ - ♦ J8 ♣ -"),
-        .north              = Cards("♠ 95432 ♥ T ♦ -  ♣ -"),
-        .east               = Cards("♠ Q6    ♥ J ♦ -  ♣ 983"),
-        .south              = Cards("♠ AK    ♥ - ♦ -  ♣ J765"),
+        .hands              = Hands("JT87..J8./95432.T../Q6.J..983/AK...J765"),
         .trump_suit         = CLUBS,
         .lead_seat          = NORTH,
         .tricks_taken_by_ns = 5,
@@ -214,21 +183,17 @@ const ManualTestCase MANUAL_TESTS[] = {
     {
         // https://en.wikipedia.org/wiki/Uppercut_(bridge)
         .name               = "uppercut",
-        .west               = Cards("♠ Q6    ♥ 6 ♦ 54 ♣ 8"),
-        .north              = Cards("♠ T975  ♥ A ♦ 6  ♣ -"),
-        .east               = Cards("♠ J2    ♥ - ♦ 32 ♣ 95"),
-        .south              = Cards("♠ AK843 ♥ - ♦ A  ♣ -"),
+        .hands              = Hands("Q6.6.54.8/T975.A.6./J2..32.95/AK843..A."),
         .trump_suit         = SPADES,
         .lead_seat          = WEST,
         .tricks_taken_by_ns = 5,
     },
     {
         // https://en.wikipedia.org/wiki/Trump_coup
-        .name               = "grand_coup",
-        .west               = Cards("♠ T73   ♥ J83  ♦ T9   ♣ J974"),
-        .north              = Cards("♠ 8     ♥ 65   ♦ K32  ♣ KQT853"),
-        .east               = Cards("♠ 9642  ♥ QT9  ♦ 8654 ♣ 6"),
-        .south              = Cards("♠ AKQJ5 ♥ AK7  ♦ Q7   ♣ A2"),
+        .name  = "grand_coup",
+        .hands = Hands(
+            "T73.J83.T9.J974/8.65.K32.KQT853/9642.QT9.8654.6/AKQJ5.AK7.Q7.A2"
+        ),
         .trump_suit         = CLUBS,
         .lead_seat          = EAST,
         .tricks_taken_by_ns = 12,

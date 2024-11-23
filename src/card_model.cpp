@@ -111,28 +111,14 @@ std::string Card::to_string() const {
   return os.str();
 }
 
-int print_cards_in_suit(std::ostream &os, Cards c, Suit s) {
-  assert(s != NO_TRUMP);
-  c = c.intersect(s);
-  os << s << ' ';
-  int count = 0;
-  for (Card card : c.high_to_low()) {
-    os << card.rank();
-    count++;
-  }
-  if (count <= 0) {
-    os << '-';
-    count++;
-  }
-  return count + 2;
-}
-
-std::ostream &operator<<(std::ostream &os, Cards c) {
-  for (Suit s = LAST_SUIT; s >= FIRST_SUIT; s--) {
-    if (s != LAST_SUIT) {
-      os << ' ';
+std::ostream &operator<<(std::ostream &os, Cards cards) {
+  for (Suit suit = LAST_SUIT; suit >= FIRST_SUIT; suit--) {
+    if (suit != LAST_SUIT) {
+      os << '.';
     }
-    print_cards_in_suit(os, c, s);
+    for (Card card : cards.intersect(suit).high_to_low()) {
+      os << card.rank();
+    }
   }
   return os;
 }
@@ -152,50 +138,31 @@ bool is_rank_char(int ch) {
   return false;
 }
 
-static void parse_cards_ranks(std::istream &is, Suit s, Cards &cs) {
-  Rank r;
-  Rank last_rank;
-  int  ch;
-  int  count = 0;
-
-  is >> std::ws;
+static void parse_cards_ranks(std::istream &is, Suit suit, Cards &cards) {
   while (true) {
-    ch = is.peek();
-    if (ch == EOF) {
-      if (count == 0) {
-        throw ParseFailure("EOF");
-      }
-      return;
-    }
-    if (!is.good()) {
-      throw ParseFailure("stream error");
-    }
+    is >> std::ws;
+    int ch = is.peek();
     if (is_rank_char(ch)) {
-      is >> r;
-      if (count > 0 && r >= last_rank) {
-        throw ParseFailure("order");
-      }
-      cs.add(Card(r, s));
-      last_rank = r;
-      count++;
-    } else if (ch == '-') {
-      is.get();
-      return;
+      Rank rank;
+      is >> rank;
+      cards.add(Card(rank, suit));
     } else {
-      return;
+      break;
     }
   }
 }
 
-std::istream &operator>>(std::istream &is, Cards &c) {
-  c = Cards();
+std::istream &operator>>(std::istream &is, Cards &cards) {
+  cards = Cards();
   for (Suit suit = LAST_SUIT; suit >= FIRST_SUIT; suit--) {
-    Suit s;
-    is >> s;
-    if (s != suit) {
-      throw ParseFailure("bad suit");
+    if (suit != LAST_SUIT) {
+      char delim = 0;
+      is >> delim;
+      if (delim != '.') {
+        throw ParseFailure("expected delimiter: .");
+      }
     }
-    parse_cards_ranks(is, s, c);
+    parse_cards_ranks(is, suit, cards);
   }
   return is;
 }
