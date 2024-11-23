@@ -190,23 +190,6 @@ public:
 
   Cards intersect(Suit s) const { return Cards(bits_ & (SUIT_MASK << s)); }
 
-  Cards normalize(uint16_t removed_ranks_mask) const {
-    uint64_t b = bits_;
-    uint64_t m = 0xfffffffffffffull;
-    uint16_t r = (uint16_t)(removed_ranks_mask << 3);
-
-    while (r) {
-      int keep = std::countl_zero(r);
-      m >>= keep * 4;
-      r <<= keep;
-      int drop = std::countl_one(r);
-      b        = (b & ~m) | (((b & m) << 4) & m);
-      r <<= drop;
-    }
-
-    return Cards(b);
-  }
-
   Cards normalize(Cards removed) const {
     if (!removed.bits_) {
       return *this;

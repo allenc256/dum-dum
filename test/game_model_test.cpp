@@ -194,7 +194,7 @@ TEST(Trick, is_higher_card_trump) {
 TEST(Trick, winners_by_rank_no_trump) {
   Trick trick   = make_trick(NO_TRUMP, WEST, {"2C", "5C", "6D", "AD"});
   Cards winners = trick.winners_by_rank(Hands());
-  EXPECT_EQ(winners, Cards("S - H - D - C AKQJT98765"));
+  EXPECT_EQ(winners, Cards("...AKQJT98765"));
 }
 
 TEST(Trick, winners_by_rank_no_trump_none) {
@@ -212,28 +212,18 @@ TEST(Trick, winners_by_rank_ruff) {
 TEST(Trick, winners_by_rank_overruff) {
   Trick trick   = make_trick(HEARTS, WEST, {"5C", "3H", "4H", "AD"});
   Cards winners = trick.winners_by_rank(Hands());
-  EXPECT_EQ(winners, Cards("S - H AKQJT987654 D - C -"));
+  EXPECT_EQ(winners, Cards(".AKQJT987654.."));
 }
 
 TEST(Trick, winners_by_rank_lowest_equivalent) {
   Trick trick = make_trick(NO_TRUMP, WEST, {"5C", "TC", "JC", "KC"});
-  Hands hands = {
-      Cards(),
-      Cards(),
-      Cards(),
-      Cards("S - H - D - C QT"),
-  };
+  Hands hands(".../.../.../...QT");
   Cards winners = trick.winners_by_rank(hands);
-  EXPECT_EQ(winners, Cards("S - H - D - C AKQ"));
+  EXPECT_EQ(winners, Cards("...AKQ"));
 }
 
 TEST(Hands, iostream) {
-  Hands hands = {
-      Cards("S A2 H - D - C -"),
-      Cards("S 93 H - D - C -"),
-      Cards("S 5  H 2 D - C -"),
-      Cards("S 6  H 3 D - C -")
-  };
+  Hands hands(Cards("A2..."), Cards("93..."), Cards("5.2.."), Cards("6.3.."));
 
   std::ostringstream os;
   os << hands;
@@ -246,13 +236,8 @@ TEST(Hands, iostream) {
 }
 
 TEST(Game, play_unplay) {
-  Hands hands = {
-      Cards("S A2 H - D - C -"),
-      Cards("S 93 H - D - C -"),
-      Cards("S 5  H 2 D - C -"),
-      Cards("S 6  H 3 D - C -")
-  };
-  Game g(HEARTS, WEST, hands);
+  Hands hands("A2.../93.../5.2../6.3..");
+  Game  g(HEARTS, WEST, hands);
 
   EXPECT_EQ(g.tricks_taken(), 0);
   EXPECT_EQ(g.next_seat(), WEST);
@@ -319,29 +304,24 @@ TEST(Game, play_unplay) {
 }
 
 TEST(Game, valid_plays_all) {
-  Hands hands = {
-      Cards("S A2 H - D - C -"),
-      Cards("S 93 H - D - C -"),
-      Cards("S 5  H 2 D - C -"),
-      Cards("S 6  H 3 D - C -")
-  };
-  Game g(HEARTS, WEST, hands);
+  Hands hands("A2.../93.../5.2../6.3..");
+  Game  g(HEARTS, WEST, hands);
 
-  EXPECT_EQ(g.valid_plays_all(), Cards("S A2 H - D - C -"));
+  EXPECT_EQ(g.valid_plays_all(), Cards("A2..."));
   g.play(Card("2S"));
-  EXPECT_EQ(g.valid_plays_all(), Cards("S 93 H - D - C -"));
+  EXPECT_EQ(g.valid_plays_all(), Cards("93..."));
   g.play(Card("9S"));
-  EXPECT_EQ(g.valid_plays_all(), Cards("S 5  H - D - C -"));
+  EXPECT_EQ(g.valid_plays_all(), Cards("5..."));
   g.play(Card("5S"));
-  EXPECT_EQ(g.valid_plays_all(), Cards("S 6  H - D - C -"));
+  EXPECT_EQ(g.valid_plays_all(), Cards("6..."));
   g.play(Card("6S"));
-  EXPECT_EQ(g.valid_plays_all(), Cards("S 3  H - D - C -"));
+  EXPECT_EQ(g.valid_plays_all(), Cards("3..."));
   g.play(Card("3S"));
-  EXPECT_EQ(g.valid_plays_all(), Cards("S -  H 2 D - C -"));
+  EXPECT_EQ(g.valid_plays_all(), Cards(".2.."));
   g.play(Card("2H"));
-  EXPECT_EQ(g.valid_plays_all(), Cards("S -  H 3 D - C -"));
+  EXPECT_EQ(g.valid_plays_all(), Cards(".3.."));
   g.play(Card("3H"));
-  EXPECT_EQ(g.valid_plays_all(), Cards("S A  H - D - C -"));
+  EXPECT_EQ(g.valid_plays_all(), Cards("A..."));
   g.play(Card("AS"));
   EXPECT_EQ(g.valid_plays_all(), Cards());
 }
@@ -385,13 +365,8 @@ TEST(Game, play_unplay_random) {
 }
 
 TEST(Game, play_null) {
-  Hands hands = {
-      Cards("S 2 H - D - C -"),
-      Cards("S - H 2 D - C -"),
-      Cards("S A H - D - C -"),
-      Cards("S - H - D 2 C -"),
-  };
-  Game game(NO_TRUMP, WEST, hands);
+  Hands hands("2.../.2../A.../...2");
+  Game  game(NO_TRUMP, WEST, hands);
 
   game.play(Card("2S"));
   game.play_null();
