@@ -27,6 +27,8 @@ constexpr Suit LAST_SUIT  = SPADES;
 inline Suit operator++(Suit &s, int) { return (Suit)((int8_t &)s)++; }
 inline Suit operator--(Suit &s, int) { return (Suit)((int8_t &)s)--; }
 
+std::string_view to_ascii(Suit suit);
+
 std::istream &operator>>(std::istream &is, Suit &s);
 std::ostream &operator<<(std::ostream &os, Suit s);
 

@@ -39,7 +39,10 @@ std::istream &operator>>(std::istream &is, Suit &s) {
   return is;
 }
 
-static const char *SUIT_STRS[] = {"♣", "♦", "♥", "♠", "NT"};
+static constexpr std::string_view SUIT_STRS[]     = {"♣", "♦", "♥", "♠", "NT"};
+static constexpr std::string_view SUIT_STRS_ASC[] = {"C", "D", "H", "S", "NT"};
+
+std::string_view to_ascii(Suit suit) { return SUIT_STRS_ASC[suit]; }
 
 std::ostream &operator<<(std::ostream &os, Suit s) {
   if (s < 0 || s >= 5) {
