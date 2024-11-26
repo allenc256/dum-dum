@@ -52,7 +52,7 @@ TEST(fast_tricks, transfer) {
 
 TEST(fast_tricks, length_tricks_discards) {
   test_fast_tricks("AKQ...2/.../2...AKQ/...", NO_TRUMP, 4, Cards("AKQ...A"));
-  test_fast_tricks("...AKQ/.../32...2/...", SPADES, 1, Cards("...AKQ"));
+  test_fast_tricks("...AKQ/AK...5/32...2/...", SPADES, 1, Cards("...AKQ"));
 }
 
 TEST(fast_tricks, random) {

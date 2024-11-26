@@ -40,35 +40,47 @@ public:
     do {
       progress = false;
       if (trump_suit_ != NO_TRUMP) {
-        while (try_trick(trump_suit_, true)) {
+        while (try_trick_non_ruff(trump_suit_, true)) {
           progress = true;
         }
       }
 
       for (Suit suit = FIRST_SUIT; suit <= LAST_SUIT; suit++) {
         if (suit != trump_suit_) {
-          while (try_trick(suit, true)) {
+          while (try_trick_non_ruff(suit, true)) {
             progress = true;
           }
         }
       }
 
       if (trump_suit_ != NO_TRUMP) {
-        if (try_trick(trump_suit_, false)) {
+        if (try_trick_non_ruff(trump_suit_, false)) {
           continue;
         }
       }
 
+      bool should_continue = false;
       for (Suit suit = FIRST_SUIT; suit <= LAST_SUIT; suit++) {
         if (suit != trump_suit_) {
-          if (try_trick(suit, false)) {
+          if (try_trick_non_ruff(suit, false)) {
+            progress        = true;
+            should_continue = true;
+            break;
+          }
+        }
+      }
+      if (should_continue) {
+        continue;
+      }
+
+      if (trump_suit_ != NO_TRUMP) {
+        for (Suit suit = FIRST_SUIT; suit <= LAST_SUIT; suit++) {
+          if (suit != trump_suit_ && try_trick_ruff(suit)) {
             progress = true;
             break;
           }
         }
       }
-
-      // TODO: handle ruffs
     } while (progress);
 
 #ifndef NDEBUG
@@ -107,7 +119,7 @@ private:
            hc >= high_card_[2][suit] && hc >= high_card_[3][suit];
   }
 
-  bool try_trick(Suit suit, bool end_in_hand) {
+  bool try_trick_non_ruff(Suit suit, bool end_in_hand) {
     Seat dest = end_in_hand ? me_ : pa_;
 
     if (is_void(me_, suit)) {
@@ -154,6 +166,36 @@ private:
       std::swap(me_, pa_);
       std::swap(lho_, rho_);
     }
+
+    tricks_taken_++;
+
+    return true;
+  }
+
+  bool try_trick_ruff(Suit suit) {
+    assert(suit != trump_suit_);
+
+    if (is_void(me_, suit)) {
+      return false;
+    }
+    if (can_ruff(lho_, suit) || can_ruff(rho_, suit)) {
+      return false;
+    }
+    if (!can_ruff(pa_, suit)) {
+      return false;
+    }
+
+    if (!is_void(lho_, suit)) {
+      play_low(lho_, suit);
+    }
+    if (!is_void(rho_, suit)) {
+      play_low(rho_, suit);
+    }
+    play_low(me_, suit);
+    play_low(pa_, trump_suit_);
+
+    std::swap(me_, pa_);
+    std::swap(lho_, rho_);
 
     tricks_taken_++;
 
