@@ -60,7 +60,7 @@ static void print_compact_output_headers() {
   std::cout << "hands\n";
 }
 
-static void solve_seed(int index, const Options &options) {
+static int64_t solve_seed(int index, const Options &options) {
   int    seed = options.initial_seed + index;
   Game   g    = Random(seed).random_game(options.deal_size);
   Solver s(g);
@@ -101,6 +101,8 @@ static void solve_seed(int index, const Options &options) {
     std::cout << "elapsed_ms         " << elapsed_ms << '\n';
     std::cout << std::endl;
   }
+
+  return elapsed_ms;
 }
 
 int main(int argc, char **argv) {
@@ -113,9 +115,14 @@ int main(int argc, char **argv) {
     print_compact_output_headers();
   }
 
+  int64_t total_ms = 0;
   for (int i = 0; i < options.num_hands; i++) {
-    solve_seed(i, options);
+    total_ms += solve_seed(i, options);
   }
+
+  std::cout << '\n';
+  std::cout << "total_elapsed_ms   " << total_ms << '\n';
+  std::cout << "avg_elapsed_ms     " << (total_ms / options.num_hands) << '\n';
 
   return 0;
 }
