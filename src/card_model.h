@@ -69,6 +69,7 @@ public:
 
   Rank rank() const { return (Rank)(index_ >> 2); }
   Suit suit() const { return (Suit)(index_ & 0b11); }
+  int  index() const { return index_; }
 
   std::string to_string() const;
 

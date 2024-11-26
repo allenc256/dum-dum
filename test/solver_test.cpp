@@ -74,6 +74,19 @@ TEST(Solver, move_ordering) {
   }
 }
 
+TEST(Solver, fast_tricks) {
+  for (int seed = 0; seed < 100; seed++) {
+    Game   g = Random(seed).random_game(DEAL_SIZE);
+    Solver s = Solver(g);
+    s.enable_all_optimizations(false);
+    s.enable_fast_tricks(true);
+    ASSERT_NO_FATAL_FAILURE({
+      SCOPED_TRACE(::testing::Message() << "seed " << seed);
+      validate_solver(s);
+    });
+  }
+}
+
 TEST(Solver, all_optimizations) {
   for (int seed = 0; seed < 100; seed++) {
     Game   g = Random(seed).random_game(DEAL_SIZE);

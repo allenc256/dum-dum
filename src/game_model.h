@@ -12,6 +12,7 @@ enum Seat : int {
   NORTH,
   EAST,
   SOUTH,
+  NO_SEAT,
 };
 
 constexpr Seat FIRST_SEAT = WEST;
@@ -91,6 +92,16 @@ public:
       }
     }
     return true;
+  }
+
+  Hands normalize() const {
+    Cards removed = all_cards().complement();
+    return Hands(
+        hands_[0].normalize(removed),
+        hands_[1].normalize(removed),
+        hands_[2].normalize(removed),
+        hands_[3].normalize(removed)
+    );
   }
 
   template <typename H> friend H AbslHashValue(H h, const Hands &hands) {
