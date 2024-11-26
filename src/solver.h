@@ -55,11 +55,13 @@ public:
     ab_pruning_enabled_    = enabled;
     tpn_table_enabled_     = enabled;
     move_ordering_enabled_ = enabled;
+    fast_tricks_enabled_   = enabled;
   }
 
   void enable_ab_pruning(bool enabled) { ab_pruning_enabled_ = enabled; }
   void enable_tpn_table(bool enabled) { tpn_table_enabled_ = enabled; }
   void enable_move_ordering(bool enabled) { move_ordering_enabled_ = enabled; }
+  void enable_fast_tricks(bool enabled) { fast_tricks_enabled_ = enabled; }
 
   void enable_tracing(std::ostream *os) {
     trace_os_     = os;
@@ -73,6 +75,10 @@ public:
   Result solve(int alpha, int beta);
 
 private:
+  bool prune_fast_tricks(
+      int alpha, int beta, int &score, Cards &winners_by_rank
+  ) const;
+
   int  solve_internal(int alpha, int beta, Cards &winners_by_rank);
   void order_plays(PlayOrder &order) const;
 
@@ -88,6 +94,7 @@ private:
   bool          ab_pruning_enabled_;
   bool          tpn_table_enabled_;
   bool          move_ordering_enabled_;
+  bool          fast_tricks_enabled_;
   std::ostream *trace_os_;
   int64_t       trace_lineno_;
 };

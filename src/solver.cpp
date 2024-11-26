@@ -1,4 +1,5 @@
 #include "solver.h"
+#include "fast_tricks.h"
 
 void PlayOrder::append_plays(Cards cards, bool low_to_high) {
   cards.remove_all(all_cards_);
@@ -64,7 +65,15 @@ int Solver::solve_internal(int alpha, int beta, Cards &winners_by_rank) {
     if (tpn_table_enabled_) {
       int score;
       if (tpn_table_.lookup(alpha, beta, score, winners_by_rank)) {
-        TRACE("lookup", alpha, beta, score);
+        TRACE("tpn_cutoff", alpha, beta, score);
+        return score;
+      }
+    }
+
+    if (fast_tricks_enabled_) {
+      int score;
+      if (prune_fast_tricks(alpha, beta, score, winners_by_rank)) {
+        TRACE("ft_cutoff", alpha, beta, score);
         return score;
       }
     }
@@ -189,10 +198,40 @@ void Solver::search_all_cards(
   }
 }
 
+bool Solver::prune_fast_tricks(
+    int alpha, int beta, int &score, Cards &winners_by_rank
+) const {
+  int fast_tricks;
+
+  estimate_fast_tricks(
+      game_.hands(),
+      game_.next_seat(),
+      game_.trump_suit(),
+      fast_tricks,
+      winners_by_rank
+  );
+
+  if (game_.next_seat() == NORTH || game_.next_seat() == SOUTH) {
+    int lb = game_.tricks_taken_by_ns() + fast_tricks;
+    if (lb >= beta) {
+      score = lb;
+      return true;
+    }
+  } else {
+    int ub = game_.tricks_taken_by_ns() + game_.tricks_left() - fast_tricks;
+    if (ub <= alpha) {
+      score = ub;
+      return true;
+    }
+  }
+
+  return false;
+}
+
 void Solver::trace(const char *tag, int alpha, int beta, int score) {
   *trace_os_ << std::left;
   *trace_os_ << std::setw(7) << trace_lineno_ << ' ';
-  *trace_os_ << std::setw(8) << tag << ' ';
+  *trace_os_ << std::setw(10) << tag << ' ';
   *trace_os_ << std::right;
   *trace_os_ << game_.hands();
   int max_len = game_.tricks_max() * 4 + 15;
