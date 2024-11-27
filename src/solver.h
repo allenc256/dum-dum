@@ -19,6 +19,7 @@ public:
   const Card *end() const { return cards_ + card_count_; }
 
   void append_plays(Cards cards, bool low_to_high);
+  void append_play(Card card);
 
 private:
   friend class Iter;
