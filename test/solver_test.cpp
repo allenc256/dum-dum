@@ -4,27 +4,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-TEST(PlayOrder, empty) {
-  PlayOrder order;
-  for (Card c : order) {
-    FAIL();
-  }
-}
-
-TEST(PlayOrder, order_cards) {
-  PlayOrder order;
-  order.append_plays(Cards({"2C", "5C", "AC"}), PlayOrder::LOW_TO_HIGH);
-  order.append_plays(Cards({"5C", "6C", "9C"}), PlayOrder::HIGH_TO_LOW);
-
-  std::array<Card, 5> expected = {"2C", "5C", "AC", "9C", "6C"};
-  int                 n        = 0;
-  for (Card c : order) {
-    ASSERT_LT(n, expected.size());
-    ASSERT_EQ(c, expected[n]);
-    n++;
-  }
-}
-
 constexpr int DEAL_SIZE = 4;
 
 void validate_solver(Solver &s1) {
@@ -61,12 +40,12 @@ TEST(Solver, tpn_table) {
   }
 }
 
-TEST(Solver, move_ordering) {
+TEST(Solver, play_order) {
   for (int seed = 0; seed < 100; seed++) {
     Game   g = Random(seed).random_game(DEAL_SIZE);
     Solver s = Solver(g);
     s.enable_all_optimizations(false);
-    s.enable_move_ordering(true);
+    s.enable_play_order(true);
     ASSERT_NO_FATAL_FAILURE({
       SCOPED_TRACE(::testing::Message() << "seed " << seed);
       validate_solver(s);

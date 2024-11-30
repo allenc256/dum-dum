@@ -1,8 +1,8 @@
 #include "fast_tricks.h"
 
-class MiniSolver {
+class FastTricksAnalyzer {
 public:
-  MiniSolver(const Hands &hands, Seat my_seat, Suit trump_suit)
+  FastTricksAnalyzer(const Hands &hands, Seat my_seat, Suit trump_suit)
       : trump_suit_(trump_suit),
         removed_(hands.all_cards().complement()),
         tricks_taken_(0) {
@@ -330,6 +330,6 @@ void estimate_fast_tricks(
     int         &fast_tricks,
     Cards       &winners_by_rank
 ) {
-  MiniSolver solver(hands, my_seat, trump_suit);
+  FastTricksAnalyzer solver(hands, my_seat, trump_suit);
   solver.solve(fast_tricks, winners_by_rank);
 }
