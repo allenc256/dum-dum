@@ -130,16 +130,7 @@ public:
         lead_suit_(NO_TRUMP),
         card_count_(0) {}
 
-  bool has_card(int index) const {
-    assert(index >= 0 && index < card_count_);
-    return cards_[index].has_value();
-  }
-
-  Card card(int index) const {
-    assert(has_card(index));
-    return *cards_[index];
-  }
-
+  Card card(int index) const { return cards_[index]; }
   int  card_count() const { return card_count_; }
   bool started() const { return card_count_ > 0; }
   bool finished() const { return card_count_ >= 4; }
@@ -176,9 +167,7 @@ public:
 
   Card winning_card() const {
     assert(started());
-    int i = winning_index();
-    assert(cards_[i].has_value());
-    return *cards_[i];
+    return cards_[winning_index()];
   }
 
   int winning_index() const {
@@ -224,15 +213,7 @@ public:
     card_count_++;
   }
 
-  void play_null() {
-    assert(card_count_ > 0 && card_count_ < 4);
-    winning_index_[card_count_] = winning_index();
-    winning_cards_[card_count_] = winning_cards();
-    cards_[card_count_]         = std::nullopt;
-    card_count_++;
-  }
-
-  std::optional<Card> unplay() {
+  Card unplay() {
     assert(card_count_ > 0);
     card_count_--;
     return cards_[card_count_];
@@ -271,9 +252,7 @@ public:
   Cards all_cards() const {
     Cards cards;
     for (int i = 0; i < card_count_; i++) {
-      if (has_card(i)) {
-        cards.add(card(i));
-      }
+      cards.add(card(i));
     }
     return cards;
   }
@@ -297,11 +276,9 @@ private:
   bool won_by_rank() const {
     Card w = winning_card();
     for (int i = 0; i < 4; i++) {
-      if (has_card(i)) {
-        Card c = card(i);
-        if (c.suit() == w.suit() && c.rank() < w.rank()) {
-          return true;
-        }
+      Card c = card(i);
+      if (c.suit() == w.suit() && c.rank() < w.rank()) {
+        return true;
       }
     }
     return false;
@@ -317,36 +294,19 @@ private:
     }
   }
 
-  Suit                trump_suit_;
-  Seat                lead_seat_;
-  Suit                lead_suit_;
-  std::optional<Card> cards_[4];
-  int                 card_count_;
-  int                 winning_index_[4];
-  Cards               winning_cards_[4];
+  Suit  trump_suit_;
+  Seat  lead_seat_;
+  Suit  lead_suit_;
+  Card  cards_[4];
+  int   card_count_;
+  int   winning_index_[4];
+  Cards winning_cards_[4];
 };
 
 std::ostream &operator<<(std::ostream &os, const Trick &t);
 
 class Game {
 public:
-  struct State {
-    Hands normalized_hands;
-    Seat  next_seat;
-
-    State() {}
-
-    State(Cards w, Cards n, Cards e, Cards s, Seat next_seat)
-        : normalized_hands(w, n, e, s),
-          next_seat(next_seat) {}
-
-    template <typename H> friend H AbslHashValue(H h, const State &state) {
-      return H::combine(std::move(h), state.normalized_hands, state.next_seat);
-    }
-
-    bool operator==(const State &state) const = default;
-  };
-
   Game(Suit trump_suit, Seat first_lead_seat, const Hands &hands);
 
   Suit         trump_suit() const { return trump_suit_; }
@@ -382,14 +342,11 @@ public:
   bool start_of_trick() const { return !current_trick().started(); }
 
   void play(Card card);
-  void play_null();
   void unplay();
 
-  bool  valid_play(Card c) const;
-  Cards valid_plays_pruned() const;
-  Cards valid_plays_all() const;
-
-  const State &normalized_state() const;
+  bool         valid_play(Card c) const;
+  Cards        valid_plays_pruned() const;
+  Cards        valid_plays_all() const;
   const Hands &normalized_hands() const;
 
   Card normalize_card(Card card) const {
@@ -411,9 +368,6 @@ public:
   void pretty_print(std::ostream &os) const;
 
 private:
-  void finish_play();
-
-  using StateStack = std::array<std::optional<State>, 14>;
   using HandsStack = std::array<std::optional<Hands>, 14>;
 
   Hands              hands_;
@@ -425,7 +379,6 @@ private:
   int                tricks_max_;
   int                tricks_taken_by_ns_;
   CardNormalizer     card_normalizer_;
-  mutable StateStack state_stack_;
   mutable HandsStack norm_hands_stack_;
 };
 

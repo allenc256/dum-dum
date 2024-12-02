@@ -30,11 +30,7 @@ std::ostream &operator<<(std::ostream &os, const Trick &t) {
     os << '-';
   } else {
     for (int i = 0; i < t.card_count(); i++) {
-      if (t.has_card(i)) {
-        os << t.card(i);
-      } else {
-        os << "??";
-      }
+      os << t.card(i);
     }
     if (t.finished()) {
       os << " " << t.winning_seat();
@@ -198,31 +194,17 @@ void Game::play(Card c) {
     t.play_start(trump_suit_, next_seat_, c);
   }
   hands_.remove_card(next_seat_, c);
-  finish_play();
-}
 
-void Game::play_null() {
-  Trick &t = current_trick();
-  assert(t.started());
-  t.play_null();
-  finish_play();
-}
-
-void Game::finish_play() {
-  Trick &t = current_trick();
   if (t.finished()) {
     next_seat_ = t.winning_seat();
     if (next_seat_ == NORTH || next_seat_ == SOUTH) {
       tricks_taken_by_ns_++;
     }
     for (int i = 0; i < 4; i++) {
-      if (t.has_card(i)) {
-        card_normalizer_.remove(t.card(i));
-      }
+      card_normalizer_.remove(t.card(i));
     }
     tricks_taken_++;
     assert(tricks_taken_ <= 13);
-    assert(!state_stack_[tricks_taken_].has_value());
     assert(!norm_hands_stack_[tricks_taken_].has_value());
   } else {
     next_seat_ = t.next_seat();
@@ -249,9 +231,7 @@ void Game::unplay() {
       Trick &t = tricks_[tricks_taken_ - 1];
       assert(t.finished());
       for (int i = 0; i < 4; i++) {
-        if (t.has_card(i)) {
-          card_normalizer_.add(t.card(i));
-        }
+        card_normalizer_.add(t.card(i));
       }
       Seat                winner = t.winning_seat();
       std::optional<Card> card   = t.unplay();
@@ -262,7 +242,6 @@ void Game::unplay() {
       if (winner == NORTH || winner == SOUTH) {
         tricks_taken_by_ns_--;
       }
-      state_stack_[tricks_taken_].reset();
       norm_hands_stack_[tricks_taken_].reset();
       tricks_taken_--;
     } else {
@@ -289,21 +268,6 @@ Cards Game::valid_plays_all() const {
     }
   }
   return c;
-}
-
-const Game::State &Game::normalized_state() const {
-  assert(start_of_trick());
-  auto &cached = state_stack_[tricks_taken_];
-  if (!cached.has_value()) {
-    cached.emplace(
-        card_normalizer_.normalize(hands_.hand(WEST)),
-        card_normalizer_.normalize(hands_.hand(NORTH)),
-        card_normalizer_.normalize(hands_.hand(EAST)),
-        card_normalizer_.normalize(hands_.hand(SOUTH)),
-        next_seat_
-    );
-  }
-  return *cached;
 }
 
 const Hands &Game::normalized_hands() const {

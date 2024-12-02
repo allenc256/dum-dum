@@ -63,7 +63,6 @@ TEST(Trick, trump_ruff_discard) {
 struct CheckTrickArgs {
   int  card_count;
   Seat winning_seat;
-  bool is_null_play[4];
 };
 
 static void check_trick(const Trick &t, CheckTrickArgs args) {
@@ -73,28 +72,17 @@ static void check_trick(const Trick &t, CheckTrickArgs args) {
   if (t.started()) {
     EXPECT_EQ(t.winning_seat(), args.winning_seat);
   }
-  for (int i = 0; i < t.card_count(); i++) {
-    EXPECT_EQ(!t.has_card(i), args.is_null_play[i]);
-  }
 }
 
 TEST(Trick, unplay) {
   Trick t = make_trick(HEARTS, WEST, {"2C", "2H", "3C", "TC"});
-  check_trick(
-      t, {.card_count = 4, .winning_seat = NORTH, .is_null_play = {false}}
-  );
+  check_trick(t, {.card_count = 4, .winning_seat = NORTH});
   t.unplay();
-  check_trick(
-      t, {.card_count = 3, .winning_seat = NORTH, .is_null_play = {false}}
-  );
+  check_trick(t, {.card_count = 3, .winning_seat = NORTH});
   t.unplay();
-  check_trick(
-      t, {.card_count = 2, .winning_seat = NORTH, .is_null_play = {false}}
-  );
+  check_trick(t, {.card_count = 2, .winning_seat = NORTH});
   t.unplay();
-  check_trick(
-      t, {.card_count = 1, .winning_seat = WEST, .is_null_play = {false}}
-  );
+  check_trick(t, {.card_count = 1, .winning_seat = WEST});
   t.unplay();
   check_trick(t, {.card_count = 0});
 }
@@ -117,42 +105,6 @@ TEST(Trick, winner) {
   EXPECT_EQ(t.winning_index(), 1);
   t.unplay();
   EXPECT_EQ(t.winning_index(), 0);
-}
-
-TEST(Trick, play_null) {
-  Trick t;
-
-  t.play_start(HEARTS, WEST, Card("2C"));
-  check_trick(
-      t, {.card_count = 1, .winning_seat = WEST, .is_null_play = {false}}
-  );
-  t.play_null();
-  check_trick(
-      t, {.card_count = 2, .winning_seat = WEST, .is_null_play = {false, true}}
-  );
-  t.play_continue(Card("3C"));
-  check_trick(
-      t, {.card_count = 3, .winning_seat = EAST, .is_null_play = {false, true}}
-  );
-  t.play_null();
-  check_trick(
-      t,
-      {.card_count   = 4,
-       .winning_seat = EAST,
-       .is_null_play = {false, true, false, true}}
-  );
-  t.unplay();
-  check_trick(
-      t, {.card_count = 3, .winning_seat = EAST, .is_null_play = {false, true}}
-  );
-  t.unplay();
-  check_trick(
-      t, {.card_count = 2, .winning_seat = WEST, .is_null_play = {false, true}}
-  );
-  t.unplay();
-  check_trick(
-      t, {.card_count = 1, .winning_seat = WEST, .is_null_play = {false}}
-  );
 }
 
 TEST(Trick, highest_card_no_trump_in_suit) {
@@ -362,35 +314,4 @@ TEST(Game, play_unplay_random) {
     Game g = Random(seed).random_game(3);
     test_play_unplay_dfs(g);
   }
-}
-
-TEST(Game, play_null) {
-  Hands hands("2.../.2../A.../...2");
-  Game  game(NO_TRUMP, WEST, hands);
-
-  game.play(Card("2S"));
-  game.play_null();
-  game.play(Card("AS"));
-  game.play_null();
-
-  EXPECT_EQ(game.next_seat(), EAST);
-  EXPECT_EQ(game.tricks_taken_by_ns(), 0);
-  EXPECT_EQ(game.tricks_taken_by_ew(), 1);
-  EXPECT_TRUE(game.finished());
-
-  game.unplay();
-
-  EXPECT_EQ(game.next_seat(), SOUTH);
-  EXPECT_EQ(game.tricks_taken_by_ns(), 0);
-  EXPECT_EQ(game.tricks_taken_by_ew(), 0);
-  EXPECT_FALSE(game.finished());
-
-  game.unplay();
-  game.unplay();
-  game.unplay();
-
-  EXPECT_EQ(game.next_seat(), WEST);
-  EXPECT_EQ(game.tricks_taken_by_ns(), 0);
-  EXPECT_EQ(game.tricks_taken_by_ew(), 0);
-  EXPECT_FALSE(game.finished());
 }

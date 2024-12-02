@@ -33,7 +33,6 @@ static Cards compute_sure_winners(
 ) {
   Card highest = trick.card(0);
   for (int i = 1; i < trick.card_count(); i++) {
-    assert(trick.has_card(i));
     highest = trick.higher_card(trick.card(i), highest);
   }
   for (int i = trick.card_count() + 1; i < 4; i++) {
