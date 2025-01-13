@@ -53,7 +53,7 @@ private:
   };
 
   bool lookup(
-      const std::vector<Entry> &slice,
+      const std::vector<Entry> &entries,
       const Hands              &hands,
       int                       alpha,
       int                       beta,
@@ -61,12 +61,12 @@ private:
       Cards                    &winners_by_rank
   ) const;
 
-  void insert(std::vector<Entry> &slice, const Hands &partition, Bounds bounds);
+  void insert(std::vector<Entry> &ents, const Hands &partition, Bounds bounds);
   void transfer_generalized(std::vector<Entry> &src, Entry &dest) const;
   void tighten_child_bounds(Entry &entry);
   void check_invariants(const Entry &entry) const;
 
-  static void remove_at(std::vector<Entry> &slice, std::size_t index);
+  static void remove_at(std::vector<Entry> &entries, std::size_t index);
 
   std::vector<Entry> entries_;
   mutable Stats      stats_;

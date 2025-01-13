@@ -28,14 +28,14 @@ void TpnBucket::insert(
 }
 
 bool TpnBucket::lookup(
-    const std::vector<Entry> &slice,
+    const std::vector<Entry> &entries,
     const Hands              &hands,
     int                       alpha,
     int                       beta,
     int                      &score,
     Cards                    &winners_by_rank
 ) const {
-  for (auto &entry : slice) {
+  for (auto &entry : entries) {
     stats_.lookup_reads++;
     if (hands.contains_all(entry.partition)) {
       if (entry.bounds.lower_bound == entry.bounds.upper_bound ||
@@ -70,9 +70,9 @@ void TpnBucket::transfer_generalized(std::vector<Entry> &src, Entry &dest)
 }
 
 void TpnBucket::insert(
-    std::vector<Entry> &slice, const Hands &partition, Bounds bounds
+    std::vector<Entry> &entries, const Hands &partition, Bounds bounds
 ) {
-  for (auto &entry : slice) {
+  for (auto &entry : entries) {
     stats_.insert_reads++;
     if (partition == entry.partition) {
       if (!entry.bounds.tighter_or_eq(bounds)) {
@@ -92,16 +92,16 @@ void TpnBucket::insert(
       }
     } else if (generalizes(partition, entry.partition)) {
       Entry new_entry = {.partition = partition, .bounds = bounds};
-      transfer_generalized(slice, new_entry);
+      transfer_generalized(entries, new_entry);
       tighten_child_bounds(new_entry);
-      slice.emplace_back(std::move(new_entry));
+      entries.emplace_back(std::move(new_entry));
       stats_.insert_misses++;
       stats_.entries++;
       return;
     }
   }
 
-  Entry &entry    = slice.emplace_back();
+  Entry &entry    = entries.emplace_back();
   entry.partition = partition;
   entry.bounds    = bounds;
   assert(entry.children.size() == 0);
@@ -145,14 +145,14 @@ void TpnBucket::tighten_child_bounds(Entry &entry) {
   }
 }
 
-void TpnBucket::remove_at(std::vector<Entry> &slice, std::size_t i) {
-  assert(i >= 0 && i < slice.size());
-  if (i == slice.size() - 1) {
-    slice[i] = Entry();
-    slice.pop_back();
+void TpnBucket::remove_at(std::vector<Entry> &entries, std::size_t i) {
+  assert(i >= 0 && i < entries.size());
+  if (i == entries.size() - 1) {
+    entries[i] = Entry();
+    entries.pop_back();
   } else {
-    slice[i] = std::move(slice[slice.size() - 1]);
-    slice.pop_back();
+    entries[i] = std::move(entries[entries.size() - 1]);
+    entries.pop_back();
   }
 }
 
