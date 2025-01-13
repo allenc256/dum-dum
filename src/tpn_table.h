@@ -8,76 +8,24 @@ template <class T> class Slice {
 public:
   using value_type = T;
 
-  Slice() : count_(0), capacity_(0) {}
-
-  Slice(std::initializer_list<T> values)
-      : values_(std::make_unique<T[]>(values.size())),
-        count_((int)values.size()),
-        capacity_((int)values.size()) {
-    int i = 0;
-    for (const T &value : values) {
-      values_[i++] = value;
-    }
-  }
-
+  Slice();
+  Slice(std::initializer_list<T> values);
+  Slice(Slice &&slice) noexcept;
   Slice(const Slice &)            = delete;
   Slice &operator=(const Slice &) = delete;
 
-  Slice(Slice &&slice) noexcept {
-    values_         = std::move(slice.values_);
-    count_          = slice.count_;
-    capacity_       = slice.capacity_;
-    slice.capacity_ = 0;
-    slice.count_    = 0;
-  }
+  Slice &operator=(Slice &&slice) noexcept;
 
-  Slice &operator=(Slice &&slice) noexcept {
-    values_         = std::move(slice.values_);
-    count_          = slice.count_;
-    capacity_       = slice.capacity_;
-    slice.count_    = 0;
-    slice.capacity_ = 0;
-    return *this;
-  }
+  const T *begin() const;
+  const T *end() const;
+  const T &operator[](int i) const;
+  T       &operator[](int i);
+  int      size() const;
 
-  T       *begin() { return values_.get(); }
-  T       *end() { return values_.get() + count_; }
-  const T *begin() const { return values_.get(); }
-  const T *end() const { return values_.get() + count_; }
-  const T &operator[](int i) const { return values_[i]; }
-  T       &operator[](int i) { return values_[i]; }
-  int      size() const { return count_; }
-
-  void remove_at(int i) {
-    assert(i >= 0 && i < count_);
-    if (i == count_ - 1) {
-      values_[i] = T();
-      count_--;
-    } else {
-      values_[i] = std::move(values_[count_ - 1]);
-      count_--;
-    }
-  }
-
-  T &expand() {
-    if (count_ == capacity_) {
-      if (capacity_ == 0) {
-        capacity_ = 4;
-      } else {
-        capacity_ *= 2;
-      }
-
-      std::unique_ptr<T[]> tmp_ = std::move(values_);
-      values_                   = std::make_unique<T[]>(capacity_);
-      for (int i = 0; i < count_; i++) {
-        values_[i] = std::move(tmp_[i]);
-      }
-    }
-
-    T &result = values_[count_++];
-    result    = T();
-    return result;
-  }
+  T   *begin();
+  T   *end();
+  void remove_at(int i);
+  T   &expand();
 
 private:
   std::unique_ptr<T[]> values_;
@@ -111,12 +59,7 @@ public:
   ) const;
 
   void insert(const Hands &partition, int lower_bound, int upper_bound);
-
-  void check_invariants() const {
-    for (const Entry &entry : entries_) {
-      check_invariants(entry);
-    }
-  }
+  void check_invariants() const;
 
 private:
   struct Bounds {
@@ -125,21 +68,9 @@ private:
 
     bool operator==(const Bounds &bounds) const = default;
 
-    void tighten(Bounds bounds) {
-      assert(bounds.lower_bound <= upper_bound);
-      assert(bounds.upper_bound >= lower_bound);
-      lower_bound = std::max(lower_bound, bounds.lower_bound);
-      upper_bound = std::min(upper_bound, bounds.upper_bound);
-    }
-
-    bool tighter(Bounds bounds) const {
-      return tighter_or_eq(bounds) && *this != bounds;
-    }
-
-    bool tighter_or_eq(Bounds bounds) const {
-      return lower_bound >= bounds.lower_bound &&
-             upper_bound <= bounds.upper_bound;
-    }
+    void tighten(Bounds bounds);
+    bool tighter(Bounds bounds) const;
+    bool tighter_or_eq(Bounds bounds) const;
   };
 
   struct Entry {
@@ -168,14 +99,7 @@ private:
 
 class TpnBucketKey {
 public:
-  TpnBucketKey(Seat next_seat, const Hands &hands) : bits_(next_seat) {
-    for (Seat seat = LAST_SEAT; seat >= FIRST_SEAT; seat--) {
-      Cards hand = hands.hand(seat);
-      for (Suit suit = FIRST_SUIT; suit <= LAST_SUIT; suit++) {
-        bits_ = (bits_ << 3) | hand.intersect(suit).count();
-      }
-    }
-  }
+  TpnBucketKey(Seat next_seat, const Hands &hands);
 
   template <typename H> friend H AbslHashValue(H h, const TpnBucketKey &k) {
     return H::combine(std::move(h), k.bits_);
@@ -202,10 +126,7 @@ public:
     int64_t insert_reads  = 0;
   };
 
-  TpnTable(const Game &game)
-      : game_(game),
-        lookup_misses_(0),
-        insert_misses_(0) {}
+  TpnTable(const Game &game);
 
   bool  lookup(int alpha, int beta, int &score, Cards &winners_by_rank) const;
   void  insert(Cards winners_by_rank, int lower_bound, int upper_bound);
@@ -220,3 +141,83 @@ private:
   int64_t     lookup_misses_;
   int64_t     insert_misses_;
 };
+
+// ----------------------
+// Implementation Details
+// ----------------------
+
+template <class T> inline Slice<T>::Slice() : count_(0), capacity_(0) {}
+
+template <class T>
+inline Slice<T>::Slice(std::initializer_list<T> values)
+    : values_(std::make_unique<T[]>(values.size())),
+      count_((int)values.size()),
+      capacity_((int)values.size()) {
+  int i = 0;
+  for (const T &value : values) {
+    values_[i++] = value;
+  }
+}
+
+template <class T> inline Slice<T>::Slice(Slice &&slice) noexcept {
+  values_         = std::move(slice.values_);
+  count_          = slice.count_;
+  capacity_       = slice.capacity_;
+  slice.capacity_ = 0;
+  slice.count_    = 0;
+}
+
+template <class T>
+inline Slice<T> &Slice<T>::operator=(Slice &&slice) noexcept {
+  values_         = std::move(slice.values_);
+  count_          = slice.count_;
+  capacity_       = slice.capacity_;
+  slice.count_    = 0;
+  slice.capacity_ = 0;
+  return *this;
+}
+
+template <class T> inline T *Slice<T>::begin() { return values_.get(); }
+template <class T> T        *Slice<T>::end() { return values_.get() + count_; }
+template <class T> const T  *Slice<T>::begin() const { return values_.get(); }
+template <class T> T        &Slice<T>::operator[](int i) { return values_[i]; }
+template <class T> int       Slice<T>::size() const { return count_; }
+
+template <class T> const T *Slice<T>::end() const {
+  return values_.get() + count_;
+}
+
+template <class T> const T &Slice<T>::operator[](int i) const {
+  return values_[i];
+}
+
+template <class T> void Slice<T>::remove_at(int i) {
+  assert(i >= 0 && i < count_);
+  if (i == count_ - 1) {
+    values_[i] = T();
+    count_--;
+  } else {
+    values_[i] = std::move(values_[count_ - 1]);
+    count_--;
+  }
+}
+
+template <class T> T &Slice<T>::expand() {
+  if (count_ == capacity_) {
+    if (capacity_ == 0) {
+      capacity_ = 4;
+    } else {
+      capacity_ *= 2;
+    }
+
+    std::unique_ptr<T[]> tmp_ = std::move(values_);
+    values_                   = std::make_unique<T[]>(capacity_);
+    for (int i = 0; i < count_; i++) {
+      values_[i] = std::move(tmp_[i]);
+    }
+  }
+
+  T &result = values_[count_++];
+  result    = T();
+  return result;
+}

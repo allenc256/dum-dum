@@ -108,6 +108,12 @@ void TpnBucket::insert(
   stats_.entries++;
 }
 
+void TpnBucket::check_invariants() const {
+  for (const Entry &entry : entries_) {
+    check_invariants(entry);
+  }
+}
+
 void TpnBucket::check_invariants(const Entry &entry) const {
   assert(entry.bounds.lower_bound <= entry.bounds.upper_bound);
   for (const Entry &child : entry.children) {
@@ -207,3 +213,33 @@ void TpnTable::check_invariants() const {
     entry.second.check_invariants();
   }
 }
+
+void TpnBucket::Bounds::tighten(TpnBucket::Bounds bounds) {
+  assert(bounds.lower_bound <= upper_bound);
+  assert(bounds.upper_bound >= lower_bound);
+  lower_bound = std::max(lower_bound, bounds.lower_bound);
+  upper_bound = std::min(upper_bound, bounds.upper_bound);
+}
+
+bool TpnBucket::Bounds::tighter(TpnBucket::Bounds bounds) const {
+  return tighter_or_eq(bounds) && *this != bounds;
+}
+
+bool TpnBucket::Bounds::tighter_or_eq(TpnBucket::Bounds bounds) const {
+  return lower_bound >= bounds.lower_bound && upper_bound <= bounds.upper_bound;
+}
+
+TpnBucketKey::TpnBucketKey(Seat next_seat, const Hands &hands)
+    : bits_(next_seat) {
+  for (Seat seat = LAST_SEAT; seat >= FIRST_SEAT; seat--) {
+    Cards hand = hands.hand(seat);
+    for (Suit suit = FIRST_SUIT; suit <= LAST_SUIT; suit++) {
+      bits_ = (bits_ << 3) | hand.intersect(suit).count();
+    }
+  }
+}
+
+TpnTable::TpnTable(const Game &game)
+    : game_(game),
+      lookup_misses_(0),
+      insert_misses_(0) {}
