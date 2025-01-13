@@ -3,10 +3,13 @@
 #include <bit>
 #include <cassert>
 #include <cstdint>
+#include <format>
 #include <initializer_list>
 #include <iostream>
 #include <stdexcept>
 #include <string_view>
+
+#include "parser.h"
 
 class ParseFailure : public std::runtime_error {
 public:
@@ -27,10 +30,22 @@ constexpr Suit LAST_SUIT  = SPADES;
 inline Suit operator++(Suit &s, int) { return (Suit)((int8_t &)s)++; }
 inline Suit operator--(Suit &s, int) { return (Suit)((int8_t &)s)--; }
 
+template <> struct std::formatter<Suit> {
+  constexpr auto parse(auto &ctx) { return ctx.begin(); }
+
+  auto format(Suit suit, auto &ctx) const {
+    return std::format_to(ctx.out(), "{}", to_string(suit));
+  }
+
+  const std::string_view &to_string(Suit suit) const;
+};
+
 std::string_view to_ascii(Suit suit);
 
 std::istream &operator>>(std::istream &is, Suit &s);
 std::ostream &operator<<(std::ostream &os, Suit s);
+
+Suit parse_suit(Parser &parser);
 
 enum Rank : int8_t {
   RANK_2,
@@ -51,6 +66,18 @@ enum Rank : int8_t {
 inline Rank operator++(Rank &r, int) { return (Rank)((int8_t &)r)++; }
 inline Rank operator--(Rank &r, int) { return (Rank)((int8_t &)r)--; }
 
+Rank parse_rank(Parser &parser);
+
+template <> struct std::formatter<Rank> {
+  constexpr auto parse(auto &ctx) { return ctx.begin(); }
+
+  auto format(Rank rank, auto &ctx) const {
+    return std::format_to(ctx.out(), "{}", to_char(rank));
+  }
+
+  char to_char(Rank rank) const;
+};
+
 std::istream &operator>>(std::istream &is, Rank &r);
 std::ostream &operator<<(std::ostream &os, Rank r);
 
@@ -59,6 +86,7 @@ public:
   Card();
   Card(int card_index);
   Card(Rank r, Suit s);
+  Card(Parser &parser);
   Card(std::string_view s);
   Card(const char *s);
 
@@ -75,6 +103,14 @@ private:
 
   friend std::istream &operator>>(std::istream &is, Card &c);
   friend std::ostream &operator<<(std::ostream &os, Card c);
+};
+
+template <> struct std::formatter<Card> {
+  constexpr auto parse(auto &ctx) { return ctx.begin(); }
+
+  auto format(Card card, auto &ctx) const {
+    return std::format_to(ctx.out(), "{}{}", card.rank(), card.suit());
+  }
 };
 
 class Cards {
@@ -112,6 +148,7 @@ public:
 
   Cards();
   Cards(uint64_t bits);
+  Cards(Parser &parser);
   Cards(std::string_view s);
   Cards(std::initializer_list<std::string_view> cards);
 
@@ -158,6 +195,21 @@ private:
 
   template <typename H> friend H AbslHashValue(H h, const Cards &c) {
     return H::combine(std::move(h), c.bits_);
+  }
+};
+
+template <> struct std::formatter<Cards> {
+  constexpr auto parse(auto &ctx) { return ctx.begin(); }
+
+  auto format(Cards cards, auto &ctx) const {
+    for (Suit suit = LAST_SUIT; suit >= FIRST_SUIT; suit--) {
+      if (suit != LAST_SUIT) {
+        std::format_to(ctx.out(), "{}", '.');
+      }
+      for (Card card : cards.intersect(suit).high_to_low()) {
+        std::format_to(ctx.out(), "{}", card.rank());
+      }
+    }
   }
 };
 

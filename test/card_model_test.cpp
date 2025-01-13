@@ -11,6 +11,17 @@
 using ::testing::ElementsAreArray;
 using ::testing::IsEmpty;
 
+TEST(Suit, parse_suit) {
+  {
+    Parser p("S");
+    parse_suit(p);
+  }
+  {
+    Parser p("B");
+    parse_suit(p);
+  }
+}
+
 TEST(Rank, istream) {
   EXPECT_EQ(from_string<Rank>("2"), RANK_2);
   EXPECT_EQ(from_string<Rank>("T"), TEN);

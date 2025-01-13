@@ -1,7 +1,26 @@
-#include "card_model.h"
 #include <algorithm>
+#include <format>
 #include <iostream>
 #include <sstream>
+
+#include "card_model.h"
+
+static constexpr std::string_view SUIT_STRS[]     = {"♣", "♦", "♥", "♠", "NT"};
+static constexpr std::string_view SUIT_STRS_ASC[] = {"C", "D", "H", "S", "NT"};
+
+Suit parse_suit(Parser &parser) {
+  for (Suit suit = FIRST_SUIT; suit <= LAST_SUIT; suit++) {
+    if (parser.try_parse(SUIT_STRS[suit]) ||
+        parser.try_parse(SUIT_STRS_ASC[suit])) {
+      return suit;
+    }
+  }
+  throw parser.error("expected suit");
+}
+
+const std::string_view &std::formatter<Suit>::to_string(Suit suit) const {
+  return SUIT_STRS_ASC[suit];
+}
 
 static Suit parse_suit(std::istream &is) {
   char ch;
@@ -39,9 +58,6 @@ std::istream &operator>>(std::istream &is, Suit &s) {
   return is;
 }
 
-static constexpr std::string_view SUIT_STRS[]     = {"♣", "♦", "♥", "♠", "NT"};
-static constexpr std::string_view SUIT_STRS_ASC[] = {"C", "D", "H", "S", "NT"};
-
 std::string_view to_ascii(Suit suit) { return SUIT_STRS_ASC[suit]; }
 
 std::ostream &operator<<(std::ostream &os, Suit s) {
@@ -51,6 +67,19 @@ std::ostream &operator<<(std::ostream &os, Suit s) {
   os << SUIT_STRS[s];
   return os;
 }
+
+static std::string_view RANK_CHARS = "23456789TJQKA";
+
+Rank parse_rank(Parser &parser) {
+  for (Rank rank = RANK_2; rank <= ACE; rank++) {
+    if (parser.try_parse(RANK_CHARS[rank])) {
+      return rank;
+    }
+  }
+  throw parser.error("bad rank");
+}
+
+char std::formatter<Rank>::to_char(Rank rank) const { return RANK_CHARS[rank]; }
 
 static Rank parse_rank(std::istream &is) {
   char ch;
@@ -85,6 +114,14 @@ std::ostream &operator<<(std::ostream &os, Rank r) {
   os << RANK_STRS[r];
   return os;
 }
+
+static uint8_t parse_card_index(Parser &parser) {
+  Rank rank = parse_rank(parser);
+  Suit suit = parse_suit(parser);
+  return (uint8_t)((rank << 2) | suit);
+}
+
+Card::Card(Parser &parser) : index_(parse_card_index(parser)) {}
 
 std::istream &operator>>(std::istream &is, Card &c) {
   Rank r = parse_rank(is);
@@ -164,6 +201,24 @@ static void parse_cards_ranks(std::istream &is, Suit suit, Cards &cards) {
       cards.add(Card(rank, suit));
     } else {
       break;
+    }
+  }
+}
+
+bool can_parse_rank(Parser &parser) {
+  return RANK_CHARS.find(parser.peek()) != std::string_view::npos;
+}
+
+Cards::Cards(Parser &parser) : bits_(0) {
+  for (Suit suit = LAST_SUIT; suit >= FIRST_SUIT; suit--) {
+    if (suit != LAST_SUIT) {
+      if (!parser.try_parse('.')) {
+        throw parser.error("expected delimiter ('.')");
+      }
+    }
+    while (can_parse_rank(parser)) {
+      Rank rank = parse_rank(parser);
+      add(Card(rank, suit));
     }
   }
 }
