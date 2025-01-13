@@ -28,12 +28,12 @@ void TpnBucket::insert(
 }
 
 bool TpnBucket::lookup(
-    const Slice<Entry> &slice,
-    const Hands        &hands,
-    int                 alpha,
-    int                 beta,
-    int                &score,
-    Cards              &winners_by_rank
+    const std::vector<Entry> &slice,
+    const Hands              &hands,
+    int                       alpha,
+    int                       beta,
+    int                      &score,
+    Cards                    &winners_by_rank
 ) const {
   for (auto &entry : slice) {
     stats_.lookup_reads++;
@@ -57,19 +57,20 @@ bool TpnBucket::lookup(
   return false;
 }
 
-void TpnBucket::transfer_generalized(Slice<Entry> &src, Entry &dest) const {
-  for (int i = 0; i < src.size(); i++) {
+void TpnBucket::transfer_generalized(std::vector<Entry> &src, Entry &dest)
+    const {
+  for (std::size_t i = 0; i < src.size(); i++) {
     auto &e = src[i];
     if (generalizes(dest.partition, e.partition)) {
-      dest.children.expand() = std::move(e);
-      src.remove_at(i);
+      dest.children.emplace_back(std::move(e));
+      remove_at(src, i);
       i--;
     }
   }
 }
 
 void TpnBucket::insert(
-    Slice<Entry> &slice, const Hands &partition, Bounds bounds
+    std::vector<Entry> &slice, const Hands &partition, Bounds bounds
 ) {
   for (auto &entry : slice) {
     stats_.insert_reads++;
@@ -93,14 +94,14 @@ void TpnBucket::insert(
       Entry new_entry = {.partition = partition, .bounds = bounds};
       transfer_generalized(slice, new_entry);
       tighten_child_bounds(new_entry);
-      slice.expand() = std::move(new_entry);
+      slice.emplace_back(std::move(new_entry));
       stats_.insert_misses++;
       stats_.entries++;
       return;
     }
   }
 
-  Entry &entry    = slice.expand();
+  Entry &entry    = slice.emplace_back();
   entry.partition = partition;
   entry.bounds    = bounds;
   assert(entry.children.size() == 0);
@@ -126,7 +127,7 @@ void TpnBucket::check_invariants(const Entry &entry) const {
 }
 
 void TpnBucket::tighten_child_bounds(Entry &entry) {
-  for (int i = 0; i < entry.children.size(); i++) {
+  for (std::size_t i = 0; i < entry.children.size(); i++) {
     stats_.insert_reads++;
     auto &child = entry.children[i];
     if (!child.bounds.tighter(entry.bounds)) {
@@ -134,13 +135,24 @@ void TpnBucket::tighten_child_bounds(Entry &entry) {
       tighten_child_bounds(child);
       if (child.bounds == entry.bounds) {
         for (auto &grandchild : child.children) {
-          entry.children.expand() = std::move(grandchild);
+          entry.children.emplace_back(std::move(grandchild));
         }
-        entry.children.remove_at(i);
+        remove_at(entry.children, i);
         i--;
         stats_.entries--;
       }
     }
+  }
+}
+
+void TpnBucket::remove_at(std::vector<Entry> &slice, std::size_t i) {
+  assert(i >= 0 && i < slice.size());
+  if (i == slice.size() - 1) {
+    slice[i] = Entry();
+    slice.pop_back();
+  } else {
+    slice[i] = std::move(slice[slice.size() - 1]);
+    slice.pop_back();
   }
 }
 

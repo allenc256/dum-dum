@@ -1,37 +1,10 @@
 #pragma once
 
+#include <vector>
+
 #include "game_model.h"
 
 #include <absl/container/flat_hash_map.h>
-
-template <class T> class Slice {
-public:
-  using value_type = T;
-
-  Slice();
-  Slice(std::initializer_list<T> values);
-  Slice(Slice &&slice) noexcept;
-  Slice(const Slice &)            = delete;
-  Slice &operator=(const Slice &) = delete;
-
-  Slice &operator=(Slice &&slice) noexcept;
-
-  const T *begin() const;
-  const T *end() const;
-  const T &operator[](int i) const;
-  T       &operator[](int i);
-  int      size() const;
-
-  T   *begin();
-  T   *end();
-  void remove_at(int i);
-  T   &expand();
-
-private:
-  std::unique_ptr<T[]> values_;
-  int                  count_;
-  int                  capacity_;
-};
 
 class TpnBucket {
 public:
@@ -74,27 +47,29 @@ private:
   };
 
   struct Entry {
-    Hands        partition;
-    Bounds       bounds;
-    Slice<Entry> children;
+    Hands              partition;
+    Bounds             bounds;
+    std::vector<Entry> children;
   };
 
   bool lookup(
-      const Slice<Entry> &slice,
-      const Hands        &hands,
-      int                 alpha,
-      int                 beta,
-      int                &score,
-      Cards              &winners_by_rank
+      const std::vector<Entry> &slice,
+      const Hands              &hands,
+      int                       alpha,
+      int                       beta,
+      int                      &score,
+      Cards                    &winners_by_rank
   ) const;
 
-  void insert(Slice<Entry> &slice, const Hands &partition, Bounds bounds);
-  void transfer_generalized(Slice<Entry> &src, Entry &dest) const;
+  void insert(std::vector<Entry> &slice, const Hands &partition, Bounds bounds);
+  void transfer_generalized(std::vector<Entry> &src, Entry &dest) const;
   void tighten_child_bounds(Entry &entry);
   void check_invariants(const Entry &entry) const;
 
-  Slice<Entry>  entries_;
-  mutable Stats stats_;
+  static void remove_at(std::vector<Entry> &slice, std::size_t index);
+
+  std::vector<Entry> entries_;
+  mutable Stats      stats_;
 };
 
 class TpnBucketKey {
@@ -141,83 +116,3 @@ private:
   int64_t     lookup_misses_;
   int64_t     insert_misses_;
 };
-
-// ----------------------
-// Implementation Details
-// ----------------------
-
-template <class T> inline Slice<T>::Slice() : count_(0), capacity_(0) {}
-
-template <class T>
-inline Slice<T>::Slice(std::initializer_list<T> values)
-    : values_(std::make_unique<T[]>(values.size())),
-      count_((int)values.size()),
-      capacity_((int)values.size()) {
-  int i = 0;
-  for (const T &value : values) {
-    values_[i++] = value;
-  }
-}
-
-template <class T> inline Slice<T>::Slice(Slice &&slice) noexcept {
-  values_         = std::move(slice.values_);
-  count_          = slice.count_;
-  capacity_       = slice.capacity_;
-  slice.capacity_ = 0;
-  slice.count_    = 0;
-}
-
-template <class T>
-inline Slice<T> &Slice<T>::operator=(Slice &&slice) noexcept {
-  values_         = std::move(slice.values_);
-  count_          = slice.count_;
-  capacity_       = slice.capacity_;
-  slice.count_    = 0;
-  slice.capacity_ = 0;
-  return *this;
-}
-
-template <class T> inline T *Slice<T>::begin() { return values_.get(); }
-template <class T> T        *Slice<T>::end() { return values_.get() + count_; }
-template <class T> const T  *Slice<T>::begin() const { return values_.get(); }
-template <class T> T        &Slice<T>::operator[](int i) { return values_[i]; }
-template <class T> int       Slice<T>::size() const { return count_; }
-
-template <class T> const T *Slice<T>::end() const {
-  return values_.get() + count_;
-}
-
-template <class T> const T &Slice<T>::operator[](int i) const {
-  return values_[i];
-}
-
-template <class T> void Slice<T>::remove_at(int i) {
-  assert(i >= 0 && i < count_);
-  if (i == count_ - 1) {
-    values_[i] = T();
-    count_--;
-  } else {
-    values_[i] = std::move(values_[count_ - 1]);
-    count_--;
-  }
-}
-
-template <class T> T &Slice<T>::expand() {
-  if (count_ == capacity_) {
-    if (capacity_ == 0) {
-      capacity_ = 4;
-    } else {
-      capacity_ *= 2;
-    }
-
-    std::unique_ptr<T[]> tmp_ = std::move(values_);
-    values_                   = std::make_unique<T[]>(capacity_);
-    for (int i = 0; i < count_; i++) {
-      values_[i] = std::move(tmp_[i]);
-    }
-  }
-
-  T &result = values_[count_++];
-  result    = T();
-  return result;
-}
