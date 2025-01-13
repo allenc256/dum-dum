@@ -13,6 +13,33 @@ Solver::Solver(Game g)
 
 Solver::~Solver() {}
 
+Solver::Stats Solver::stats() const {
+  return {
+      .nodes_explored  = nodes_explored_,
+      .tpn_table_stats = tpn_table_.stats(),
+  };
+}
+
+void Solver::enable_all_optimizations(bool enabled) {
+  ab_pruning_enabled_  = enabled;
+  tpn_table_enabled_   = enabled;
+  play_order_enabled_  = enabled;
+  fast_tricks_enabled_ = enabled;
+}
+
+void Solver::enable_ab_pruning(bool enabled) { ab_pruning_enabled_ = enabled; }
+void Solver::enable_tpn_table(bool enabled) { tpn_table_enabled_ = enabled; }
+void Solver::enable_play_order(bool enabled) { play_order_enabled_ = enabled; }
+
+void Solver::enable_fast_tricks(bool enabled) {
+  fast_tricks_enabled_ = enabled;
+}
+
+void Solver::enable_tracing(std::ostream *os) {
+  trace_os_     = os;
+  trace_lineno_ = 0;
+}
+
 Solver::Result Solver::solve() { return solve(0, game_.tricks_max()); }
 
 Solver::Result Solver::solve(int alpha, int beta) {
