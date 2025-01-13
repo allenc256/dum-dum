@@ -7,6 +7,13 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(argparse)
 
+FetchContent_Declare(
+    absl
+    GIT_REPOSITORY  https://github.com/abseil/abseil-cpp.git
+    GIT_TAG         20240722.0
+)
+FetchContent_MakeAvailable(absl)
+
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "*.cpp" "*.h")
 list(REMOVE_ITEM SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp)
 

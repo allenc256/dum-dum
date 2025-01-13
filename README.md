@@ -1,27 +1,31 @@
 # dum-dum
 
-A [double dummy solver](https://en.wikipedia.org/wiki/Computer_bridge#Comparison_to_other_strategy_games) for bridge. This solver is optimized with a number of game tree search techniques, described further below in this document.
+A [double dummy solver](https://en.wikipedia.org/wiki/Computer_bridge#Comparison_to_other_strategy_games) for bridge. This solver is optimized with a number of game tree search techniques, described further in the [Technical Details](#technical-details) section below.
 
 ## Building and Running
 
-The project relies on Google's [Abseil](https://github.com/abseil/abseil-cpp) library for its fast hash map implementation (`absl::flat_hash_map`). This project is brought in as a git submodule, so you must checkout the appropriate submodule before the project will build. There are many ways to do this, but one of the simplest is to pass the  `--recurse-submodules` flag when cloning the repository, e.g.:
+Building the solver requires:
 
-```
-git clone --recurse-submodules ...
-```
+* CMake (tested on 3.28.3)
+* C++ compiler w/ C++20 support.
+  - Clang 18.1.3 (Ubuntu 24.04.1 LTS)
+  - Clang 15.0.0 (Apple Darwin)
 
-Building the solver currently assumes CMake version 3.14 or above and a C++ compiler with good C++20 support (e.g., Clang 15+). Building the project should happen via any standard method for building CMake projects, e.g. from the root of the checkout:
+To build using CMake:
 
 ```
 mkdir build
 cd build
-cmake ..
-make
+cmake .. -DCMAKE_BUILD_TYPE=Release
+cmake --build . --config Release
 ```
 
-Two binaries are built by the above: (1) `dumdum` - the actual solver itself (`dumdum --help` to show usage), and (2) `dumdum_test` - the solver test suite.
+Where the CMake build type should be as appropriate (e.g., `Debug` for debug builds). The above builds two executable targets:
 
-## Implementation
+* `dumdum` - the solver executable (you may run `dumdum --help` for usage).
+* `dumdum_test` - the solver test suite.
+
+## Technical Details
 
 We summarize the key aspects of the implementation below:
 
