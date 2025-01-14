@@ -65,6 +65,20 @@ avg_elapsed_ms     56
 
 Use `dumdum file` to solve hands stored in a file.
 
+```
+Usage: file [--help] [--version] [--compact] file
+
+Solve hands read from a file.
+
+Positional arguments:
+  file           file containing hands to solve [required]
+
+Optional arguments:
+  -h, --help     shows help message and exits 
+  -v, --version  prints version information and exits 
+  -c, --compact  compact output
+```
+
 Example input (format should be `<HANDS> <SUIT> <SEAT>`, see [Representation](#representation) for additional details):
 
 ```
