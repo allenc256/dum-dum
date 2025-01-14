@@ -43,7 +43,7 @@ Optional arguments:
   -c, --compact  compact output
 ```
 
-Example output:
+Example output (see [Representation](#representation) below for output format explanation):
 
 ```
 $ dumdum random --compact --seed=10 --deal=13 --hands=10
@@ -65,7 +65,7 @@ avg_elapsed_ms     56
 
 Use `dumdum file` to solve hands stored in a file.
 
-Example input (format should be `<HANDS> <SUIT> <SEAT>`):
+Example input (format should be `<HANDS> <SUIT> <SEAT>`, see [Representation](#representation) for additional details):
 
 ```
 A2.T6.J7.KJ73/3.872.QT4.A94/JT.J95.863.T8/Q985.Q3.A2.52 ♥ S
