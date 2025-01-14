@@ -27,6 +27,8 @@ Where the CMake build type should be as appropriate (e.g., `Debug` for debug bui
 
 ## Running
 
+### Solve Random Hands
+
 Use `dumdum random` to solve a collection of randomly generated hands:
 
 ```
@@ -62,6 +64,8 @@ NT        S         7         1         965432.J9.J52.98/7.865.QT987.AJ73/QT8.AK
 total_elapsed_ms   567
 avg_elapsed_ms     56
 ```
+
+### Solve Hands From a File
 
 Use `dumdum file` to solve hands stored in a file.
 
