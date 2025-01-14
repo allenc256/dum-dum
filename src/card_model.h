@@ -11,11 +11,6 @@
 
 #include "parser.h"
 
-class ParseFailure : public std::runtime_error {
-public:
-  using std::runtime_error::runtime_error;
-};
-
 enum Suit : int8_t {
   CLUBS,
   DIAMONDS,
@@ -27,24 +22,9 @@ enum Suit : int8_t {
 constexpr Suit FIRST_SUIT = CLUBS;
 constexpr Suit LAST_SUIT  = SPADES;
 
-inline Suit operator++(Suit &s, int) { return (Suit)((int8_t &)s)++; }
-inline Suit operator--(Suit &s, int) { return (Suit)((int8_t &)s)--; }
-
-template <> struct std::formatter<Suit> {
-  constexpr auto parse(auto &ctx) { return ctx.begin(); }
-
-  auto format(Suit suit, auto &ctx) const {
-    return std::format_to(ctx.out(), "{}", to_string(suit));
-  }
-
-  const std::string_view &to_string(Suit suit) const;
-};
-
-std::string_view to_ascii(Suit suit);
-
-std::istream &operator>>(std::istream &is, Suit &s);
-std::ostream &operator<<(std::ostream &os, Suit s);
-
+Suit operator++(Suit &s, int);
+Suit operator--(Suit &s, int);
+Suit parse_suit(std::string_view str);
 Suit parse_suit(Parser &parser);
 
 enum Rank : int8_t {
@@ -63,23 +43,10 @@ enum Rank : int8_t {
   ACE
 };
 
-inline Rank operator++(Rank &r, int) { return (Rank)((int8_t &)r)++; }
-inline Rank operator--(Rank &r, int) { return (Rank)((int8_t &)r)--; }
-
+Rank operator++(Rank &r, int);
+Rank operator--(Rank &r, int);
+Rank parse_rank(std::string_view str);
 Rank parse_rank(Parser &parser);
-
-template <> struct std::formatter<Rank> {
-  constexpr auto parse(auto &ctx) { return ctx.begin(); }
-
-  auto format(Rank rank, auto &ctx) const {
-    return std::format_to(ctx.out(), "{}", to_char(rank));
-  }
-
-  char to_char(Rank rank) const;
-};
-
-std::istream &operator>>(std::istream &is, Rank &r);
-std::ostream &operator<<(std::ostream &os, Rank r);
 
 class Card {
 public:
@@ -93,24 +60,10 @@ public:
   Rank rank() const;
   Suit suit() const;
   int  index() const { return index_; }
-
-  std::string to_string() const;
-
   bool operator==(const Card &other) const = default;
 
 private:
   uint8_t index_;
-
-  friend std::istream &operator>>(std::istream &is, Card &c);
-  friend std::ostream &operator<<(std::ostream &os, Card c);
-};
-
-template <> struct std::formatter<Card> {
-  constexpr auto parse(auto &ctx) { return ctx.begin(); }
-
-  auto format(Card card, auto &ctx) const {
-    return std::format_to(ctx.out(), "{}{}", card.rank(), card.suit());
-  }
 };
 
 class Cards {
@@ -172,6 +125,7 @@ public:
   Cards    normalize(Cards removed) const;
   Cards    normalize_wbr(Cards removed) const;
   Cards    prune_equivalent(Cards removed) const;
+  bool     operator==(const Cards &c) const = default;
 
   Iterable<true>  low_to_high() const;
   Iterable<false> high_to_low() const;
@@ -186,10 +140,6 @@ public:
   static Cards higher_ranking_or_eq(Card card);
   static Cards lower_ranking(Card card);
 
-  std::string to_string() const;
-
-  bool operator==(const Cards &c) const = default;
-
 private:
   uint64_t bits_;
 
@@ -197,24 +147,6 @@ private:
     return H::combine(std::move(h), c.bits_);
   }
 };
-
-template <> struct std::formatter<Cards> {
-  constexpr auto parse(auto &ctx) { return ctx.begin(); }
-
-  auto format(Cards cards, auto &ctx) const {
-    for (Suit suit = LAST_SUIT; suit >= FIRST_SUIT; suit--) {
-      if (suit != LAST_SUIT) {
-        std::format_to(ctx.out(), "{}", '.');
-      }
-      for (Card card : cards.intersect(suit).high_to_low()) {
-        std::format_to(ctx.out(), "{}", card.rank());
-      }
-    }
-  }
-};
-
-std::istream &operator>>(std::istream &is, Cards &c);
-std::ostream &operator<<(std::ostream &os, Cards c);
 
 class SuitNormalizer {
 public:
@@ -252,6 +184,39 @@ private:
 // ----------------------
 // Implementation Details
 // ----------------------
+
+inline Suit operator++(Suit &s, int) { return (Suit)((int8_t &)s)++; }
+inline Suit operator--(Suit &s, int) { return (Suit)((int8_t &)s)--; }
+
+template <>
+struct std::formatter<Suit> : public std::formatter<std::string_view> {
+  auto format(Suit suit, auto &ctx) const {
+    return formatter<std::string_view>::format(to_string(suit), ctx);
+  }
+
+  const std::string_view &to_string(Suit suit) const;
+};
+
+inline Rank operator++(Rank &r, int) { return (Rank)((int8_t &)r)++; }
+inline Rank operator--(Rank &r, int) { return (Rank)((int8_t &)r)--; }
+
+template <> struct std::formatter<Rank> {
+  constexpr auto parse(auto &ctx) { return ctx.begin(); }
+
+  auto format(Rank rank, auto &ctx) const {
+    return std::format_to(ctx.out(), "{}", to_char(rank));
+  }
+
+  char to_char(Rank rank) const;
+};
+
+template <> struct std::formatter<Card> {
+  constexpr auto parse(auto &ctx) { return ctx.begin(); }
+
+  auto format(Card card, auto &ctx) const {
+    return std::format_to(ctx.out(), "{}{}", card.rank(), card.suit());
+  }
+};
 
 template <bool is_low_to_high>
 inline Card Cards::Iterator<is_low_to_high>::operator*() const {
@@ -325,3 +290,20 @@ inline Cards::Iterator<is_low_to_high>
 Cards::Iterable<is_low_to_high>::end() const {
   return Iterator<is_low_to_high>::end(bits_);
 }
+
+template <> struct std::formatter<Cards> {
+  constexpr auto parse(auto &ctx) { return ctx.begin(); }
+
+  auto format(Cards cards, auto &ctx) const {
+    auto out = ctx.out();
+    for (Suit suit = LAST_SUIT; suit >= FIRST_SUIT; suit--) {
+      if (suit != LAST_SUIT) {
+        out = std::format_to(out, ".");
+      }
+      for (Card card : cards.intersect(suit).high_to_low()) {
+        out = std::format_to(out, "{}", card.rank());
+      }
+    }
+    return out;
+  }
+};

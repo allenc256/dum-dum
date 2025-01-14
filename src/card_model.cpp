@@ -8,8 +8,13 @@
 static constexpr std::string_view SUIT_STRS[]     = {"♣", "♦", "♥", "♠", "NT"};
 static constexpr std::string_view SUIT_STRS_ASC[] = {"C", "D", "H", "S", "NT"};
 
+Suit parse_suit(std::string_view str) {
+  Parser parser(str);
+  return parse_suit(parser);
+}
+
 Suit parse_suit(Parser &parser) {
-  for (Suit suit = FIRST_SUIT; suit <= LAST_SUIT; suit++) {
+  for (Suit suit = FIRST_SUIT; suit <= NO_TRUMP; suit++) {
     if (parser.try_parse(SUIT_STRS[suit]) ||
         parser.try_parse(SUIT_STRS_ASC[suit])) {
       return suit;
@@ -19,124 +24,55 @@ Suit parse_suit(Parser &parser) {
 }
 
 const std::string_view &std::formatter<Suit>::to_string(Suit suit) const {
-  return SUIT_STRS_ASC[suit];
-}
-
-static Suit parse_suit(std::istream &is) {
-  char ch;
-  is >> ch;
-  if (!is.good()) {
-    throw ParseFailure("stream error");
-  }
-  switch ((uint8_t)ch) {
-  case 'C': return Suit::CLUBS;
-  case 'D': return Suit::DIAMONDS;
-  case 'H': return Suit::HEARTS;
-  case 'S': return Suit::SPADES;
-  case 'N':
-    if (!is.get(ch) || ch != 'T') {
-      throw ParseFailure("bad suit");
-    }
-    return Suit::NO_TRUMP;
-  case 0xE2:
-    if (!is.get(ch) || (uint8_t)ch != 0x99) {
-      throw ParseFailure("bad suit (utf8 sequence)");
-    }
-    is.get(ch);
-    switch ((uint8_t)ch) {
-    case 0xA3: return Suit::CLUBS;
-    case 0xA6: return Suit::DIAMONDS;
-    case 0xA5: return Suit::HEARTS;
-    case 0xA0: return Suit::SPADES;
-    }
-  }
-  throw ParseFailure("bad suit");
-}
-
-std::istream &operator>>(std::istream &is, Suit &s) {
-  s = parse_suit(is);
-  return is;
-}
-
-std::string_view to_ascii(Suit suit) { return SUIT_STRS_ASC[suit]; }
-
-std::ostream &operator<<(std::ostream &os, Suit s) {
-  if (s < 0 || s >= 5) {
-    throw std::runtime_error("bad suit");
-  }
-  os << SUIT_STRS[s];
-  return os;
+  return SUIT_STRS[suit];
 }
 
 static std::string_view RANK_CHARS = "23456789TJQKA";
 
-Rank parse_rank(Parser &parser) {
+Rank parse_rank(std::string_view str) {
+  Parser p(str);
+  return parse_rank(p);
+}
+
+std::optional<Rank> try_parse_rank(Parser &parser) {
   for (Rank rank = RANK_2; rank <= ACE; rank++) {
     if (parser.try_parse(RANK_CHARS[rank])) {
       return rank;
     }
   }
-  throw parser.error("bad rank");
+  return std::nullopt;
+}
+
+Rank parse_rank(Parser &parser) {
+  auto rank = try_parse_rank(parser);
+  if (rank.has_value()) {
+    return *rank;
+  } else {
+    throw parser.error("expected rank");
+  }
 }
 
 char std::formatter<Rank>::to_char(Rank rank) const { return RANK_CHARS[rank]; }
 
-static Rank parse_rank(std::istream &is) {
-  char ch;
-  is >> ch;
-  if (!is.good()) {
-    throw ParseFailure("stream error");
-  }
-  if (ch >= '2' && ch <= '9') {
-    return (Rank)(ch - '2');
-  }
-  switch (ch) {
-  case 'T': return Rank::TEN;
-  case 'J': return Rank::JACK;
-  case 'Q': return Rank::QUEEN;
-  case 'K': return Rank::KING;
-  case 'A': return Rank::ACE;
-  default: throw ParseFailure("bad rank");
-  }
-}
-
-std::istream &operator>>(std::istream &is, Rank &r) {
-  r = parse_rank(is);
-  return is;
-}
-
-static const char *RANK_STRS = "23456789TJQKA";
-
-std::ostream &operator<<(std::ostream &os, Rank r) {
-  if (r < 0 || r >= 13) {
-    throw std::runtime_error("bad rank");
-  }
-  os << RANK_STRS[r];
-  return os;
+static uint8_t make_card_index(Rank rank, Suit suit) {
+  return (uint8_t)((rank << 2) | suit);
 }
 
 static uint8_t parse_card_index(Parser &parser) {
   Rank rank = parse_rank(parser);
   Suit suit = parse_suit(parser);
-  return (uint8_t)((rank << 2) | suit);
+  if (suit == NO_TRUMP) {
+    throw parser.error("invalid suit (NT)");
+  }
+  return make_card_index(rank, suit);
+}
+
+static uint8_t parse_card_index(std::string_view str) {
+  Parser parser(str);
+  return parse_card_index(parser);
 }
 
 Card::Card(Parser &parser) : index_(parse_card_index(parser)) {}
-
-std::istream &operator>>(std::istream &is, Card &c) {
-  Rank r = parse_rank(is);
-  Suit s = parse_suit(is);
-  if (s == NO_TRUMP) {
-    throw ParseFailure("bad suit");
-  }
-  c = Card(r, s);
-  return is;
-}
-
-std::ostream &operator<<(std::ostream &os, Card c) {
-  os << c.rank() << c.suit();
-  return os;
-}
 
 Card::Card() : index_(0) {}
 
@@ -144,70 +80,15 @@ Card::Card(int card_index) : index_((uint8_t)card_index) {
   assert(card_index >= 0 && card_index < 52);
 }
 
-Card::Card(Rank r, Suit s) : index_((uint8_t)((r << 2) | s)) {
-  assert(s != NO_TRUMP);
+Card::Card(Rank rank, Suit suit) : index_(make_card_index(rank, suit)) {
+  assert(suit != NO_TRUMP);
 }
 
-Card::Card(std::string_view s) {
-  std::istringstream is(std::string(s), std::ios_base::in);
-  is >> *this;
-}
-
+Card::Card(std::string_view s) : index_(parse_card_index(s)) {}
 Card::Card(const char *s) : Card(std::string_view(s)) {}
 
 Rank Card::rank() const { return (Rank)(index_ >> 2); }
 Suit Card::suit() const { return (Suit)(index_ & 0b11); }
-
-std::string Card::to_string() const {
-  std::ostringstream os;
-  os << *this;
-  return os.str();
-}
-
-std::ostream &operator<<(std::ostream &os, Cards cards) {
-  for (Suit suit = LAST_SUIT; suit >= FIRST_SUIT; suit--) {
-    if (suit != LAST_SUIT) {
-      os << '.';
-    }
-    for (Card card : cards.intersect(suit).high_to_low()) {
-      os << card.rank();
-    }
-  }
-  return os;
-}
-
-bool is_rank_char(int ch) {
-  if (ch >= '2' && ch <= '9') {
-    return true;
-  } else {
-    switch (ch) {
-    case 'T': return true;
-    case 'J': return true;
-    case 'Q': return true;
-    case 'K': return true;
-    case 'A': return true;
-    }
-  }
-  return false;
-}
-
-static void parse_cards_ranks(std::istream &is, Suit suit, Cards &cards) {
-  while (true) {
-    is >> std::ws;
-    int ch = is.peek();
-    if (is_rank_char(ch)) {
-      Rank rank;
-      is >> rank;
-      cards.add(Card(rank, suit));
-    } else {
-      break;
-    }
-  }
-}
-
-bool can_parse_rank(Parser &parser) {
-  return RANK_CHARS.find(parser.peek()) != std::string_view::npos;
-}
 
 Cards::Cards(Parser &parser) : bits_(0) {
   for (Suit suit = LAST_SUIT; suit >= FIRST_SUIT; suit--) {
@@ -216,26 +97,15 @@ Cards::Cards(Parser &parser) : bits_(0) {
         throw parser.error("expected delimiter ('.')");
       }
     }
-    while (can_parse_rank(parser)) {
-      Rank rank = parse_rank(parser);
-      add(Card(rank, suit));
-    }
-  }
-}
-
-std::istream &operator>>(std::istream &is, Cards &cards) {
-  cards = Cards();
-  for (Suit suit = LAST_SUIT; suit >= FIRST_SUIT; suit--) {
-    if (suit != LAST_SUIT) {
-      char delim = 0;
-      is >> delim;
-      if (delim != '.') {
-        throw ParseFailure("expected delimiter: .");
+    while (true) {
+      auto rank = try_parse_rank(parser);
+      if (rank.has_value()) {
+        add(Card(*rank, suit));
+      } else {
+        break;
       }
     }
-    parse_cards_ranks(is, suit, cards);
   }
-  return is;
 }
 
 static const uint64_t SUIT_MASK =
@@ -257,14 +127,9 @@ Cards::Cards(std::initializer_list<std::string_view> cards) : bits_(0) {
 }
 
 Cards::Cards(std::string_view s) {
-  std::istringstream is(std::string(s), std::ios_base::in);
-  is >> *this;
-}
-
-std::string Cards::to_string() const {
-  std::ostringstream os;
-  os << *this;
-  return os.str();
+  Parser parser(s);
+  Cards  cards(parser);
+  bits_ = cards.bits_;
 }
 
 uint64_t Cards::bits() const { return bits_; }

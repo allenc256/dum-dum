@@ -1,6 +1,5 @@
 #include "game_model.h"
 #include "random.h"
-#include "test_util.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -27,9 +26,11 @@ void test_trick(
   EXPECT_EQ(t.winning_seat(), expected_winner);
 }
 
-TEST(Trick, ostream) {
-  EXPECT_EQ(to_string(Trick()), "-");
-  EXPECT_EQ(to_string(make_trick(NO_TRUMP, WEST, {"2C", "3C"})), "2♣3♣");
+TEST(Trick, format) {
+  EXPECT_EQ(std::format("{}", Trick()), "-");
+  EXPECT_EQ(
+      std::format("{}", make_trick(NO_TRUMP, WEST, {"2C", "3C"})), "2♣3♣"
+  );
 }
 
 TEST(Trick, no_trump) {
@@ -174,17 +175,12 @@ TEST(Trick, winners_by_rank_lowest_equivalent) {
   EXPECT_EQ(winners, Cards("...AKQ"));
 }
 
-TEST(Hands, iostream) {
+TEST(Hands, format) {
   Hands hands(Cards("A2..."), Cards("93..."), Cards("5.2.."), Cards("6.3.."));
 
-  std::ostringstream os;
-  os << hands;
-  EXPECT_EQ(os.str(), "A2.../93.../5.2../6.3..");
-
-  Hands              hands2;
-  std::istringstream is(os.str());
-  is >> hands2;
-  EXPECT_EQ(hands, hands2);
+  constexpr std::string_view formatted = "A2.../93.../5.2../6.3..";
+  EXPECT_EQ(std::format("{}", hands), formatted);
+  EXPECT_EQ(Hands(formatted), hands);
 }
 
 TEST(Game, play_unplay) {

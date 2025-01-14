@@ -2,48 +2,58 @@
 
 #include <sstream>
 
-const char *SEAT_STR = "WNES";
+Seat operator++(Seat &s, int) { return (Seat)((int &)s)++; }
+Seat operator--(Seat &s, int) { return (Seat)((int &)s)--; }
 
-std::ostream &operator<<(std::ostream &os, Seat s) {
-  if ((int)s < 0 || (int)s >= 4) {
-    throw std::runtime_error("bad seat");
-  }
-  os << SEAT_STR[s];
-  return os;
+Seat left_seat(Seat s) { return (Seat)((s + 3) & 3); }
+Seat right_seat(Seat s) { return (Seat)((s + 1) & 3); }
+
+Seat left_seat(Seat s, int i) {
+  assert(i >= 0);
+  return (Seat)((s + i * 3) & 3);
 }
 
-std::istream &operator>>(std::istream &is, Seat &s) {
-  char ch;
-  is >> std::ws >> ch;
-  switch (ch) {
-  case 'W': s = WEST; break;
-  case 'N': s = NORTH; break;
-  case 'E': s = EAST; break;
-  case 'S': s = SOUTH; break;
-  default: throw ParseFailure("bad seat");
-  }
-  return is;
+Seat right_seat(Seat s, int i) {
+  assert(i >= 0);
+  return (Seat)((s + i) & 3);
 }
 
-std::ostream &operator<<(std::ostream &os, const Trick &t) {
-  if (!t.started()) {
-    os << '-';
-  } else {
-    for (int i = 0; i < t.card_count(); i++) {
-      os << t.card(i);
-    }
-    if (t.finished()) {
-      os << " " << t.winning_seat();
+static constexpr std::string_view SEAT_CHARS = "WNES";
+
+Seat parse_seat(Parser &parser) {
+  for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
+    if (parser.try_parse(SEAT_CHARS[seat])) {
+      return seat;
     }
   }
-  return os;
+  throw parser.error("expected seat");
+}
+
+Seat parse_seat(std::string_view str) {
+  Parser parser(str);
+  return parse_seat(parser);
+}
+
+std::string_view std::formatter<Seat>::to_string(Seat seat) const {
+  return SEAT_CHARS.substr(seat, 1);
+}
+
+Hands::Hands(Parser &parser) {
+  for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
+    if (seat != FIRST_SEAT) {
+      if (!parser.try_parse('/')) {
+        throw parser.error("expected '/' delimiter");
+      }
+    }
+    hands_[seat] = Cards(parser);
+  }
 }
 
 Hands::Hands(Cards w, Cards n, Cards e, Cards s) : hands_{w, n, e, s} {}
 
 Hands::Hands(std::string_view s) {
-  std::istringstream is(std::string(s), std::ios_base::in);
-  is >> *this;
+  Parser parser(s);
+  *this = Hands(parser);
 }
 
 Hands Hands::make_partition(Cards winners_by_rank) const {
@@ -105,100 +115,6 @@ Hands Hands::normalize() const {
       hands_[2].normalize(removed),
       hands_[3].normalize(removed)
   );
-}
-
-void Hands::compact_print(std::ostream &os, Cards winners_by_rank) const {
-  for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
-    if (seat != FIRST_SEAT) {
-      os << '/';
-    }
-    Cards hand = hands_[seat];
-    for (Suit suit = LAST_SUIT; suit >= FIRST_SUIT; suit--) {
-      if (suit != LAST_SUIT) {
-        os << '.';
-      }
-      for (Card card : hand.intersect(suit).high_to_low()) {
-        if (winners_by_rank.contains(card)) {
-          os << card.rank();
-        } else {
-          os << 'X';
-        }
-      }
-    }
-  }
-}
-
-std::ostream &operator<<(std::ostream &os, const Hands &hands) {
-  hands.compact_print(os, Cards::all());
-  return os;
-}
-
-std::istream &operator>>(std::istream &is, Hands &hands) {
-  for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
-    if (seat != FIRST_SEAT) {
-      char delim = 0;
-      is >> delim;
-      if (delim != '/') {
-        throw ParseFailure("expected delimiter: /");
-      }
-    }
-    is >> hands.hands_[seat];
-  }
-  return is;
-}
-
-static void print_chars(std::ostream &os, int n, char ch) {
-  for (int i = 0; i < n; i++) {
-    os << ch;
-  }
-}
-
-static int print_cards_in_suit(
-    std::ostream &os, Cards cards, Suit suit, Cards winners_by_rank
-) {
-  cards = cards.intersect(suit);
-  os << suit << ' ';
-  if (cards.empty()) {
-    os << '-';
-    return 3;
-  }
-  for (Card c : cards.high_to_low()) {
-    if (winners_by_rank.contains(c)) {
-      os << c.rank();
-    } else {
-      os << 'X';
-    }
-  }
-  return 2 + cards.count();
-}
-
-void Hands::pretty_print(std::ostream &os, Cards winners_by_rank) const {
-  constexpr int spacing = 15;
-
-  for (Suit suit = LAST_SUIT; suit >= FIRST_SUIT; suit--) {
-    print_chars(os, spacing, ' ');
-    print_cards_in_suit(os, hand(NORTH), suit, winners_by_rank);
-    os << '\n';
-  }
-
-  for (Suit suit = LAST_SUIT; suit >= FIRST_SUIT; suit--) {
-    int count = print_cards_in_suit(os, hand(WEST), suit, winners_by_rank);
-    print_chars(os, 2 * spacing - count, ' ');
-    print_cards_in_suit(os, hand(EAST), suit, winners_by_rank);
-    os << '\n';
-  }
-
-  for (Suit suit = LAST_SUIT; suit >= FIRST_SUIT; suit--) {
-    print_chars(os, spacing, ' ');
-    print_cards_in_suit(os, hand(SOUTH), suit, winners_by_rank);
-    os << '\n';
-  }
-}
-
-std::string Hands::to_string() const {
-  std::ostringstream os;
-  os << *this;
-  return os.str();
 }
 
 Trick::Trick()
@@ -368,20 +284,6 @@ int Trick::card_value(Card c) const {
   } else {
     return 0;
   }
-}
-
-void Game::pretty_print(std::ostream &os) const {
-  hands_.pretty_print(os, Cards::all());
-  os << '\n';
-  os << "trump_suit:         " << trump_suit_ << '\n';
-  os << "next_seat:          " << next_seat_ << '\n';
-  os << "tricks_taken_by_ns: " << tricks_taken_by_ns_ << '\n';
-  os << "tricks_taken_by_ew: " << tricks_taken_by_ew() << '\n';
-}
-
-std::ostream &operator<<(std::ostream &os, const Game &g) {
-  g.pretty_print(os);
-  return os;
 }
 
 Game::Game(Suit trump_suit, Seat lead_seat, const Hands &hands)

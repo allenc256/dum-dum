@@ -75,31 +75,36 @@ static int64_t solve_seed(int index, const Options &options) {
   auto  stats     = s.stats();
   auto &tpn_stats = stats.tpn_table_stats;
 
+  std::ostream_iterator<char> out(std::cout);
+
   if (options.compact_output) {
-    std::cout << std::setw(COL_WIDTH) << seed;
-    std::cout << std::setw(COL_WIDTH) << to_ascii(g.trump_suit());
-    std::cout << std::setw(COL_WIDTH) << g.next_seat();
-    std::cout << std::setw(COL_WIDTH) << r.tricks_taken_by_ns;
-    std::cout << std::setw(COL_WIDTH) << elapsed_ms;
-    std::cout << g.hands() << '\n';
+    std::format_to(
+        out,
+        "{:<10}{:<10}{:<10}{:<10}{:<10}{}\n",
+        seed,
+        g.trump_suit(),
+        g.next_seat(),
+        r.tricks_taken_by_ns,
+        elapsed_ms,
+        g.hands()
+    );
   } else {
-    std::cout << "seed               " << seed << '\n';
-    std::cout << "hands              " << g.hands() << '\n';
-    std::cout << "trump_suit         " << g.trump_suit() << '\n';
-    std::cout << "next_seat          " << g.next_seat() << '\n';
-    std::cout << "best_tricks_by_ns  " << r.tricks_taken_by_ns << '\n';
-    std::cout << "best_tricks_by_ew  " << r.tricks_taken_by_ew << '\n';
-    std::cout << "nodes_explored     " << stats.nodes_explored << '\n';
-    std::cout << "tpn_buckets        " << tpn_stats.buckets << '\n';
-    std::cout << "tpn_entries        " << tpn_stats.entries << '\n';
-    std::cout << "tpn_lookup_hits    " << tpn_stats.lookup_hits << '\n';
-    std::cout << "tpn_lookup_misses  " << tpn_stats.lookup_misses << '\n';
-    std::cout << "tpn_lookup_reads   " << tpn_stats.lookup_reads << '\n';
-    std::cout << "tpn_insert_hits    " << tpn_stats.insert_hits << '\n';
-    std::cout << "tpn_insert_misses  " << tpn_stats.insert_misses << '\n';
-    std::cout << "tpn_insert_reads   " << tpn_stats.insert_reads << '\n';
-    std::cout << "elapsed_ms         " << elapsed_ms << '\n';
-    std::cout << std::endl;
+    std::format_to(out, "seed               {}\n", seed);
+    std::format_to(out, "hands              {}\n", g.hands());
+    std::format_to(out, "trump_suit         {}\n", g.trump_suit());
+    std::format_to(out, "next_seat          {}\n", g.next_seat());
+    std::format_to(out, "best_tricks_by_ns  {}\n", r.tricks_taken_by_ns);
+    std::format_to(out, "best_tricks_by_ew  {}\n", r.tricks_taken_by_ew);
+    std::format_to(out, "nodes_explored     {}\n", stats.nodes_explored);
+    std::format_to(out, "tpn_buckets        {}\n", tpn_stats.buckets);
+    std::format_to(out, "tpn_entries        {}\n", tpn_stats.entries);
+    std::format_to(out, "tpn_lookup_hits    {}\n", tpn_stats.lookup_hits);
+    std::format_to(out, "tpn_lookup_misses  {}\n", tpn_stats.lookup_misses);
+    std::format_to(out, "tpn_insert_hits    {}\n", tpn_stats.insert_hits);
+    std::format_to(out, "tpn_insert_misses  {}\n", tpn_stats.insert_misses);
+    std::format_to(out, "tpn_insert_reads   {}\n", tpn_stats.insert_reads);
+    std::format_to(out, "elapsed_ms         {}\n", elapsed_ms);
+    std::format_to(out, "\n");
   }
 
   return elapsed_ms;

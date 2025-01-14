@@ -201,25 +201,25 @@ bool Solver::prune_fast_tricks(
 }
 
 void Solver::trace(const char *tag, int alpha, int beta, int score) {
-  *trace_os_ << std::left;
-  *trace_os_ << std::setw(7) << trace_lineno_ << ' ';
-  *trace_os_ << std::setw(10) << tag << ' ';
-  *trace_os_ << std::right;
-  *trace_os_ << game_.hands();
+  std::ostream_iterator<char> out(*trace_os_);
+
+  std::format_to(out, "{:<7} {:<10} {}", trace_lineno_, tag, game_.hands());
   int max_len = game_.tricks_max() * 4 + 15;
   int cur_len = game_.hands().all_cards().count() + 15;
-  *trace_os_ << std::setw(max_len - cur_len + 1) << ' ';
-  *trace_os_ << std::setw(2) << alpha << ' ';
-  *trace_os_ << std::setw(2) << beta << ' ';
-  *trace_os_ << std::setw(2) << game_.tricks_taken_by_ns() << ' ';
+  for (int i = 0; i < max_len - cur_len + 1; i++) {
+    std::format_to(out, "{}", ' ');
+  }
+  std::format_to(
+      out, "{:2} {:2} {:2}", alpha, beta, game_.tricks_taken_by_ns()
+  );
   if (score >= 0) {
-    *trace_os_ << std::setw(2) << score << ' ';
+    std::format_to(out, "{:2} ", score);
   } else {
-    *trace_os_ << "   ";
+    std::format_to(out, "   ");
   }
   for (int i = 0; i < game_.tricks_taken(); i++) {
-    *trace_os_ << " " << game_.trick(i);
+    std::format_to(out, "{}", game_.trick(i));
   }
-  *trace_os_ << '\n';
+  std::format_to(out, "\n");
   trace_lineno_++;
 }

@@ -1,10 +1,12 @@
 #pragma once
 
 #include <array>
+#include <format>
 #include <iostream>
 #include <optional>
 
 #include "card_model.h"
+#include "parser.h"
 
 enum Seat : int {
   WEST,
@@ -17,30 +19,21 @@ enum Seat : int {
 constexpr Seat FIRST_SEAT = WEST;
 constexpr Seat LAST_SEAT  = SOUTH;
 
-inline Seat operator++(Seat &s, int) { return (Seat)((int &)s)++; }
-inline Seat operator--(Seat &s, int) { return (Seat)((int &)s)--; }
-
-inline Seat left_seat(Seat s) { return (Seat)((s + 3) & 3); }
-inline Seat right_seat(Seat s) { return (Seat)((s + 1) & 3); }
-
-inline Seat left_seat(Seat s, int i) {
-  assert(i >= 0);
-  return (Seat)((s + i * 3) & 3);
-}
-
-inline Seat right_seat(Seat s, int i) {
-  assert(i >= 0);
-  return (Seat)((s + i) & 3);
-}
-
-std::ostream &operator<<(std::ostream &os, Seat s);
-std::istream &operator>>(std::istream &is, Seat &s);
+Seat operator++(Seat &s, int);
+Seat operator--(Seat &s, int);
+Seat left_seat(Seat s);
+Seat right_seat(Seat s);
+Seat left_seat(Seat s, int i);
+Seat right_seat(Seat s, int i);
+Seat parse_seat(std::string_view str);
+Seat parse_seat(Parser &parser);
 
 class Hands {
 public:
   Hands() {}
   Hands(Cards w, Cards n, Cards e, Cards s);
   Hands(std::string_view s);
+  Hands(Parser &parser);
 
   Cards hand(Seat seat) const;
   void  add_card(Seat seat, Card card);
@@ -50,6 +43,7 @@ public:
   bool  all_disjoint() const;
   Cards all_cards() const;
   bool  contains_all(const Hands &other) const;
+  bool  operator==(const Hands &hands) const = default;
 
   Hands make_partition(Cards winners_by_rank) const;
   Hands normalize() const;
@@ -57,16 +51,6 @@ public:
   template <typename H> friend H AbslHashValue(H h, const Hands &hands) {
     return H::combine(std::move(h), hands.hands_);
   }
-
-  bool operator==(const Hands &hands) const = default;
-
-  void pretty_print(std::ostream &os, Cards winners_by_rank) const;
-  void compact_print(std::ostream &os, Cards winners_by_rank) const;
-
-  std::string to_string() const;
-
-  friend std::ostream &operator<<(std::ostream &os, const Hands &hands);
-  friend std::istream &operator>>(std::istream &is, Hands &hands);
 
 private:
   std::array<Cards, 4> hands_;
@@ -116,8 +100,6 @@ private:
   Cards winning_cards_[4];
 };
 
-std::ostream &operator<<(std::ostream &os, const Trick &t);
-
 class Game {
 public:
   Game(Suit trump_suit, Seat first_lead_seat, const Hands &hands);
@@ -156,8 +138,6 @@ public:
   Cards denormalize_wbr(Cards winners_by_rank) const;
   Card  denormalize_card(Card card) const;
 
-  void pretty_print(std::ostream &os) const;
-
 private:
   using HandsStack = std::array<std::optional<Hands>, 14>;
 
@@ -173,4 +153,57 @@ private:
   mutable HandsStack norm_hands_stack_;
 };
 
-std::ostream &operator<<(std::ostream &os, const Game &g);
+// ----------------------
+// Implementation Details
+// ----------------------
+
+template <>
+struct std::formatter<Seat> : public std::formatter<std::string_view> {
+  auto format(Seat seat, auto &ctx) const {
+    return formatter<std::string_view>::format(to_string(seat), ctx);
+  }
+
+  std::string_view to_string(Seat seat) const;
+};
+
+template <> struct std::formatter<Trick> {
+  constexpr auto parse(auto &ctx) { return ctx.begin(); }
+
+  auto format(const Trick &trick, auto &ctx) const {
+    auto out = ctx.out();
+    if (!trick.started()) {
+      out = std::format_to(out, "{}", '-');
+    } else {
+      for (int i = 0; i < trick.card_count(); i++) {
+        out = std::format_to(out, "{}", trick.card(i));
+      }
+      if (trick.finished()) {
+        out = std::format_to(out, " {}", trick.winning_seat());
+      }
+    }
+    return out;
+  }
+};
+
+template <> struct std::formatter<Hands> {
+  constexpr auto parse(const auto &ctx) { return ctx.begin(); }
+
+  auto format(const Hands &hands, auto &ctx) const {
+    auto out = ctx.out();
+    for (Seat seat = FIRST_SEAT; seat <= LAST_SEAT; seat++) {
+      if (seat != FIRST_SEAT) {
+        out = std::format_to(out, "{}", '/');
+      }
+      Cards hand = hands.hand(seat);
+      for (Suit suit = LAST_SUIT; suit >= FIRST_SUIT; suit--) {
+        if (suit != LAST_SUIT) {
+          out = std::format_to(out, "{}", '.');
+        }
+        for (Card card : hand.intersect(suit).high_to_low()) {
+          out = std::format_to(out, "{}", card.rank());
+        }
+      }
+    }
+    return out;
+  }
+};

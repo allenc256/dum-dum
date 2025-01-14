@@ -6,18 +6,6 @@
 
 using ::testing::ElementsAre;
 
-TEST(Slice, empty) {
-  Slice<int> slice;
-  EXPECT_EQ(slice.size(), 0);
-}
-
-TEST(Slice, expand) {
-  Slice<std::string> slice;
-  slice.expand() = "one";
-  slice.expand() = "two";
-  EXPECT_THAT(slice, ElementsAre("one", "two"));
-}
-
 struct NaiveTpnBucket {
   struct Entry {
     Hands partition;

@@ -4,6 +4,14 @@
 
 Parser::Parser(std::string_view str) : str_(str), remaining_(str) {}
 
+char Parser::peek() const {
+  if (!remaining_.empty()) {
+    return remaining_[0];
+  } else {
+    throw error("unexpected end of input");
+  }
+}
+
 bool Parser::try_parse(std::string_view next) {
   if (remaining_.starts_with(next)) {
     remaining_ = remaining_.substr(next.length());
