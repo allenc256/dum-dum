@@ -1,6 +1,6 @@
 # dum-dum
 
-A [double dummy solver](https://en.wikipedia.org/wiki/Computer_bridge#Comparison_to_other_strategy_games) for bridge. This solver is optimized with a number of game tree search techniques, described further in the [Technical Details](#technical-details) section below.
+A [double dummy solver](https://en.wikipedia.org/wiki/Computer_bridge#Comparison_to_other_strategy_games) for bridge. This solver is optimized with a substantial number of game tree search techniques, described further in the [Technical Details](#technical-details) section below.
 
 ## Building
 
