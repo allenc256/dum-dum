@@ -158,7 +158,7 @@ We summarize the key aspects of the implementation below:
 
     - For plays where we are not on lead, we rely on very simple heuristics (e.g., if you're third or last seat, try to win the trick if you can; otherwise play low).
 
-* Because the minimax score for a bridge game (i.e., the number of tricks taken by a particular side) can only increase monotonically, it is possible to prune search nodes based on "fast" or "sure" tricks. That is, by examining forced lines of play where we know we can take an additional N tricks, it may be possible to induce early alpha/beta search cutoffs.
+* Because the minimax score for a bridge game (i.e., the number of tricks taken by a particular side) can only increase monotonically as search depth increases along a given search tree path, it is possible to prune search nodes based on "fast" or "sure" tricks. That is, by examining forced lines of play where we know we can take an additional N tricks, it may be possible to induce early alpha/beta search cutoffs.
 
     - To compute the number of fast tricks available, we implement a very fast to execute greedy search over forced lines of play.
 
