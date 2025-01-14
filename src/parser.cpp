@@ -1,3 +1,4 @@
+#include <cctype>
 #include <format>
 
 #include "parser.h"
@@ -27,6 +28,12 @@ bool Parser::try_parse(char next) {
     return true;
   } else {
     return false;
+  }
+}
+
+void Parser::skip_whitespace() {
+  while (!finished() && std::isspace(peek())) {
+    remaining_ = remaining_.substr(1);
   }
 }
 

@@ -14,6 +14,7 @@ public:
   char  peek() const;
   bool  try_parse(std::string_view next);
   bool  try_parse(char next);
+  void  skip_whitespace();
   bool  finished() const;
   Error error(std::string_view message) const;
 
