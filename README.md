@@ -84,7 +84,7 @@ Optional arguments:
   -c, --compact  compact output
 ```
 
-Example input (format should be `<HANDS> <SUIT> <SEAT>`, see [Representation](#representation) for additional details):
+Example input (format should be `<SUIT> <SEAT> <HANDS>`, see [Representation](#representation) for additional details):
 
 ```
 S         N         A9..AKJT84.KQ/Q5.T873.973.9/J8.QJ94.6.AT3/KT63.A5.5.876
