@@ -119,8 +119,6 @@ static int64_t solve_game(Game &g, bool compact_output) {
     std::format_to(
         out,
         "{:<10}{:<10}{:<10}{:<10}{}\n",
-        // N.B., std::format doesn't handle justification/width for unicode well
-        // on some platforms
         suit_to_ascii(g.trump_suit()),
         g.next_seat(),
         r.tricks_taken_by_ns,
@@ -128,8 +126,9 @@ static int64_t solve_game(Game &g, bool compact_output) {
         g.hands()
     );
   } else {
+    std::string_view trumps = suit_to_ascii(g.trump_suit());
     std::format_to(out, "hands              {}\n", g.hands());
-    std::format_to(out, "trump_suit         {}\n", g.trump_suit());
+    std::format_to(out, "trump_suit         {}\n", trumps);
     std::format_to(out, "next_seat          {}\n", g.next_seat());
     std::format_to(out, "best_tricks_by_ns  {}\n", r.tricks_taken_by_ns);
     std::format_to(out, "best_tricks_by_ew  {}\n", r.tricks_taken_by_ew);
@@ -200,11 +199,11 @@ public:
   Game next() {
     assert(has_next());
     Parser parser(next_);
-    Hands  hands(parser);
-    parser.skip_whitespace();
-    Suit trumps = parse_suit(parser);
+    Suit   trumps = parse_suit(parser);
     parser.skip_whitespace();
     Seat seat = parse_seat(parser);
+    parser.skip_whitespace();
+    Hands hands(parser);
     std::getline(ifs_, next_);
     return Game(trumps, seat, hands);
   }

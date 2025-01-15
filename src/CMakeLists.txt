@@ -1,5 +1,7 @@
 include(FetchContent)
 
+set(ABSL_PROPAGATE_CXX_STD ON)
+
 FetchContent_Declare(
     argparse
     GIT_REPOSITORY https://github.com/p-ranav/argparse.git

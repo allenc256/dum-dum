@@ -87,16 +87,16 @@ Optional arguments:
 Example input (format should be `<HANDS> <SUIT> <SEAT>`, see [Representation](#representation) for additional details):
 
 ```
-A2.T6.J7.KJ73/3.872.QT4.A94/JT.J95.863.T8/Q985.Q3.A2.52 ♥ S
-J832.63.Q.QJ4/T95.AQ.T2.987/A4.JT8754.J9./Q7.K9.K75.A62 ♠ S
-A7.Q86.K8.KQ6/J94.T7.T7.T72/K862.42.Q542./Q.AJ953.96.A3 ♣ E
-J54.A32.J7.A5/A97.654..9863/63.98.832.JT4/KQT82.J.AKQ9. ♦ N
-KJ.AQ.A962.JT/3.T3.KQ3.Q975/AT984.986.4.8/Q52.752.85.A4 NT W
-KT765.64.T.T7/J.95.J63.AQ83/942.QJ.A8.J95/Q8.AKT.92.K62 ♦ E
-K82.QJT.T.T93/97.K52.K3.A82/AQT43.87.A97./J.643.Q64.K65 NT N
-Q6.AK2.K98.A3/T75.43.JT.Q97/A3.T86.Q75.64/842.Q.42.KJT2 ♠ W
-T82.A.J753.95/J9.3.9642.632/4.Q98764.K.T8/KQ53.J5.A.AK4 ♥ W
-9532.J9.52.98/7.865.QT987.J/QT8.AK2.A3.Q6/AKJ.73.64.KT2 NT S
+S         N         A9..AKJT84.KQ/Q5.T873.973.9/J8.QJ94.6.AT3/KT63.A5.5.876
+S         E         5.KJT84.73.74/4.962.QT.AK52/KQ7.A3.J6.J83/862.5.852.QT6
+H         W         J96.K98764..8/74..863.AKT65/T852.QT.K7.QJ/K3.A532.AJ.97
+NT        S         984.K973.J6.5/J.654.K4.KJ84/A3.Q.A82.A972/QT76.2.Q95.Q3
+H         N         K7.3.AQT4.754/.AJ942.53.832/AQJT9.T76.72./43.KQ5.J986.Q
+NT        N         6.Q4.T6.QT862/7.K8.983.AKJ7/KQT43.3.AKJ.5/A8.AJ9652.72.
+H         S         AQ.975.AT72.3/T4.T6432.94.7/6.J8.QJ.KQ984/J932..K.AJT62
+S         E         J.85.QJ542.K9/AQ6.AKQ.8.J85/753.6.AK.AT73/942.JT.T73.64
+D         S         7.A74.J9432.4/KQ864.3..AK76/9.KQ65.87.QJ5/J2.J92.T.T832
+NT        S         K965.83.T5.A3/AJ8.A.J842.JT/Q42.JT5.3.K87/T73.Q642.Q6.4
 ```
 
 Example output:
@@ -104,16 +104,16 @@ Example output:
 ```
 $ dumdum file hands.txt --compact
 trumps    seat      tricks    elapsed   hands     
-H         S         6         22        A2.T6.J7.KJ73/3.872.QT4.A94/JT.J95.863.T8/Q985.Q3.A2.52
-S         S         6         1         J832.63.Q.QJ4/T95.AQ.T2.987/A4.JT8754.J9./Q7.K9.K75.A62
-C         E         3         3         A7.Q86.K8.KQ6/J94.T7.T7.T72/K862.42.Q542./Q.AJ953.96.A3
-D         N         9         0         J54.A32.J7.A5/A97.654..9863/63.98.832.JT4/KQT82.J.AKQ9.
-NT        W         4         0         KJ.AQ.A962.JT/3.T3.KQ3.Q975/AT984.986.4.8/Q52.752.85.A4
-D         E         8         1         KT765.64.T.T7/J.95.J63.AQ83/942.QJ.A8.J95/Q8.AKT.92.K62
-NT        N         4         3         K82.QJT.T.T93/97.K52.K3.A82/AQT43.87.A97./J.643.Q64.K65
-S         W         4         3         Q6.AK2.K98.A3/T75.43.JT.Q97/A3.T86.Q75.64/842.Q.42.KJT2
-H         W         4         0         T82.A.J753.95/J9.3.9642.632/4.Q98764.K.T8/KQ53.J5.A.AK4
-NT        S         6         1         9532.J9.52.98/7.865.QT987.J/QT8.AK2.A3.Q6/AKJ.73.64.KT2
+S         N         4         11        A9..AKJT84.KQ/Q5.T873.973.9/J8.QJ94.6.AT3/KT63.A5.5.876
+S         E         5         9         5.KJT84.73.74/4.962.QT.AK52/KQ7.A3.J6.J83/862.5.852.QT6
+H         W         3         3         J96.K98764..8/74..863.AKT65/T852.QT.K7.QJ/K3.A532.AJ.97
+NT        S         3         4         984.K973.J6.5/J.654.K4.KJ84/A3.Q.A82.A972/QT76.2.Q95.Q3
+H         N         7         0         K7.3.AQT4.754/.AJ942.53.832/AQJT9.T76.72./43.KQ5.J986.Q
+NT        N         9         1         6.Q4.T6.QT862/7.K8.983.AKJ7/KQT43.3.AKJ.5/A8.AJ9652.72.
+H         S         3         1         AQ.975.AT72.3/T4.T6432.94.7/6.J8.QJ.KQ984/J932..K.AJT62
+S         E         5         0         J.85.QJ542.K9/AQ6.AKQ.8.J85/753.6.AK.AT73/942.JT.T73.64
+D         S         2         1         7.A74.J9432.4/KQ864.3..AK76/9.KQ65.87.QJ5/J2.J92.T.T832
+NT        S         7         4         K965.83.T5.A3/AJ8.A.J842.JT/Q42.JT5.3.K87/T73.Q642.Q6.4
 
 total_elapsed_ms   34
 avg_elapsed_ms     3

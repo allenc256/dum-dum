@@ -148,7 +148,7 @@ void TpnBucket::tighten_child_bounds(Entry &entry) {
 }
 
 void TpnBucket::remove_at(std::vector<Entry> &entries, std::size_t i) {
-  assert(i >= 0 && i < entries.size());
+  assert(i < entries.size());
   if (i == entries.size() - 1) {
     entries[i] = Entry();
     entries.pop_back();

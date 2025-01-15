@@ -48,5 +48,6 @@ Parser::Error Parser::error(std::string_view message) const {
   }
   err_loc += '^';
 
-  throw Error(std::format("parsing error: {}\n{}\n{}", message, str_, err_loc));
+  return Error(std::format("parsing error: {}\n{}\n{}", message, str_, err_loc)
+  );
 }
