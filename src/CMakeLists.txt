@@ -24,7 +24,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 else()
   set(CXX_FLAGS -Wall -Wextra -Werror -Wno-gcc-compat -Wno-sign-conversion -march=native)
   if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    set(CXX_FLAGS ${CXX_FLAGS} -Wpedantic -Wconversion)
+    set(CXX_FLAGS -Wpedantic -Wconversion ${CXX_FLAGS})
   endif()
 endif()
 
