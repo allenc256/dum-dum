@@ -49,7 +49,7 @@ Optional arguments:
 Example output (see [Representation](#representation) below for output format explanation):
 
 ```
-$ src/dumdum random --compact --seed=12345 --deal=13 --hands=10
+$ ./dumdum random --compact --seed=12345 --deal=13 --hands=10
 trumps    seat      tricks    elapsed   hands     
 H         W         8         103       AKJ75.432.KQ7.J8/Q984.J85.854.A97/T32.76.AJ63.K542/6.AKQT9.T92.QT63
 D         W         7         56        AJT84.4.T8653.95/Q92.QT82.Q74.KQ7/75.AJ9765.J92.T8/K63.K3.AK.AJ6432
@@ -102,7 +102,7 @@ NT        S         K965.83.T5.A3/AJ8.A.J842.JT/Q42.JT5.3.K87/T73.Q642.Q6.4
 Example output:
 
 ```
-$ dumdum file hands.txt --compact
+$ ./dumdum file hands.txt --compact
 trumps    seat      tricks    elapsed   hands     
 S         N         4         11        A9..AKJT84.KQ/Q5.T873.973.9/J8.QJ94.6.AT3/KT63.A5.5.876
 S         E         5         9         5.KJT84.73.74/4.962.QT.AK52/KQ7.A3.J6.J83/862.5.852.QT6
