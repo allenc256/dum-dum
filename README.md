@@ -8,6 +8,7 @@ Building the solver requires:
 
 * CMake (tested on 3.28.3)
 * C++ compiler w/ C++20 support.
+  - GCC 13.3.0 (Ubuntu 24.04.1 LTS)
   - Clang 18.1.3 (Ubuntu 24.04.1 LTS)
   - Clang 15.0.0 (Apple Darwin)
 
