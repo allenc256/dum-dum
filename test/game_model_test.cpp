@@ -1,9 +1,9 @@
-#include "game_model.h"
-#include "random.h"
-
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <vector>
+
+#include "game_model.h"
+#include "random.h"
 
 Trick make_trick(Suit trump_suit, Seat lead, std::vector<std::string> cards) {
   Trick t;

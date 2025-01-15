@@ -1,7 +1,5 @@
 #include "game_model.h"
 
-#include <sstream>
-
 Seat operator++(Seat &s, int) { return (Seat)((int &)s)++; }
 Seat operator--(Seat &s, int) { return (Seat)((int &)s)--; }
 

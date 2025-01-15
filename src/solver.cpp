@@ -1,6 +1,8 @@
-#include "solver.h"
+#include <format>
+
 #include "fast_tricks.h"
 #include "play_order.h"
+#include "solver.h"
 
 Solver::Solver(Game g)
     : game_(g),

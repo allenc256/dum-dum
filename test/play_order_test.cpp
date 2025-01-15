@@ -1,8 +1,7 @@
-
-#include "play_order.h"
-
 #include <array>
 #include <gtest/gtest.h>
+
+#include "play_order.h"
 
 TEST(PlayOrder, empty) {
   PlayOrder order;

@@ -5,7 +5,7 @@
 
 #include "card_model.h"
 
-static constexpr std::string_view SUIT_STRS[]     = {"♣", "♦", "♥", "♠", "NT"};
+static constexpr std::string_view SUIT_STRS[] = {"♣", "♦", "♥", "♠", "NT"};
 static constexpr std::string_view SUIT_STRS_ASC[] = {"C", "D", "H", "S", "NT"};
 
 Suit parse_suit(std::string_view str) {
@@ -22,6 +22,8 @@ Suit parse_suit(Parser &parser) {
   }
   throw parser.error("expected suit");
 }
+
+std::string_view suit_to_ascii(Suit suit) { return SUIT_STRS_ASC[suit]; }
 
 const std::string_view &std::formatter<Suit>::to_string(Suit suit) const {
   return SUIT_STRS[suit];

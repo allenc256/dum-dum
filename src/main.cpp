@@ -119,7 +119,9 @@ static int64_t solve_game(Game &g, bool compact_output) {
     std::format_to(
         out,
         "{:<10}{:<10}{:<10}{:<10}{}\n",
-        g.trump_suit(),
+        // N.B., std::format doesn't handle justification/width for unicode well
+        // on some platforms
+        suit_to_ascii(g.trump_suit()),
         g.next_seat(),
         r.tricks_taken_by_ns,
         elapsed_ms,

@@ -1,8 +1,8 @@
-#include "random.h"
-#include "solver.h"
-
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+#include "random.h"
+#include "solver.h"
 
 constexpr int DEAL_SIZE = 4;
 

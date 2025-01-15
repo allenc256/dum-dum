@@ -1,8 +1,8 @@
-#include "random.h"
-#include "tpn_table.h"
-
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+#include "random.h"
+#include "tpn_table.h"
 
 using ::testing::ElementsAre;
 

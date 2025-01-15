@@ -91,7 +91,9 @@ void TpnBucket::insert(
         return;
       }
     } else if (generalizes(partition, entry.partition)) {
-      Entry new_entry = {.partition = partition, .bounds = bounds};
+      Entry new_entry = {
+          .partition = partition, .bounds = bounds, .children = {}
+      };
       transfer_generalized(entries, new_entry);
       tighten_child_bounds(new_entry);
       entries.emplace_back(std::move(new_entry));

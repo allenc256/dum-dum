@@ -22,10 +22,11 @@ enum Suit : int8_t {
 constexpr Suit FIRST_SUIT = CLUBS;
 constexpr Suit LAST_SUIT  = SPADES;
 
-Suit operator++(Suit &s, int);
-Suit operator--(Suit &s, int);
-Suit parse_suit(std::string_view str);
-Suit parse_suit(Parser &parser);
+Suit             operator++(Suit &s, int);
+Suit             operator--(Suit &s, int);
+Suit             parse_suit(std::string_view str);
+Suit             parse_suit(Parser &parser);
+std::string_view suit_to_ascii(Suit suit);
 
 enum Rank : int8_t {
   RANK_2,

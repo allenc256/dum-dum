@@ -1,8 +1,8 @@
+#include <gtest/gtest.h>
+
 #include "fast_tricks.h"
 #include "random.h"
 #include "solver.h"
-
-#include <gtest/gtest.h>
 
 void test_fast_tricks(
     const char *hands_str, Suit trump_suit, int exp_fast_tricks, Cards exp_wbr

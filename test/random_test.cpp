@@ -1,7 +1,7 @@
+#include <gtest/gtest.h>
+
 #include "game_model.h"
 #include "random.h"
-
-#include <gtest/gtest.h>
 
 TEST(Random, random_game) {
   Game g = Random(123).random_game(13);
